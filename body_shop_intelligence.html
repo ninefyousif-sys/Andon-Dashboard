@@ -126,7 +126,7 @@ body{
 .card-sub{font-size:10px;color:var(--dim);margin-bottom:10px}
 
 /* ═══════════════════════════════════════════ CHARTS */
-.chart-row{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:8px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .chart-box{background:var(--s2);border:1px solid var(--b1);padding:12px 14px}
 /* Chart.js requires a relative-positioned parent with explicit height */
 .chart-canvas-wrap{position:relative;height:180px;width:100%}
@@ -1036,7 +1036,7 @@ function makeOPRChart(ctx, label, carsData, ctSec, oprTarget, lineColor) {
       scales: {
         x: { grid:{color:gridColor}, ticks:{color:'#5a7590',font:{size:10},maxRotation:30} },
         y: {
-          grid: {color:gridColor}, min: 45, max: 112,
+          grid: {color:gridColor}, min: 45, max: 115,
           ticks: { color:'#5a7590', callback: v => v+'%' },
           title: { display:true, text:'OPR %', color:'#5a7590', font:{size:11} }
         },
@@ -1082,7 +1082,7 @@ function makeCompareChart(ctx, d){
       },
       scales:{
         x:{grid:{color:gridColor},ticks:{color:'#5a7590',font:{size:10},maxRotation:30}},
-        y:{grid:{color:gridColor},min:40,max:120,ticks:{color:'#5a7590',callback:v=>v+'%'}}
+        y:{grid:{color:gridColor},min:45,max:115,ticks:{color:'#5a7590',callback:v=>v+'%'}}
       }
     }
   });
