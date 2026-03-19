@@ -544,7 +544,7 @@ const BUFFER_CFG = {
   '138':{bufMin:2,  bufMax:10, impactCT:286, note:'MARR-138→Stud: max 48min buffer'},
   '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Framing→Respot: max 18min buffer'},
   '155':{bufMin:2,  bufMax:16, impactCT:257, note:'Roof→W&G: max 70min buffer'},
-  '160':{bufMin:2,  bufMax:10, impactCT:288, note:'W&G→Door: max 48min buffer'},
+  '160':{bufMin:1,  bufMax:3,  impactCT:274, note:'W&G→Door: max 14min buffer (⚠ very small)'},
   '197':{bufMin:2,  bufMax:9,  impactCT:267, note:'Door→Manual: max 40min buffer'},
   '198':{bufMin:2,  bufMax:9,  impactCT:267, note:'Door→Manual: max 40min buffer'},
   // Underbody sub-assembly — MAX buffer times from flow map diagram:
@@ -1658,7 +1658,7 @@ function buildFlowMap(){
       ${fNode('154','154 Framing','UPPERBODY',0,true)}${bufAr('154',null,18)}
       ${fNode('resp','Respot','UPPERBODY',0,true)}${bufAr(2,4,18)}
       ${fNode('155','155 Roof','UPPERBODY',0,true)}${bufAr('155',null,70)}
-      ${fNode('160','160 W&G','HANG ON PT',0,true)}${bufAr('160',null,48)}
+      ${fNode('160','160 W&G','HANG ON PT',0,true)}${bufAr('160',null,14)}
       ${fNode('197','197 Door','HANG ON PT',0,true)}${bufAr('197',null,40)}
       ${fNode('198','198 Manual','HANG ON PT',0,true)}
     </div>
