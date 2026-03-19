@@ -282,7 +282,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
       <span class="day-badge" id="dayBadge"></span>
     </div>
     <div class="shift-tag">DAY SHIFT · 06:00–14:40</div>
-    <div class="live-badge"><div class="live-dot"></div>VCCH SNOWFLAKE</div>
+    <div class="live-badge" style="visibility:hidden"><div class="live-dot"></div></div>
     <div class="clk" id="clk">--:--:--</div>
     <div class="refresh-badge" id="refresh-pill" title="Auto-updates: 08:00 · 10:00 · 13:30 · 15:00">⟳ 08:00 · 10:00 · 13:30 · 15:00</div>
   </div>
@@ -321,10 +321,10 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
     <div class="kpi-sub">87% of target · Tue 17-Mar</div>
   </div>
   <div class="kpi">
-    <div class="kpi-lbl">Week 12 Avg</div>
-    <div class="kpi-val b">93<sub> skids/day</sub></div>
-    <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:91%;background:var(--blue)"></div></div>
-    <div class="kpi-sub">Mon=104 · Tue=89 · Wed=86 · Target=102</div>
+    <div class="kpi-lbl">Week Avg OPR%</div>
+    <div class="kpi-val b">—<sub>%</sub></div>
+    <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:0%;background:var(--blue)"></div></div>
+    <div class="kpi-sub">CT 270s · Target 83.3%</div>
   </div>
 </div>
 
@@ -1847,20 +1847,26 @@ function updateKPIBar(dayKey){
     }
   }
 
-  // ── Card 5: Week Avg ─────────────────────────────────────
+  // ── Card 5: Week Avg OPR% (Empty Skid) ───────────────────
   if(kpis[5]){
     const wk = weekLabel(dayKey);
     const wkKeys = Object.keys(DAYS_DATA).filter(k=>weekLabel(k)===wk).sort();
-    const wkTots = wkKeys.map(k=>DAYS_DATA[k].empty_tot);
-    const avg = wkTots.length ? Math.round(wkTots.reduce((a,b)=>a+b,0)/wkTots.length) : 0;
-    const avgPct = Math.round(avg/102*100);
-    kpis[5].className='kpi '+(avg>=102?'ok':avg>=85?'warn':'bad');
-    setText(qs(kpis[5],'.kpi-lbl'),`${wk} Week Avg`);
+    // Calculate avg OPR% per day = oprAvg(calcOPR(empty_h, EMPTY_CT))
+    const wkOPRs = wkKeys.map(k=>{
+      const oprs = calcOPR(DAYS_DATA[k].empty_h, EMPTY_CT);
+      return oprAvg(oprs);
+    });
+    const weekOPR = wkOPRs.length ? +(wkOPRs.reduce((a,b)=>a+b,0)/wkOPRs.length).toFixed(1) : 0;
+    const isGood = weekOPR >= EMPTY_OPR_TARGET;
+    const isOK   = weekOPR >= EMPTY_OPR_TARGET - 5;
+    kpis[5].className='kpi '+(isGood?'ok':isOK?'warn':'bad');
+    setText(qs(kpis[5],'.kpi-lbl'),`${wk} Week Avg OPR%`);
     const avgEl = qs(kpis[5],'.kpi-val');
-    if(avgEl) avgEl.innerHTML=avg+'<sub> skids/day</sub>';
-    setStyle(qs(kpis[5],'.kpi-bar-fill'),'width',avgPct+'%');
-    const dayLabels = wkKeys.map(k=>DAYS_DATA[k].empty_tot).join('·');
-    setText(qs(kpis[5],'.kpi-sub'),`${avgPct}% · Days: ${dayLabels}`);
+    if(avgEl) avgEl.innerHTML=weekOPR+'<sub>%</sub>';
+    setStyle(qs(kpis[5],'.kpi-bar-fill'),'width',Math.min(weekOPR,115)+'%');
+    setStyle(qs(kpis[5],'.kpi-bar-fill'),'background',isGood?'var(--green)':isOK?'var(--amber)':'var(--red)');
+    const dayLabels = wkKeys.map(k=>oprAvg(calcOPR(DAYS_DATA[k].empty_h,EMPTY_CT))+'%').join(' · ');
+    setText(qs(kpis[5],'.kpi-sub'),`Target ${EMPTY_OPR_TARGET}% · ${dayLabels}`);
   }
 }
 
