@@ -206,10 +206,9 @@ def build_day_entry(date_str, wk_str, day_int, pbi, gantt, is_today=False):
     overtime = prod.get('overtime', False)
     ot_note  = prod.get('otNote', '')
 
-    lines = [f"  '{date_str}':{{{repr(label).replace(chr(39),'')},"]
-    lines.append(f"    label:'{label}',overtime:{'true' if overtime else 'false'}"
-                 + (f",otNote:'{ot_note}'" if ot_note else '')
-                 + (',isToday:true' if is_today else '') + ',')
+    ot_str    = f",otNote:'{ot_note}'" if ot_note else ''
+    today_str = ',isToday:true' if is_today else ''
+    lines = [f"  '{date_str}':{{label:'{label}',overtime:{'true' if overtime else 'false'}{ot_str}{today_str},"]
     bol_h_js  = '[' + ','.join(str(x) for x in prod['bol_h'])  + ']'
     empty_h_js= '[' + ','.join(str(x) for x in prod['empty_h']) + ']'
     lines.append(f"    bol_h:{bol_h_js}, empty_h:{empty_h_js},")
