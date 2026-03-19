@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Body Shop · Andon Intelligence | Volvo Cars Ghent</title>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js" crossorigin="anonymous"></script>
+<!-- Fonts: try Google Fonts, fall back to system fonts if CDN blocked -->
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="all" onerror="this.remove()">
+<!-- Chart.js served from repo — avoids corporate firewall CDN blocks -->
+<script src="libs/chart.min.js"></script>
+<script src="libs/chartjs-plugin-datalabels.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════ RESET & TOKENS */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
