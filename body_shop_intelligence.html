@@ -356,26 +356,6 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
     </div>
     <div class="bol-divider"></div>
     <div style="font-size:10px;color:var(--dim);flex:0 0 150px" id="bufferNote"></div>
-    <div class="bol-divider"></div>
-    <!-- HOP Skids utilisation (max 80) -->
-    <div class="bol-metric" style="flex:0 0 100px">
-      <div class="bol-metric-lbl">HOP Skids</div>
-      <div class="bol-metric-val" id="hopSkidUtil" style="font-size:16px;color:var(--blue-b)">—</div>
-      <div style="font-size:8px;color:var(--dim)">of <strong>80</strong> max in loop</div>
-      <div style="height:3px;background:var(--b2);border-radius:2px;margin-top:3px">
-        <div id="hopSkidBar" style="height:3px;background:var(--blue);border-radius:2px;width:0%;transition:width .3s"></div>
-      </div>
-    </div>
-    <div class="bol-divider"></div>
-    <!-- GEO Pallets utilisation (max 75) -->
-    <div class="bol-metric" style="flex:0 0 100px">
-      <div class="bol-metric-lbl">GEO Pallets</div>
-      <div class="bol-metric-val" id="geoPalletUtil" style="font-size:16px;color:var(--teal-l)">—</div>
-      <div style="font-size:8px;color:var(--dim)">of <strong>75</strong> max in loop</div>
-      <div style="height:3px;background:var(--b2);border-radius:2px;margin-top:3px">
-        <div id="geoPalletBar" style="height:3px;background:var(--teal);border-radius:2px;width:0%;transition:width .3s"></div>
-      </div>
-    </div>
   </div>
 
   <!-- CHARTS ROW: BOL + Empty Skid split into separate charts -->
@@ -1758,24 +1738,6 @@ function updateBOLStrip(dayKey){
     setStyle(bolEl, 'color', 'var(--teal-l)');
   }
 
-  // ── HOP Skids utilisation (max 80 in loop: 62 in process + 18 return) ──
-  // Proxy: empty_tot cars today ≈ HOP skids consumed (each car needs 1 skid)
-  // 80 max skids means 80 max in circulation at any time
-  const HOP_MAX = 80, GEO_MAX = 75;
-  const hopPct = Math.min(Math.round(d.empty_tot / HOP_MAX * 100), 100);
-  const geoPct = Math.min(Math.round(d.bol_tot   / GEO_MAX * 100), 100);
-  const hopCol = hopPct >= 90 ? 'var(--red-l)'  : hopPct >= 75 ? 'var(--amber-l)' : 'var(--blue-b)';
-  const geoCol = geoPct >= 90 ? 'var(--red-l)'  : geoPct >= 75 ? 'var(--amber-l)' : 'var(--teal-l)';
-  const hopBar = hopPct >= 90 ? 'var(--red)'    : hopPct >= 75 ? 'var(--amber)'   : 'var(--blue)';
-  const geoBar = geoPct >= 90 ? 'var(--red)'    : geoPct >= 75 ? 'var(--amber)'   : 'var(--teal)';
-  const hopEl  = document.getElementById('hopSkidUtil');
-  const geoEl  = document.getElementById('geoPalletUtil');
-  const hopBarEl = document.getElementById('hopSkidBar');
-  const geoBarEl = document.getElementById('geoPalletBar');
-  if(hopEl)    { hopEl.textContent = `${d.empty_tot}`; hopEl.style.color = hopCol; }
-  if(geoEl)    { geoEl.textContent = `${d.bol_tot}`;   geoEl.style.color = geoCol; }
-  if(hopBarEl) { hopBarEl.style.width = hopPct+'%'; hopBarEl.style.background = hopBar; }
-  if(geoBarEl) { geoBarEl.style.width = geoPct+'%'; geoBarEl.style.background = geoBar; }
 }
 
 // Null-safe setter helpers
