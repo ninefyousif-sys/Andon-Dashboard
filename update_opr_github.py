@@ -91,7 +91,7 @@ def get_production(date_str):
     bol_h = [bol.get(i+1, 0) for i in range(8)]
     emp_h = [emp.get(i+1, 0) for i in range(8)]
 
-        bol_tot = sum(bol_h)
+    bol_tot = sum(bol_h)
     emp_tot = sum(emp_h)
     print(f"  {date_str}: BOL={bol_tot} Empty={emp_tot}  windows={emp_h}")
     return bol_h, emp_h, bol_tot, emp_tot

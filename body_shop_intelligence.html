@@ -53,19 +53,15 @@
   --font-mono:'IBM Plex Mono',monospace;
 }
 html{scroll-behavior:smooth}
-/* Outer page background */
-html{background:#020509;min-height:100vh}
-/* Dashboard: centred, max 1600px wide */
+/* Fills full viewport — no artificial width cap */
+html{background:var(--bg);min-height:100vh}
 body{
   min-height:100vh;
   background:var(--bg);
   color:var(--text);
   font-family:var(--font-body);
   overflow-x:hidden;
-  max-width:1600px;
   width:100%;
-  margin:0 auto;
-  box-shadow:0 0 60px rgba(0,0,0,.6);
 }
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -113,7 +109,7 @@ body{
 .kpi-bar-fill{height:100%;border-radius:1px;transition:width .6s}
 
 /* ═══════════════════════════════════════════ LAYOUT */
-.main{display:grid;grid-template-columns:1fr 340px;gap:0;align-items:start}
+.main{display:grid;grid-template-columns:1fr 300px;gap:0;align-items:start}
 .col-main{padding:12px}
 /* Side panel sticks in viewport while main content scrolls */
 .col-side{background:var(--s1);border-left:1px solid var(--b1);padding:12px;
