@@ -294,7 +294,7 @@ def update():
             cmds = [
                 ['git', '-C', repo, 'add', 'body_shop_intelligence.html'],
                 ['git', '-C', repo, 'commit', '-m', f'Auto-update {today} 17:00'],
-                ['git', '-C', repo, 'push'],
+                ['git', '-C', repo, 'push', '--set-upstream', 'origin', 'main'],
             ]
             for cmd in cmds:
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
