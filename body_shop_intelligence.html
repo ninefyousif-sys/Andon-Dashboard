@@ -534,6 +534,34 @@ const EMPTY_CT        = 270;   // seconds — HOP takt (slightly faster)
 const BOL_OPR_TARGET  = 88.2;  // % OPR target for BOL
 const EMPTY_OPR_TARGET= 83.3;  // % OPR target for Empty Skids
 
+// ── Actual cycle times per area (from "Highest Actual CT per AREA" chart) ─
+const AREA_CT = { UnB:286, UpB:187, DoorSA:223, TailgatePA:184, WG:257, DoorLine:274, Manual:270 };
+
+// ── Buffer config (SSIT buffer table) — cars in buffer × downstream CT ──
+// 285/286: 2 racks min × 8 doors = 16 cars → 16 × 274s / 60 = 73 min protection
+// 287:     5 racks min × 8 tailgates = 40 cars → 40 × 270s / 60 = 180 min
+// 198:     Door→Manual buffer 2–9 positions → 2 × 270s / 60 = 9 min
+const BUFFER_CFG = {
+  '285':{bufMin:16, bufMax:40, impactCT:274, note:'2–5 racks doors (8/rack)'},
+  '286':{bufMin:16, bufMax:40, impactCT:274, note:'shared door buffer'},
+  '287':{bufMin:40, bufMax:56, impactCT:270, note:'5–7 racks tailgate (8/rack)'},
+  '198':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual Line 2–9 pos'},
+  '160':{bufMin:2,  bufMax:17, impactCT:274, note:'HO→W&G 2–17, W&G→Door 1–3'},
+  '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Stud→Framer 2–6 pos'},
+  '155':{bufMin:2,  bufMax:6,  impactCT:187, note:'Respot→Roof 2–6 pos'},
+  '138':{bufMin:1,  bufMax:14, impactCT:286, note:'RFC→BOL 1–14 pos'},
+};
+
+// Helper: cars actually lost after buffer absorbs what it can (uses min buffer = worst case)
+function calcBufferLoss(code, dtMin){
+  const b = BUFFER_CFG[code];
+  if(!b) return { cars: Math.round(dtMin/(EMPTY_CT/60)), exceeded: true, bufMin: 0, bufMax: 0 };
+  const bufMinTime = Math.round(b.bufMin * b.impactCT / 60);
+  const excess     = Math.max(0, dtMin - bufMinTime);
+  const cars       = Math.round(excess / (b.impactCT / 60));
+  return { cars, exceeded: dtMin > bufMinTime, bufMin: bufMinTime, bufMax: Math.round(b.bufMax*b.impactCT/60) };
+}
+
 function calcOPR(carsArr, ctSec) {
   const maxJPH = 3600 / ctSec;
   return carsArr.map((c, i) => +((c / (WIN_MINS[i] / 60 * maxJPH)) * 100).toFixed(1));
@@ -1419,36 +1447,6 @@ buildFlowMap();
 // ── Actual cycle times from production data ───────────────────────────
 // Source: "Highest Actual CT per AREA" chart
 // JPH: UnB=12.6 · UpB=18.0 · DoorSA=14.4 · TailgatePA=18.0 · W&G=14.0 · DoorLine=13.1 · ManualHOP=13.3
-const AREA_CT = { UnB:286, UpB:187, DoorSA:223, TailgatePA:184, WG:257, DoorLine:274, Manual:270 };
-
-// ── Buffer configuration (from SSIT buffer table) ─────────────────────
-// bufMin/bufMax = cars (racks × 8). impactCT = downstream CT that depletes buffer.
-// bufMinTime = min buffer time in minutes before a stop reaches Empty Skid
-// 285/286 Door buffer: 2 racks min × 8 = 16 cars, 40 max → at Door Line CT 274s
-// 287 Tailgate buffer: 5 racks min × 8 = 40 cars, 56 max → at Manual Line CT 270s
-// 198 Manual Line: Door→Manual buffer 2-9 positions → at Manual CT 270s
-// 160 W&G: Hand-Over→W&G 2-17 positions, W&G→Door 1-3 → at Door CT 274s
-const BUFFER_CFG = {
-  '285':{bufMin:16, bufMax:40, impactCT:274, note:'2–5 racks doors (8/rack)'},
-  '286':{bufMin:16, bufMax:40, impactCT:274, note:'shared door buffer'},
-  '287':{bufMin:40, bufMax:56, impactCT:270, note:'5–7 racks tailgate (8/rack)'},
-  '198':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual Line 2–9 pos'},
-  '160':{bufMin:2,  bufMax:17, impactCT:274, note:'HO→W&G 2–17, W&G→Door 1–3'},
-  '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Stud→Framer 2–6 pos'},
-  '155':{bufMin:2,  bufMax:6,  impactCT:187, note:'Respot→Roof 2–6 pos'},
-  '138':{bufMin:1,  bufMax:14, impactCT:286, note:'RFC→BOL 1–14 pos'},
-};
-
-// Helper: calculate actual car loss from a stop considering buffer (conservative = min buffer)
-function calcBufferLoss(code, dtMin){
-  const b = BUFFER_CFG[code];
-  if(!b) return { cars: Math.round(dtMin/(EMPTY_CT/60)), exceeded: true, bufMin: 0 };
-  const bufMinTime = Math.round(b.bufMin * b.impactCT / 60); // min buffer in minutes
-  const excess     = Math.max(0, dtMin - bufMinTime);
-  const cars       = Math.round(excess / (b.impactCT / 60));
-  return { cars, exceeded: dtMin > bufMinTime, bufMin: bufMinTime, bufMax: Math.round(b.bufMax*b.impactCT/60) };
-}
-
 const STN_META = {
   // Hang On Parts (HOP) — may have buffer, but buffer is limited vs. UB/UPB
   '285':{name:'LH DOOR-285', area:'Hang On Part', ct:274, direct:true,  col:'#cc2838'},
