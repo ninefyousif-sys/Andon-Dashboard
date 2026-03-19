@@ -279,7 +279,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
         <option value="2026-03-11">Wed 11-Mar</option>
         <option value="2026-03-10">Tue 10-Mar</option>
       </select>
-      <span class="day-badge today" id="dayBadge">TODAY</span>
+      <span class="day-badge" id="dayBadge"></span>
     </div>
     <div class="shift-tag">DAY SHIFT · 06:00–14:40</div>
     <div class="live-badge"><div class="live-dot"></div>VCCH SNOWFLAKE</div>
@@ -501,8 +501,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
   </div>
 
   <div style="text-align:center;padding:10px 0;font-size:9px;color:var(--dim)">
-    Sources: VCCH.ANDON.STOPTIME · PRODUCTION_TRACKING.BODY_TRACKING · CHA_HRES.ALARM · CHA_ASHOP_VCCH_TEST.ASHOP_NINEF · AXXOS_VCCH_A<br>
-    <span id="load-time"></span>
+    Made by Ninef Yousif
   </div>
 
 </div><!-- /col-side -->
@@ -1825,8 +1824,9 @@ function switchDay(dayKey){
   // ── 2. Header text ────────────────────────────────────────────────
   const badge = document.getElementById('dayBadge');
   if(badge){
-    badge.textContent = d.isToday?'TODAY':d.overtime?'⏱ OT':'';
-    badge.className = 'day-badge '+(d.isToday?'today':d.overtime?'ot':'');
+    // Review dashboard — show day name, not "TODAY"
+    badge.textContent = d.overtime ? '⏱ OT' : '';
+    badge.className = 'day-badge ' + (d.overtime ? 'ot' : '');
   }
   const sub = document.querySelector('.hdr-title p');
   if(sub) sub.textContent = `${d.label} · DAY SHIFT 06:00–14:40${d.overtime?' · ⏱ OVERTIME':''}`;
@@ -1875,7 +1875,7 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
-document.getElementById('load-time').textContent='Dashboard loaded: '+new Date().toLocaleString('en-GB')+'  ·  Data via VCCH.PRODUCTION_TRACKING.BODY_TRACKING + Power BI manual entry';
+// Made by Ninef Yousif
 </script>
 </body>
 </html>
