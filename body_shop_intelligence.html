@@ -538,12 +538,15 @@ const BUFFER_CFG = {
   '286':{bufMin:16, bufMax:30, impactCT:274, note:'Doors RH · Min 73min (16 cars) · Max 140min (30 cars) at CT 274s'},
   '287':{bufMin:40, bufMax:38, impactCT:270, note:'Tailgate · Min 180min (40 pieces) · Max 170min (38 pieces) at CT 270s'},
   // Main line — from diagram: buffer AFTER each station
-  '138':{bufMin:2,  bufMax:16, impactCT:286, note:'MARR-138→Stud: 2–16 pos'},
-  '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Framing→Respot: 2–6 pos'},
-  '155':{bufMin:2,  bufMax:17, impactCT:257, note:'Roof→W&G: 2–17 pos'},
-  '160':{bufMin:1,  bufMax:3,  impactCT:274, note:'W&G→Door: 1–3 pos (⚠ very small)'},
-  '197':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual: 2–9 pos'},
-  '198':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual: 2–9 pos'},
+  // Main line buffers — MAX times from production flow diagram:
+  // MARR-138→Stud=48m · Stud→Framing=18m · Framing→Respot=18m · Respot→Roof=18m
+  // Roof→W&G=70m · W&G→Door=48m · Door→Manual=40m
+  '138':{bufMin:2,  bufMax:10, impactCT:286, note:'MARR-138→Stud: max 48min buffer'},
+  '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Framing→Respot: max 18min buffer'},
+  '155':{bufMin:2,  bufMax:16, impactCT:257, note:'Roof→W&G: max 70min buffer'},
+  '160':{bufMin:2,  bufMax:10, impactCT:288, note:'W&G→Door: max 48min buffer'},
+  '197':{bufMin:2,  bufMax:9,  impactCT:267, note:'Door→Manual: max 40min buffer'},
+  '198':{bufMin:2,  bufMax:9,  impactCT:267, note:'Door→Manual: max 40min buffer'},
   // Underbody sub-assembly — MAX buffer times from flow map diagram:
   // Left→right order between stations: 69m · 79m · 79m · 79m · 33m · 33m · 33m
   '231':{bufMin:2,  bufMax:14, impactCT:286, note:'DASH-231 · Buffer max 69min (14 cars at CT 286s)'},
@@ -1593,25 +1596,30 @@ function buildFlowMap(){
   const ar=`<span class="farrow" style="flex-shrink:0">→</span>`;
   // Buffer indicator arrow: shows min–max buffer time in minutes (from BUFFER_CFG when available)
   // Colour: green=large buffer (>60min), amber=medium (20-60min), red=small (≤20min)
-  function bufAr(stnCode_or_minCars, maxCars){
-    // If called with a station code string, look up BUFFER_CFG for times
-    let minMin, maxMin, col, tooltip;
-    if(typeof stnCode_or_minCars === 'string' && BUFFER_CFG[stnCode_or_minCars]){
-      const b = BUFFER_CFG[stnCode_or_minCars];
+  // bufAr(code, null, maxMin) — use explicit max minutes from production diagram
+  // bufAr(code)               — calculate from BUFFER_CFG
+  // bufAr(minCars, maxCars)   — legacy fallback
+  function bufAr(arg1, arg2, explicitMaxMin){
+    let minMin, maxMin, tooltip;
+    if(typeof arg1 === 'string' && BUFFER_CFG[arg1]){
+      const b = BUFFER_CFG[arg1];
       minMin = Math.round(b.bufMin * b.impactCT / 60);
-      maxMin = Math.round(b.bufMax * b.impactCT / 60);
+      maxMin = explicitMaxMin !== undefined ? explicitMaxMin : Math.round(b.bufMax * b.impactCT / 60);
       tooltip = b.note;
+    } else if(explicitMaxMin !== undefined){
+      minMin = typeof arg1 === 'number' ? Math.round(arg1 * 286 / 60) : 5;
+      maxMin = explicitMaxMin;
+      tooltip = `Buffer ~${minMin}–${maxMin} min`;
     } else {
-      // Legacy: called with (minCars, maxCars) — keep working as before
-      const minC = stnCode_or_minCars, maxC = maxCars;
-      minMin = Math.round(minC * 286 / 60);  // approximate at UnB CT
+      const minC = arg1||2, maxC = arg2||6;
+      minMin = Math.round(minC * 286 / 60);
       maxMin = Math.round(maxC * 286 / 60);
       tooltip = `Buffer ${minC}–${maxC} pos · ~${minMin}–${maxMin} min`;
     }
-    col = maxMin<=20?'#f04858':maxMin<=60?'#f0b828':'#25c878';
-    const label = maxMin>=60 ? `${Math.round(maxMin/60*10)/10}h` : `${maxMin}m`;
+    const col = maxMin<=20?'#f04858':maxMin<=60?'#f0b828':'#25c878';
+    const label = maxMin>=60 ? `${(maxMin/60).toFixed(1)}h` : `${maxMin}m`;
     return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;margin:0 1px;cursor:default"
-                 title="${tooltip} · min ${minMin}min / max ${maxMin}min">
+                 title="${tooltip} · max ${maxMin}min buffer capacity">
       <div style="font-size:7px;font-weight:700;color:${col};line-height:1;white-space:nowrap">${label}</div>
       <div style="font-size:10px;color:var(--dim)">→</div>
     </div>`;
@@ -1645,13 +1653,13 @@ function buildFlowMap(){
   <div style="margin-bottom:8px">
     <div style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">→ MAIN PRODUCTION FLOW (BOL → Empty Skid)</div>
     <div class="flow-row" style="flex-wrap:wrap;gap:2px 2px">
-      ${fNode('138','MARR-138','MAIN LINE',0,true)}${bufAr('138')}
-      ${fNode('139','139 Stud','UNDERBODY',0,true)}${bufAr(2,6)}
-      ${fNode('154','154 Framing','UPPERBODY',0,true)}${bufAr('154')}
-      ${fNode('resp','Respot','UPPERBODY',0,true)}${bufAr(2,6)}
-      ${fNode('155','155 Roof','UPPERBODY',0,true)}${bufAr('155')}
-      ${fNode('160','160 W&G','HANG ON PT',0,true)}${bufAr('160')}
-      ${fNode('197','197 Door','HANG ON PT',0,true)}${bufAr('197')}
+      ${fNode('138','MARR-138','MAIN LINE',0,true)}${bufAr('138',null,48)}
+      ${fNode('139','139 Stud','UNDERBODY',0,true)}${bufAr(2,4,18)}
+      ${fNode('154','154 Framing','UPPERBODY',0,true)}${bufAr('154',null,18)}
+      ${fNode('resp','Respot','UPPERBODY',0,true)}${bufAr(2,4,18)}
+      ${fNode('155','155 Roof','UPPERBODY',0,true)}${bufAr('155',null,70)}
+      ${fNode('160','160 W&G','HANG ON PT',0,true)}${bufAr('160',null,48)}
+      ${fNode('197','197 Door','HANG ON PT',0,true)}${bufAr('197',null,40)}
       ${fNode('198','198 Manual','HANG ON PT',0,true)}
     </div>
   </div>
