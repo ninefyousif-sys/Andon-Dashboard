@@ -187,14 +187,25 @@ def read_day(hop_ws, dt_ws, wk_str, day_int):
 # Cars traverse the shop in ~5h, so scan times appear 5h after production window start.
 # Windows shift: W1 prod 06-07 CET → scans ~11-12 CET, W8 prod 13:40-14:40 → scans ~19:00
 
-SNOWFLAKE_CFG = {
-    'account':       'VOLVOCARS-MANUFACTURINGANALYTICS',
-    'user':          '9413-APP-POWERBI-PRO-LICENSE-USER',
-    'authenticator': 'externalbrowser',   # SSO — same login as Volvo intranet
-    'database':      'VCCH',
-    'schema':        'PRODUCTION_TRACKING',
-    'warehouse':     'REPORTING',
-}
+# Load Snowflake credentials from local file (never committed to GitHub)
+_CREDS_FILE = os.path.join(WORK, 'snowflake_credentials.json')
+def _load_snowflake_cfg():
+    try:
+        with open(_CREDS_FILE, encoding='utf-8') as f:
+            c = json.load(f)
+        return {
+            'account':   c['account'],
+            'user':      c['user'],
+            'password':  c['password'],
+            'role':      c.get('role', ''),
+            'database':  c.get('database', 'VCCH'),
+            'schema':    'PRODUCTION_TRACKING',
+            'warehouse': c.get('warehouse', 'REPORTING'),
+        }
+    except Exception as e:
+        return None
+
+SNOWFLAKE_CFG = _load_snowflake_cfg()  # None if file missing
 
 # Hours in CET at which each production window's cars appear at Empty Skid scan point
 # Empirically verified: W1(06-07) → scan hr 11, W2(07-08) → 12, ... W8(13:40-14:40) → 18-19
@@ -203,7 +214,10 @@ SCAN_HOURS_PER_WIN = [11, 12, 13, 14, 15, 16, 17, 18]  # one per window
 def get_production_from_snowflake(date_str):
     """Query Snowflake for per-window BOL + Empty Skid counts."""
     if not SNOWFLAKE_AVAILABLE:
-        log("Snowflake connector not installed — pip install snowflake-connector-python")
+        log("  Snowflake connector not installed — pip install snowflake-connector-python")
+        return None
+    if not SNOWFLAKE_CFG:
+        log(f"  Snowflake credentials file not found at {_CREDS_FILE}")
         return None
     try:
         conn = snowflake.connector.connect(**SNOWFLAKE_CFG)
