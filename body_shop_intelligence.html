@@ -612,39 +612,7 @@ function oprAvg(oprArr) {
 }
 
 const DAYS_DATA = {
-  '2026-03-10':{
-    label:'Tue 10-Mar',overtime:false,
-    bol_h:[8,10,9,10,4,9,11,7], empty_h:[10,9,9,10,3,8,10,8],
-    bol_tot:70, empty_tot:71,
-    // WK11 D2 · Equipment DT only · 421 min
-    pbi:{'231':157.0,'198':124.0,'197':80.0,'236':28.0,'252':21.0,'259':6.0,'287':5.0},
-    gantt:[{line:'Dash-231 SPA2',s:'06:02',e:'06:09',sec:420,col:'#0075be',lbl:'Equipment Issues/ Technical  · Conveyor Fault'},
-      {line:'FS-231 SPA2',s:'06:36',e:'06:42',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tooling Fault'},
-      {line:'RFC-236 SPA2',s:'06:37',e:'06:39',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tip Dress Faults'},
-      {line:'BSC-252',s:'06:39',e:'07:00',sec:1260,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Robot Faults'},
-      {line:'HOP - 198',s:'06:58',e:'07:11',sec:780,col:'#a880e0',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
-      {line:'FINISH -198',s:'07:00',e:'07:11',sec:660,col:'#a880e0',lbl:'Equipment Issues/ Technical  · E-Stop'},
-      {line:'RFC-236 SPA2',s:'07:08',e:'07:10',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'},
-      {line:'FS-231 SPA2',s:'07:22',e:'07:28',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
-      {line:'FS-231 SPA2',s:'07:27',e:'07:56',sec:1740,col:'#0075be',lbl:'Equipment Issues/ Technical  · IT Issue'},
-      {line:'RFC-236 SPA2',s:'07:50',e:'07:52',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'},
-      {line:'FS-231 SPA2',s:'08:00',e:'08:15',sec:900,col:'#0075be',lbl:'Equipment Issues/ Technical  · Robot Faults'},
-      {line:'DOOR-197',s:'08:20',e:'08:25',sec:300,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Fit Repair'},
-      {line:'FS-231 SPA2',s:'08:32',e:'08:38',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tip Change'},
-      {line:'Dash-231 SPA2',s:'08:33',e:'08:47',sec:840,col:'#0075be',lbl:'Equipment Issues/ Technical  · Nut welding fault'},
-      {line:'FS-231 SPA2',s:'08:40',e:'08:47',sec:420,col:'#0075be',lbl:'Equipment Issues/ Technical  · Glue Faults'},
-      {line:'DOOR-197',s:'08:55',e:'09:00',sec:300,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Fit Repair'},
-      {line:'Dash-231 SPA2',s:'08:59',e:'09:11',sec:720,col:'#0075be',lbl:'Equipment Issues/ Technical  · I / O Faults'},
-      {line:'FS-231 SPA2',s:'09:00',e:'09:15',sec:900,col:'#0075be',lbl:'Equipment Issues/ Technical  · IT Issue'},
-      {line:'RFC-236 SPA2',s:'09:03',e:'09:05',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'},
-      {line:'Dash-231 SPA2',s:'09:06',e:'09:13',sec:420,col:'#0075be',lbl:'Equipment Issues/ Technical  · Glue Faults'},
-      {line:'FINISH -198',s:'09:17',e:'09:19',sec:120,col:'#a880e0',lbl:'Production · Finish Repair'},
-      {line:'FS-231 SPA2',s:'09:19',e:'09:22',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Safety  Fault'},
-      {line:'DOOR-197',s:'09:25',e:'09:30',sec:300,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Missing Weld'},
-      {line:'RFC-236 SPA2',s:'09:26',e:'09:29',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
-      {line:'FINISH -198',s:'09:34',e:'09:38',sec:240,col:'#a880e0',lbl:'Production · Fit Repair'}]},
-  '2026-03-11':{
-    label:'Wed 11-Mar',overtime:false,
+  '2026-03-11':{label:'Wed 11-Mar',overtime:false,
     bol_h:[10,9,10,10,10,10,11,3], empty_h:[9,9,9,11,10,8,10,8],
     bol_tot:76, empty_tot:77,
     // WK11 D3 · Equipment DT only · 172 min
@@ -674,8 +642,7 @@ const DAYS_DATA = {
       {line:'Dash-231 SPA2',s:'10:51',e:'10:56',sec:300,col:'#0075be',lbl:'Equipment Issues/ Technical  · Clamping Fault'},
       {line:'HOP - 198',s:'11:20',e:'11:24',sec:240,col:'#a880e0',lbl:'Equipment Issues/ Technical  · Air Pressure'},
       {line:'FWHLH',s:'11:22',e:'11:27',sec:300,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Air Pressure'}]},
-  '2026-03-12':{
-    label:'Thu 12-Mar',overtime:false,
+  '2026-03-12':{label:'Thu 12-Mar',overtime:false,
     bol_h:[10,8,9,10,11,9,10,6], empty_h:[10,10,6,10,12,9,5,11],
     bol_tot:76, empty_tot:75,
     // WK11 D4 · Equipment DT only · 332 min
@@ -705,8 +672,7 @@ const DAYS_DATA = {
       {line:'FWHLH',s:'10:40',e:'10:42',sec:120,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Glue Faults'},
       {line:'fwHRH-233 SPA2',s:'10:45',e:'10:47',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Conveyor Fault'},
       {line:'FS-231 SPA2',s:'11:10',e:'11:15',sec:300,col:'#0075be',lbl:'Equipment Issues/ Technical  · Sensor Faults'}]},
-  '2026-03-13':{
-    label:'Fri 13-Mar',overtime:false,
+  '2026-03-13':{label:'Fri 13-Mar',overtime:false,
     bol_h:[11,11,10,8,10,7,10,7], empty_h:[11,10,8,9,7,7,12,8],
     bol_tot:77, empty_tot:75,
     // WK11 D5 · Equipment DT only · 381 min
@@ -736,8 +702,7 @@ const DAYS_DATA = {
       {line:'Dash-231 SPA2',s:'09:57',e:'10:06',sec:540,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tip Dress Faults'},
       {line:'Dash-231 SPA2',s:'10:47',e:'10:58',sec:660,col:'#0075be',lbl:'Equipment Issues/ Technical  · Weld Faults'},
       {line:'HOP - 198',s:'10:50',e:'11:25',sec:2100,col:'#a880e0',lbl:'Production · Sensor Faults'}]},
-  '2026-03-16':{
-    label:'Mon 16-Mar',overtime:true,otNote:'Shift ran until 16:38',
+  '2026-03-16':{label:'Mon 16-Mar',overtime:true,otNote:'Shift ran until 16:38',
     bol_h:[9,12,5,11,12,8,12,9], empty_h:[12,12,10,12,9,10,11,9],
     bol_tot:98, empty_tot:104,
     // WK12 D1 · Equipment DT only · 300 min
@@ -767,8 +732,7 @@ const DAYS_DATA = {
       {line:'FS-231 SPA2',s:'09:49',e:'09:52',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tooling Fault'},
       {line:'BSO-258 SPA2',s:'09:49',e:'10:00',sec:660,col:'#a880e0',lbl:'Equipment Issues/ Technical  · Robot Faults'},
       {line:'RFC-236 SPA2',s:'10:59',e:'11:02',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'}]},
-  '2026-03-17':{
-    label:'Tue 17-Mar',overtime:false,
+  '2026-03-17':{label:'Tue 17-Mar',overtime:false,
     bol_h:[7,12,6,12,11,10,11,7], empty_h:[12,12,11,11,13,10,10,7],
     bol_tot:80, empty_tot:89,
     // WK12 D2 · Equipment DT only · 113 min
@@ -787,7 +751,7 @@ const DAYS_DATA = {
       {line:'FS-231 SPA2',s:'09:08',e:'09:16',sec:480,col:'#0075be',lbl:'Equipment Issues/ Technical  · Weld Faults'},
       {line:'RFC-236 SPA2',s:'09:11',e:'09:16',sec:300,col:'#0075be',lbl:'Equipment Issues/ Technical  · Rivet Fault'},
       {line:'HOP - 198',s:'09:27',e:'09:28',sec:60,col:'#a880e0',lbl:'Production · Operator Overcycle'},
-      {line:'287030-060 Tailgate In',s:'09:31',e:'09:33',sec:120,col:'#d07018',lbl:'Equipment Issues/ Technical  · Tip Dress Faults'},
+      {line:'287030-060 Tailgate In',s:'09:31',e:'09:33',sec:120,col:'#d07018',lbl:'Equipment Issues/ Technical  · Weld cap change'},
       {line:'BSC-252 SPA2',s:'09:36',e:'09:40',sec:240,col:'#5a7590',lbl:'Geo · Q-Stop'},
       {line:'MARR -138',s:'09:49',e:'09:55',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · glue check'},
       {line:'FS-231 SPA2',s:'11:11',e:'11:17',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tooling Fault'},
@@ -798,18 +762,16 @@ const DAYS_DATA = {
       {line:'FS-231 SPA2',s:'12:45',e:'12:48',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
       {line:'287010-020 Tailgate Ou',s:'13:00',e:'13:07',sec:420,col:'#d07018',lbl:'Equipment Issues/ Technical  · Lens Change'},
       {line:'MARR -138',s:'13:25',e:'13:29',sec:240,col:'#0075be',lbl:'Equipment Issues/ Technical  · Weld Tip Measurment'}]},
-  '2026-03-18':{
-    label:'Wed 18-Mar',overtime:false,isToday:true,
+  '2026-03-18':{label:'Wed 18-Mar',overtime:false,
     bol_h:[8,13,12,11,10,7,13,12], empty_h:[10,10,12,11,11,6,13,13],
     bol_tot:86, empty_tot:86,
-    // WK12 D3 · Equipment DT only · 437 min
-    pbi:{'285':156.0,'287':95.0,'155':54.0,'236':37.0,'198':28.0,'286':11.0,'237':11.0,'235':10.0,'138':9.0,'231':8.0,'232':6.0,'258':5.0,'233':4.0,'234':3.0},
+    // WK12 D3 · Equipment DT only · 429 min
+    pbi:{'285':156.0,'287':95.0,'155':54.0,'236':37.0,'198':20.0,'286':11.0,'237':11.0,'235':10.0,'138':9.0,'231':8.0,'232':6.0,'258':5.0,'233':4.0,'234':3.0},
     gantt:[{line:'287010-020 Tailgate Ou',s:'06:06',e:'06:35',sec:1740,col:'#d07018',lbl:'Equipment Issues/ Technical  · Sequence Faults'},
       {line:'RH DOOR-286',s:'06:10',e:'06:15',sec:300,col:'#d07018',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
       {line:'FWHRH-233 SPA2',s:'06:20',e:'06:22',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Robot Faults'},
       {line:'FWHLH-232 SPA2',s:'06:23',e:'06:27',sec:240,col:'#0075be',lbl:'Equipment Issues/ Technical  · Rivet Fault'},
       {line:'HOP - 198',s:'06:30',e:'06:38',sec:480,col:'#a880e0',lbl:'Production · Operator Overcycle'},
-      {line:'HOP - 198',s:'06:30',e:'06:38',sec:480,col:'#a880e0',lbl:'Production · Part Quality'},
       {line:'FS-231 SPA2',s:'06:33',e:'06:39',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tooling Fault'},
       {line:'RFC-236 SPA2',s:'06:33',e:'06:36',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'},
       {line:'RFC-236 SPA2',s:'06:33',e:'06:36',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'},
@@ -828,7 +790,38 @@ const DAYS_DATA = {
       {line:'RH DOOR-286',s:'09:28',e:'09:30',sec:120,col:'#d07018',lbl:'Equipment Issues/ Technical  · Turntable Faults'},
       {line:'LH DOOR-285',s:'09:28',e:'09:39',sec:660,col:'#cc2838',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
       {line:'MARR -138',s:'09:40',e:'09:45',sec:300,col:'#0075be',lbl:'Equipment Issues/ Technical  · Weld Faults'},
-      {line:'RFC-236 SPA2',s:'09:43',e:'09:56',sec:780,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'}]},
+      {line:'RFC-236 SPA2',s:'09:43',e:'09:56',sec:780,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'},
+      {line:'BSO-258 SPA2',s:'09:44',e:'09:49',sec:300,col:'#a880e0',lbl:'Equipment Issues/ Technical  · Turntable Faults'}]},
+  '2026-03-19':{label:'Thu 19-Mar',overtime:false,isToday:true,
+    bol_h:[8,8,8,8,8,8,8,8], empty_h:[8,8,8,8,8,8,8,8],
+    bol_tot:80, empty_tot:80,
+    // WK12 D4 · Equipment DT only · 350 min
+    pbi:{'231':99.0,'138':60.0,'287':57.0,'235':56.0,'237':42.0,'285':22.0,'236':8.0,'286':5.0,'198':1.0},
+    gantt:[{line:'RWHLH-235 SPA2',s:'06:01',e:'06:06',sec:300,col:'#0075be',lbl:'Equipment Issues/ Technical  · Rivet Fault'},
+      {line:'RH DOOR-286',s:'06:09',e:'06:14',sec:300,col:'#d07018',lbl:'Equipment Issues/ Technical  · Clamping Fault'},
+      {line:'Dash-231 SPA2',s:'06:13',e:'06:29',sec:960,col:'#0075be',lbl:'Equipment Issues/ Technical  · Allocation Fault'},
+      {line:'RFC-236 SPA2',s:'06:19',e:'06:21',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Glue Faults'},
+      {line:'MARR -138',s:'06:20',e:'06:23',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
+      {line:'285220 Ring Frame Rear',s:'06:41',e:'06:44',sec:180,col:'#cc2838',lbl:'Production · Weld cap change'},
+      {line:'RFC-236 SPA2',s:'07:02',e:'07:04',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'},
+      {line:'RWHLH-235 SPA2',s:'07:04',e:'07:10',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Rivet Fault'},
+      {line:'HOP - 198',s:'07:17',e:'07:18',sec:60,col:'#a880e0',lbl:'Production · Sip Check'},
+      {line:'FS-231 SPA2',s:'07:18',e:'07:28',sec:600,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tooling Fault'},
+      {line:'287010-020 Tailgate Ou',s:'07:20',e:'07:23',sec:180,col:'#d07018',lbl:'Equipment Issues/ Technical  · Lens Change'},
+      {line:'Dash-231 SPA2',s:'07:20',e:'07:27',sec:420,col:'#0075be',lbl:'Equipment Issues/ Technical  · Allocation Fault'},
+      {line:'LH DOOR-285',s:'07:21',e:'07:28',sec:420,col:'#cc2838',lbl:'Production · Hemming '},
+      {line:'RWHLH-235 SPA2',s:'07:27',e:'07:34',sec:420,col:'#0075be',lbl:'Equipment Issues/ Technical  · Glue Faults'},
+      {line:'RWHRH-237 SPA2',s:'07:34',e:'07:49',sec:900,col:'#0075be',lbl:'Equipment Issues/ Technical  · Weld Faults'},
+      {line:'RWHLH-235 SPA2',s:'07:35',e:'08:13',sec:2280,col:'#0075be',lbl:'IMQ · Part Quality'},
+      {line:'FS-231 SPA2',s:'07:37',e:'07:40',sec:180,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tooling Fault'},
+      {line:'287010-020 Tailgate Ou',s:'07:44',e:'08:00',sec:960,col:'#d07018',lbl:'Equipment Issues/ Technical  · Robot Faults'},
+      {line:'MARR - 238',s:'07:50',e:'08:00',sec:600,col:'#0075be',lbl:'Town Hall · Thursday Meeting'},
+      {line:'RWHRH-237 SPA2',s:'08:17',e:'08:23',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
+      {line:'RWHRH-237 SPA2',s:'08:17',e:'08:24',sec:420,col:'#0075be',lbl:'Equipment Issues/ Technical  · Rivet Fault'},
+      {line:'MARR -138',s:'08:29',e:'08:49',sec:1200,col:'#0075be',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
+      {line:'FS-231 SPA2',s:'08:41',e:'09:02',sec:1260,col:'#0075be',lbl:'Equipment Issues/ Technical  · Clamping Fault'},
+      {line:'FS-231 SPA2',s:'08:53',e:'09:05',sec:720,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tooling Fault'},
+      {line:'RFC-236 SPA2',s:'08:59',e:'09:01',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Flow Drill Fault'}]},
 };
 
 // Helper: compute adjJPH array for a dataset (cars/hour)
