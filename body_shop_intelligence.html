@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Body Shop · Andon Intelligence | Volvo Cars Ghent</title>
+<title>Body Shop · Andon Intelligence | Volvo Cars Charleston</title>
 <!-- Fonts: try Google Fonts, fall back to system fonts if CDN blocked -->
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="all" onerror="this.remove()">
 <!-- Chart.js v4.5.1 + datalabels v2.2.0 — bundled inline, works offline & behind corporate firewalls -->
@@ -284,7 +284,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
     <div class="shift-tag">DAY SHIFT · 06:00–14:40</div>
     <div class="live-badge"><div class="live-dot"></div>VCCH SNOWFLAKE</div>
     <div class="clk" id="clk">--:--:--</div>
-    <div class="refresh-badge" onclick="location.reload()" id="refresh-pill">🔄 5:00</div>
+    <div class="refresh-badge" id="refresh-pill" title="Auto-updates: 08:00 · 10:00 · 13:30 · 15:00">⟳ 08:00 · 10:00 · 13:30 · 15:00</div>
   </div>
 </header>
 
@@ -1921,19 +1921,9 @@ updateKPIBar(activeDay);
 // CLOCK + AUTO-REFRESH
 // ════════════════════════════════════════════════════════════════════
 
-let refreshSecs = 300;
 function tick(){
   const n=new Date();
   document.getElementById('clk').textContent=n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  refreshSecs--;
-  if(refreshSecs<=0){
-    // Only auto-reload when viewing today — preserve history day selection
-    if(activeDay === '2026-03-18') window.location.reload();
-    else refreshSecs = 300; // reset timer, don't reload when user is browsing history
-    return;
-  }
-  const m=Math.floor(refreshSecs/60),s=refreshSecs%60;
-  document.getElementById('refresh-pill').textContent=`🔄 ${m}:${String(s).padStart(2,'0')}`;
 }
 setInterval(tick,1000);tick();
 
