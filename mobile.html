@@ -263,14 +263,20 @@ let activeDay='';
 let oprChart=null;
 
 // ── Load DAYS_DATA from the desktop HTML ───────────────────────────────────
+let BUFFER_CFG={};
+
 async function loadData(){
   try{
     const resp=await fetch('body_shop_intelligence.html?cache='+Date.now());
     const text=await resp.text();
+    // Extract DAYS_DATA
     const m=text.match(/const DAYS_DATA = (\{[\s\S]*?\});/);
-    if(m){
-      DAYS_DATA=eval('('+m[1]+')');
-      // Set active day
+    if(m) DAYS_DATA=eval('('+m[1]+')');
+    // Extract BUFFER_CFG for buffer-aware critical lines
+    const b=text.match(/const BUFFER_CFG = (\{[\s\S]*?\});/);
+    if(b) BUFFER_CFG=eval('('+b[1]+')');
+
+    if(Object.keys(DAYS_DATA).length){
       activeDay=Object.keys(DAYS_DATA).find(k=>DAYS_DATA[k].isToday)
              ||Object.keys(DAYS_DATA).sort().pop();
       initPicker();
@@ -281,6 +287,15 @@ async function loadData(){
   }catch(e){
     document.getElementById('m-day-label').textContent='Load error — '+e.message;
   }
+}
+
+function calcBufLoss(code, dtMin){
+  const b=BUFFER_CFG[code];
+  if(!b) return {cars:Math.round(dtMin/4.5),exceeded:true,bufMin:0,bufMax:0};
+  const minT=Math.round(b.bufMin*b.impactCT/60);
+  const maxT=Math.round(b.bufMax*b.impactCT/60);
+  const excess=Math.max(0,dtMin-minT);
+  return {cars:Math.round(excess/(b.impactCT/60)),exceeded:dtMin>minT,bufMin:minT,bufMax:maxT};
 }
 
 function initPicker(){
@@ -454,21 +469,33 @@ function buildCriticalLines(d){
     '198':'HOP-198','155':'ROOF-155','138':'MARR-138','154':'FRAMER-154',
     '236':'RFC-236','231':'FS-231','237':'RWHRH-237','235':'RWHLH-235',
     '232':'FWHLH-232','233':'FWHRH-233','234':'FF-234','258':'BSO-258'};
-  const HOP=['285','286','287','198'];
+  const HOP_CODES=['285','286','287','198'];
   const lines=Object.entries(p).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const el=document.getElementById('m-critical-lines');
   if(!lines.length){el.innerHTML='<div style="color:var(--dim);font-size:11px;padding:8px 0">No data</div>';return;}
   el.innerHTML=lines.map(([code,min])=>{
-    const isHOP=HOP.includes(code);
     const col=min>=100?'var(--crit)':min>=30?'var(--red-l)':min>=10?'var(--amber-l)':'var(--dim)';
     const dur=min>=60?(min/60).toFixed(1)+'h':min+'m';
-    const cars=isHOP?`~${Math.round(min/4.5)}`:' (buf)';
-    const carsCol=isHOP&&min>=73?'var(--red-l)':'var(--dim)';
-    return `<div class="line-row">
+    // Buffer-aware: use BUFFER_CFG if available
+    const buf=calcBufLoss(code,min);
+    let carsLabel,carsCol;
+    if(HOP_CODES.includes(code)||BUFFER_CFG[code]){
+      if(buf.exceeded){
+        carsLabel=`~${buf.cars}`;
+        carsCol=buf.cars>5?'var(--red-l)':'var(--amber-l)';
+      } else {
+        carsLabel='✓buf';
+        carsCol='var(--green-l)';
+      }
+    } else {
+      carsLabel='(buf)'; carsCol='var(--dim)';
+    }
+    const bufNote=buf.bufMax>0?` (max ${buf.bufMax}m)`:'';
+    return `<div class="line-row" title="${NAMES[code]||code}: ${min}min · Buffer min ${buf.bufMin}m${bufNote}">
       <div class="line-dot" style="background:${col}"></div>
       <div class="line-name">${NAMES[code]||code}</div>
       <div class="line-dur" style="color:${col}">${dur}</div>
-      <div class="line-cars" style="color:${carsCol}">${cars}</div>
+      <div class="line-cars" style="color:${carsCol}">${carsLabel}</div>
     </div>`;
   }).join('');
 }
