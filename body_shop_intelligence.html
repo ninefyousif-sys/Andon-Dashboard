@@ -1062,62 +1062,70 @@ function buildWaterfall(){
   const d = DAYS_DATA[activeDay];
   const p = d.pbi||{};
 
-  // ── Buffer-aware waterfall logic ────────────────────────────────────
-  // Empty Skid CT = 270s = 4.5 min/car
-  // HOP area (285, 286, 287, 198): NO buffer before Empty Skid → DIRECT impact
-  //   - Every minute of HOP downtime = 1/4.5 car lost
-  // Underbody + Upperbody + MARR-138: buffer exists upstream → ABSORBED if buffer OK
-  //   - Shown as informational, may or may not reduce output
-  const CTMIN = EMPTY_CT / 60;  // 270/60 = 4.5 min per car
-
-  // Stations by impact type
-  const HOP_IDS = ['285','286','287','198'];       // Direct — end of line, no buffer
-  const BUF_IDS = ['236','237','235','232','233','234','258','231',  // Underbody
-                   '154','155','138'];              // Upperbody + Main line (buffer upstream)
-
-  const hopMin = HOP_IDS.reduce((s,id)=>s+(p[id]||0),0);
-  const bufMin = BUF_IDS.reduce((s,id)=>s+(p[id]||0),0);
-  const hopCars = Math.max(0, Math.round(hopMin / CTMIN));  // direct car loss
-
+  // ── Buffer-aware waterfall ───────────────────────────────────────────
+  // Logic: a stop only costs cars when it EXCEEDS the buffer capacity.
+  // Buffer capacities from SSIT table:
+  //   285/286 Doors: min 16 cars (2 racks×8) × 274s CT = 73 min buffer
+  //   287 Tailgate:  min 40 cars (5 racks×8) × 270s CT = 180 min buffer
+  //   198 Manual:    min 2 pos  × 270s CT = 9 min buffer (almost direct)
+  //   UB/UpB:        large buffer upstream → almost always absorbed
   const TARGET = 102;
-  const ACTUAL = d.empty_tot;   // ← Empty Skid output (what leaves the shop)
+  const ACTUAL = d.empty_tot;
   const totalLost = Math.max(0, TARGET - ACTUAL);
 
-  // Unexplained gap (startup losses, overcycle, quality, minor stops not in DT)
-  const hopExplained = Math.min(hopCars, totalLost);
-  const other = Math.max(0, totalLost - hopExplained);
+  // Per-station buffer-aware car loss for HOP stations
+  const HOP_IDS = ['285','286','287','198','160','197'];
+  const UB_IDS  = ['236','237','235','232','233','234','258','231','154','155','138'];
 
-  const noPBI = Object.keys(p).length === 0;
+  // Calculate car losses using buffer (conservative: min buffer)
+  let hopDirectCars = 0, hopAbsorbedCars = 0;
+  const hopDetail = [];
+  HOP_IDS.forEach(id => {
+    const dtMin = p[id]||0;
+    if(!dtMin) return;
+    const res = calcBufferLoss(id, dtMin);
+    hopDirectCars   += res.cars;
+    hopAbsorbedCars += Math.round(dtMin/(res.bufMin>0?BUFFER_CFG[id].impactCT/60:EMPTY_CT/60)) - res.cars;
+    const meta = STN_META[id]||{name:id};
+    hopDetail.push({name:meta.name.slice(0,10), dtMin, cars:res.cars, exceeded:res.exceeded,
+                    bufMin:res.bufMin, bufMax:res.bufMax||0});
+  });
+
+  // UB/UpB — calculate absorbed (informational only)
+  const ubTotalMin = UB_IDS.reduce((s,id)=>s+(p[id]||0),0);
+  const ubAbsorbedEq = Math.round(ubTotalMin/(AREA_CT.UnB/60));
+
+  // Cap direct loss at actual
+  const directCars = Math.min(Math.round(hopDirectCars), totalLost);
+  const otherLost  = Math.max(0, totalLost - directCars);
+
+  const hopDetailStr = hopDetail
+    .filter(h=>h.dtMin>0)
+    .map(h=>` ${h.name}: ${h.dtMin}m → ${h.exceeded ? '⚠ exceeds buf ('+h.bufMin+'m) = ~'+h.cars+' cars lost' : '✓ within buffer ('+h.bufMin+'m)'}`)
+    .join('\n');
+  const ubNote = ubTotalMin>0
+    ? `Buffer-absorbed UB/UpB: ${ubTotalMin} min (~${ubAbsorbedEq} car-eq) — large buffer, no direct loss`
+    : '';
 
   // Build waterfall steps
   let cur = TARGET;
   const steps = [{lbl:'Target\n'+TARGET, range:[0,TARGET], col:'rgba(0,117,190,.8)',
-                  tip:`Daily target: ${TARGET} cars`, loss:0, type:'target'}];
+                  loss:0, type:'target'}];
 
-  if(hopExplained > 0){
-    steps.push({lbl:`HOP Direct\n−${hopExplained}`,
-                range:[cur-hopExplained, cur], col:'rgba(255,26,46,.85)', loss:hopExplained,
-                type:'direct',
-                tip:`HOP area (285/286/287/198): ${hopMin} min ÷ ${CTMIN} min/car = ~${hopCars} cars lost\n285=${p['285']||0}m · 286=${p['286']||0}m · 287=${p['287']||0}m · 198=${p['198']||0}m`});
-    cur -= hopExplained;
+  if(directCars > 0){
+    steps.push({lbl:`HOP Loss\n−${directCars}`,
+                range:[cur-directCars, cur], col:'rgba(255,26,46,.85)',
+                loss:directCars, type:'direct', hopDetail:hopDetailStr});
+    cur -= directCars;
   }
-
-  if(other > 0){
-    steps.push({lbl:`Other\n−${other}`,
-                range:[cur-other, cur], col:'rgba(90,117,144,.7)', loss:other,
-                type:'other',
-                tip:`Residual loss: startup losses, quality stops, overcycle, minor events not captured in downtime log`});
-    cur -= other;
+  if(otherLost > 0){
+    steps.push({lbl:`Other\n−${otherLost}`,
+                range:[cur-otherLost, cur], col:'rgba(90,117,144,.7)',
+                loss:otherLost, type:'other'});
+    cur -= otherLost;
   }
-
   steps.push({lbl:`Actual\n${ACTUAL}`, range:[0,ACTUAL], col:'rgba(0,153,158,.85)',
-              loss:0, type:'actual',
-              tip:`Actual Empty Skid output: ${ACTUAL} cars (${Math.round(ACTUAL/TARGET*100)}% of target)\nCT 270s · Buffer absorbed ${bufMin} min UB/UPB downtime`});
-
-  // Annotation: buffer area info
-  const bufLabel = bufMin>0
-    ? `Buffer-absorbed UB/UPB: ${bufMin} min (${Math.round(bufMin/CTMIN)} car-eq) — not direct loss`
-    : '';
+              loss:0, type:'actual', ubNote});
 
   const ymin = Math.max(0, ACTUAL - 8);
   new Chart(ctx,{
@@ -1141,14 +1149,13 @@ function buildWaterfall(){
               const s=steps[ctx.dataIndex];
               if(!s) return '';
               const lines = [];
-              if(s.type==='target') lines.push(` Target: ${s.range[1]} cars`);
+              if(s.type==='target') lines.push(` Daily target: ${s.range[1]} cars`);
               else if(s.type==='actual'){
-                lines.push(` Actual output: ${s.range[1]} cars · ${Math.round(s.range[1]/TARGET*100)}% of target`);
-                if(bufLabel) lines.push(` ↳ ${bufLabel}`);
+                lines.push(` Actual output: ${s.range[1]} cars (${Math.round(s.range[1]/TARGET*100)}% of target)`);
+                if(s.ubNote) lines.push(` ↳ ${s.ubNote}`);
               } else if(s.type==='direct'){
-                lines.push(` HOP direct loss: −${s.loss} cars`);
-                lines.push(` 285=${p['285']||0}m · 286=${p['286']||0}m · 287=${p['287']||0}m · 198=${p['198']||0}m`);
-                lines.push(` Total HOP downtime: ${hopMin} min ÷ 4.5 min/car = ~${hopCars} cars`);
+                lines.push(` HOP buffer-exceeded loss: −${s.loss} cars`);
+                if(s.hopDetail) s.hopDetail.split('\n').forEach(l=>l&&lines.push(l));
               } else {
                 lines.push(` Other factors: −${s.loss} cars`);
                 lines.push(` (startup, quality, minor stops, overcycle)`);
@@ -1384,21 +1391,54 @@ buildFlowMap();
 // ════════════════════════════════════════════════════════════════════
 
 // ── Station metadata: area grouping + display name ───────────────
+// ── Actual cycle times from production data ───────────────────────────
+// Source: "Highest Actual CT per AREA" chart
+// JPH: UnB=12.6 · UpB=18.0 · DoorSA=14.4 · TailgatePA=18.0 · W&G=14.0 · DoorLine=13.1 · ManualHOP=13.3
+const AREA_CT = { UnB:286, UpB:187, DoorSA:223, TailgatePA:184, WG:257, DoorLine:274, Manual:270 };
+
+// ── Buffer configuration (from SSIT buffer table) ─────────────────────
+// bufMin/bufMax = cars (racks × 8). impactCT = downstream CT that depletes buffer.
+// bufMinTime = min buffer time in minutes before a stop reaches Empty Skid
+// 285/286 Door buffer: 2 racks min × 8 = 16 cars, 40 max → at Door Line CT 274s
+// 287 Tailgate buffer: 5 racks min × 8 = 40 cars, 56 max → at Manual Line CT 270s
+// 198 Manual Line: Door→Manual buffer 2-9 positions → at Manual CT 270s
+// 160 W&G: Hand-Over→W&G 2-17 positions, W&G→Door 1-3 → at Door CT 274s
+const BUFFER_CFG = {
+  '285':{bufMin:16, bufMax:40, impactCT:274, note:'2–5 racks doors (8/rack)'},
+  '286':{bufMin:16, bufMax:40, impactCT:274, note:'shared door buffer'},
+  '287':{bufMin:40, bufMax:56, impactCT:270, note:'5–7 racks tailgate (8/rack)'},
+  '198':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual Line 2–9 pos'},
+  '160':{bufMin:2,  bufMax:17, impactCT:274, note:'HO→W&G 2–17, W&G→Door 1–3'},
+  '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Stud→Framer 2–6 pos'},
+  '155':{bufMin:2,  bufMax:6,  impactCT:187, note:'Respot→Roof 2–6 pos'},
+  '138':{bufMin:1,  bufMax:14, impactCT:286, note:'RFC→BOL 1–14 pos'},
+};
+
+// Helper: calculate actual car loss from a stop considering buffer (conservative = min buffer)
+function calcBufferLoss(code, dtMin){
+  const b = BUFFER_CFG[code];
+  if(!b) return { cars: Math.round(dtMin/(EMPTY_CT/60)), exceeded: true, bufMin: 0 };
+  const bufMinTime = Math.round(b.bufMin * b.impactCT / 60); // min buffer in minutes
+  const excess     = Math.max(0, dtMin - bufMinTime);
+  const cars       = Math.round(excess / (b.impactCT / 60));
+  return { cars, exceeded: dtMin > bufMinTime, bufMin: bufMinTime, bufMax: Math.round(b.bufMax*b.impactCT/60) };
+}
+
 const STN_META = {
-  // Hang On Parts (HOP) — Direct impact, CT 270s
-  '285':{name:'LH DOOR-285', area:'Hang On Part', ct:270, direct:true,  col:'#cc2838'},
-  '286':{name:'RH DOOR-286', area:'Hang On Part', ct:270, direct:true,  col:'#d07018'},
+  // Hang On Parts (HOP) — may have buffer, but buffer is limited vs. UB/UPB
+  '285':{name:'LH DOOR-285', area:'Hang On Part', ct:274, direct:true,  col:'#cc2838'},
+  '286':{name:'RH DOOR-286', area:'Hang On Part', ct:274, direct:true,  col:'#d07018'},
   '287':{name:'287 Tailgate', area:'Hang On Part', ct:270, direct:true,  col:'#d07018'},
   '198':{name:'HOP-198 Manual',area:'Hang On Part',ct:270, direct:true,  col:'#a880e0'},
-  '197':{name:'DOOR-197',    area:'Hang On Part', ct:270, direct:true,  col:'#5a7590'},
-  '160':{name:'W&G-160',     area:'Hang On Part', ct:270, direct:true,  col:'#5a7590'},
-  // Upperbody — CT 183s, buffered
-  '155':{name:'ROOF-155',    area:'Upperbody',    ct:183, direct:false, col:'#30c0c5'},
-  '154':{name:'FRAMER-154',  area:'Upperbody',    ct:183, direct:false, col:'#30c0c5'},
-  // Main line — buffered
+  '197':{name:'DOOR-197',    area:'Hang On Part', ct:274, direct:true,  col:'#5a7590'},
+  '160':{name:'W&G-160',     area:'Hang On Part', ct:257, direct:true,  col:'#5a7590'},
+  // Upperbody — CT 187s (actual), large buffer upstream
+  '155':{name:'ROOF-155',    area:'Upperbody',    ct:187, direct:false, col:'#30c0c5'},
+  '154':{name:'FRAMER-154',  area:'Upperbody',    ct:187, direct:false, col:'#30c0c5'},
+  // Main line — CT 286s (UnB takt), large buffer
   '138':{name:'MARR-138',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
   '139':{name:'139 Stud',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
-  // Underbody SPA2 — CT 286s, buffered
+  // Underbody SPA2 — CT 286s, large buffer (FS→BOL 1-14, RFC→BOL 1-14)
   '231':{name:'FS-231',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
   '232':{name:'FWHLH-232',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
   '233':{name:'FWHRH-233',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
@@ -1408,12 +1448,12 @@ const STN_META = {
   '237':{name:'RWHRH-237',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
   '258':{name:'BSO-258',     area:'Underbody',    ct:286, direct:false, col:'#a880e0'},
   '239':{name:'FS-239',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  // Bodysides
-  '157':{name:'BSI-157',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
-  '159':{name:'BSO-159',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
-  '151':{name:'BSC-151',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
-  '252':{name:'BSI-252',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
-  '256':{name:'BSI-256',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
+  // Bodysides — CT 187s (UpB takt), feeds framer
+  '157':{name:'BSI-157',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '159':{name:'BSO-159',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '151':{name:'BSC-151',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '252':{name:'BSI-252',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '256':{name:'BSI-256',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
 };
 
 function buildSidePanel(){
@@ -1479,14 +1519,28 @@ function buildSidePanel(){
         const barCol = cls==='crit'?'var(--crit)':cls==='high'?'var(--red)':cls==='warn'?'var(--amber)':'var(--green)';
         const pct = (l.min/maxMin*100).toFixed(1);
         const dur = l.min>=60?(l.min/60).toFixed(1)+'h':l.min+'m';
-        const carsLost = l.direct ? `~${Math.round(l.min/CTMIN_EMPTY)}` : '(buf)';
+        // Buffer-aware cars lost calculation
+        let carsLostTxt, carsLostCol;
+        if(l.direct){
+          const res = calcBufferLoss(l.code, l.min);
+          if(res.exceeded){
+            carsLostTxt = `~${res.cars}`;
+            carsLostCol = res.cars>10?'var(--crit)':res.cars>5?'var(--red-l)':'var(--amber-l)';
+          } else {
+            carsLostTxt = `✓buf`;
+            carsLostCol = 'var(--green-l)';
+          }
+        } else {
+          carsLostTxt = '(buf)';
+          carsLostCol = 'var(--dim)';
+        }
         const areaShort = l.area==='Hang On Part'?'Hang':l.area.slice(0,5);
         return `<tr>
           <td><span class="status-dot ${cls}"></span>${l.name}</td>
           <td style="font-size:9px;color:var(--dim)">${areaShort}</td>
           <td><div class="line-bar-bg"><div class="line-bar-fill" style="width:${pct}%;background:${barCol}"></div></div>
               <span style="font-family:var(--font-mono);font-size:10px;color:${col};margin-left:5px">${dur}</span></td>
-          <td style="font-family:var(--font-mono);font-size:10px;color:${l.direct?col:'var(--dim)'}">${carsLost}</td>
+          <td style="font-family:var(--font-mono);font-size:10px;color:${carsLostCol}">${carsLostTxt}</td>
         </tr>`;
       }).join('');
     }
@@ -1530,12 +1584,24 @@ function buildSidePanel(){
       const topMeta = STN_META[topCode]||{name:topCode,area:'?',direct:false};
       const totalDT = Math.round(Object.values(p).reduce((s,v)=>s+v,0));
       const pct = Math.round(topMin/totalDT*100);
-      const hopMin = ['285','286','287','198','197','160'].reduce((s,id)=>s+(p[id]||0),0);
-      const directCars = Math.round(hopMin/CTMIN_EMPTY);
-      const impact = topMeta.direct
-        ? `<strong style="color:var(--crit)">▲ Direct HOP impact</strong> — ~${Math.round(topMin/CTMIN_EMPTY)} cars`
-        : `<strong style="color:var(--amber-l)">⊙ Buffered</strong> — absorbed if buffer &gt; ${topMin} min`;
-      alertEl.innerHTML = `<strong style="color:var(--amber-l)">▶ Top loss ${d.label}:</strong> ${topMeta.name} — ${topMin} min (${pct}% of ${totalDT} min total DT). ${impact}. Total HOP direct: ${hopMin} min → ~${directCars} cars lost. Source: HOP + DT Tracker files.`;
+      // Buffer-aware summary for top station
+      const topRes = calcBufferLoss(topCode, topMin);
+      let impact;
+      if(topMeta.direct){
+        const b = BUFFER_CFG[topCode];
+        if(topRes.exceeded){
+          impact = `<strong style="color:var(--crit)">⚠ Exceeds buffer!</strong> Buffer: ${topRes.bufMin}–${topRes.bufMax}m · Stop ${topMin}m → ~${topRes.cars} cars lost`;
+        } else {
+          impact = `<strong style="color:var(--green-l)">✓ Within buffer</strong> (buf: ${topRes.bufMin}–${topRes.bufMax}m) — no direct output loss`;
+        }
+      } else {
+        impact = `<strong style="color:var(--amber-l)">⊙ Buffered</strong> — large upstream buffer, absorbed by line`;
+      }
+      // Total HOP direct cars (buffer-aware)
+      const totalHOPdirect = ['285','286','287','198','197','160'].reduce((s,id)=>{
+        return s + calcBufferLoss(id, p[id]||0).cars;
+      }, 0);
+      alertEl.innerHTML = `<strong style="color:var(--amber-l)">▶ ${d.label}:</strong> Top: ${topMeta.name} — ${topMin}m (${pct}% of ${totalDT}m). ${impact}. Buffer-exceeded HOP loss: ~${Math.round(totalHOPdirect)} cars. UB/UpB absorbed by large buffers. Source: HOP + DT Tracker files.`;
     }
   }
 }
