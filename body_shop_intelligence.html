@@ -562,6 +562,38 @@ function calcBufferLoss(code, dtMin){
   return { cars, exceeded: dtMin > bufMinTime, bufMin: bufMinTime, bufMax: Math.round(b.bufMax*b.impactCT/60) };
 }
 
+const STN_META = {
+  // Hang On Parts (HOP) — may have buffer, but buffer is limited vs. UB/UPB
+  '285':{name:'LH DOOR-285', area:'Hang On Part', ct:274, direct:true,  col:'#cc2838'},
+  '286':{name:'RH DOOR-286', area:'Hang On Part', ct:274, direct:true,  col:'#d07018'},
+  '287':{name:'287 Tailgate', area:'Hang On Part', ct:270, direct:true,  col:'#d07018'},
+  '198':{name:'HOP-198 Manual',area:'Hang On Part',ct:270, direct:true,  col:'#a880e0'},
+  '197':{name:'DOOR-197',    area:'Hang On Part', ct:274, direct:true,  col:'#5a7590'},
+  '160':{name:'W&G-160',     area:'Hang On Part', ct:257, direct:true,  col:'#5a7590'},
+  // Upperbody — CT 187s (actual), large buffer upstream
+  '155':{name:'ROOF-155',    area:'Upperbody',    ct:187, direct:false, col:'#30c0c5'},
+  '154':{name:'FRAMER-154',  area:'Upperbody',    ct:187, direct:false, col:'#30c0c5'},
+  // Main line — CT 286s (UnB takt), large buffer
+  '138':{name:'MARR-138',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
+  '139':{name:'139 Stud',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
+  // Underbody SPA2 — CT 286s, large buffer (FS→BOL 1-14, RFC→BOL 1-14)
+  '231':{name:'FS-231',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '232':{name:'FWHLH-232',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '233':{name:'FWHRH-233',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '234':{name:'FF-234',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '235':{name:'RWHLH-235',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '236':{name:'RFC-236',     area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '237':{name:'RWHRH-237',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '258':{name:'BSO-258',     area:'Underbody',    ct:286, direct:false, col:'#a880e0'},
+  '239':{name:'FS-239',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  // Bodysides — CT 187s (UpB takt), feeds framer
+  '157':{name:'BSI-157',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '159':{name:'BSO-159',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '151':{name:'BSC-151',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '252':{name:'BSI-252',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+  '256':{name:'BSI-256',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
+};
+
 function calcOPR(carsArr, ctSec) {
   const maxJPH = 3600 / ctSec;
   return carsArr.map((c, i) => +((c / (WIN_MINS[i] / 60 * maxJPH)) * 100).toFixed(1));
@@ -1447,37 +1479,6 @@ buildFlowMap();
 // ── Actual cycle times from production data ───────────────────────────
 // Source: "Highest Actual CT per AREA" chart
 // JPH: UnB=12.6 · UpB=18.0 · DoorSA=14.4 · TailgatePA=18.0 · W&G=14.0 · DoorLine=13.1 · ManualHOP=13.3
-const STN_META = {
-  // Hang On Parts (HOP) — may have buffer, but buffer is limited vs. UB/UPB
-  '285':{name:'LH DOOR-285', area:'Hang On Part', ct:274, direct:true,  col:'#cc2838'},
-  '286':{name:'RH DOOR-286', area:'Hang On Part', ct:274, direct:true,  col:'#d07018'},
-  '287':{name:'287 Tailgate', area:'Hang On Part', ct:270, direct:true,  col:'#d07018'},
-  '198':{name:'HOP-198 Manual',area:'Hang On Part',ct:270, direct:true,  col:'#a880e0'},
-  '197':{name:'DOOR-197',    area:'Hang On Part', ct:274, direct:true,  col:'#5a7590'},
-  '160':{name:'W&G-160',     area:'Hang On Part', ct:257, direct:true,  col:'#5a7590'},
-  // Upperbody — CT 187s (actual), large buffer upstream
-  '155':{name:'ROOF-155',    area:'Upperbody',    ct:187, direct:false, col:'#30c0c5'},
-  '154':{name:'FRAMER-154',  area:'Upperbody',    ct:187, direct:false, col:'#30c0c5'},
-  // Main line — CT 286s (UnB takt), large buffer
-  '138':{name:'MARR-138',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
-  '139':{name:'139 Stud',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
-  // Underbody SPA2 — CT 286s, large buffer (FS→BOL 1-14, RFC→BOL 1-14)
-  '231':{name:'FS-231',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  '232':{name:'FWHLH-232',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  '233':{name:'FWHRH-233',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  '234':{name:'FF-234',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  '235':{name:'RWHLH-235',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  '236':{name:'RFC-236',     area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  '237':{name:'RWHRH-237',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  '258':{name:'BSO-258',     area:'Underbody',    ct:286, direct:false, col:'#a880e0'},
-  '239':{name:'FS-239',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
-  // Bodysides — CT 187s (UpB takt), feeds framer
-  '157':{name:'BSI-157',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
-  '159':{name:'BSO-159',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
-  '151':{name:'BSC-151',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
-  '252':{name:'BSI-252',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
-  '256':{name:'BSI-256',     area:'Bodysides',    ct:187, direct:false, col:'#5a7590'},
-};
 
 function buildSidePanel(){
   const d = DAYS_DATA[activeDay];
