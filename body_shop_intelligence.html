@@ -391,20 +391,13 @@ canvas{image-rendering:auto}
     </div>
   </div>
 
-  <!-- WHY WE DIDN'T MAKE THE NUMBER -->
+  <!-- FAULT TYPE BREAKDOWN (full width — waterfall removed) -->
   <div class="section">
     <div class="sec-title">Why We Didn't Make the Number</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div class="card">
-        <div class="card-title">Production Loss Waterfall — Empty Skid vs Target 102</div>
-        <div class="card-sub">Only DT-file equipment stops shown · HOP exceeds buffer = direct loss · hover bars for detail</div>
-        <div class="chart-canvas-wrap md"><canvas id="waterfallChart"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="card-title" id="fault-type-title">Fault Type Breakdown</div>
-        <div class="card-sub" id="fault-type-sub">Downtime Tracker file · Equipment stops only</div>
-        <div class="chart-canvas-wrap md"><canvas id="lossTypeChart"></canvas></div>
-      </div>
+    <div class="card">
+      <div class="card-title" id="fault-type-title">Fault Type Breakdown · Equipment Downtime</div>
+      <div class="card-sub" id="fault-type-sub">Downtime Tracker file · Equipment stops only · Blocked/Starved/Shop Flow excluded</div>
+      <div class="chart-canvas-wrap" style="height:240px"><canvas id="lossTypeChart"></canvas></div>
     </div>
   </div>
 
@@ -1378,24 +1371,37 @@ function buildLossType(){
   // For days without PBI data, show a placeholder
   let labels, data, bgCols;
   if(hasPBI){
-    // Map known fault categories
-    const toolChanger = p['285']||0;  // tool changer is primary HOP fault
-    const safety      = p['155']||0;
-    const flowDrill   = p['236']||0;
-    const rivets      = (p['235']||0)+(p['237']||0)+(p['232']||0)+(p['233']||0);
-    const tipDress    = p['234']||0;
-    const sequence    = p['287']||0;
-    const manual      = p['198']||0;
-    const other       = (p['138']||0)+(p['258']||0)+(p['286']||0);
-    labels = [];data=[];bgCols=[];
-    const add=(lbl,v,c)=>{if(v>0){labels.push(`${lbl} (${v}m)`);data.push(v);bgCols.push(c);}};
-    add('Tool Changer',toolChanger,'rgba(255,26,46,.7)');
-    add('Safety/Logistics',safety,'rgba(0,153,158,.7)');
-    add('Flow Drill',flowDrill,'rgba(0,117,190,.7)');
-    add('Rivet Faults',rivets,'rgba(200,144,16,.7)');
-    add('Sequence',sequence,'rgba(208,112,24,.7)');
-    add('Manual Line',manual,'rgba(160,100,200,.7)');
-    add('Other',other,'rgba(90,117,144,.45)');
+    // Map each station code to a named fault category — no "Other" bucket
+    // Every station shown individually (only if it has downtime)
+    const STATION_LABELS = {
+      '285':'LH DOOR-285','286':'RH DOOR-286','287':'287 Tailgate',
+      '198':'HOP-198 Manual','155':'ROOF-155','138':'MARR-138',
+      '154':'FRAMER-154','236':'RFC-236','237':'RWHRH-237',
+      '235':'RWHLH-235','232':'FWHLH-232','233':'FWHRH-233',
+      '234':'FF-234','258':'BSO-258','231':'FS-231',
+      '157':'BSI-157','159':'BSO-159','151':'BSC-151',
+      '197':'DOOR-197','160':'W&G-160',
+    };
+    const STATION_COLS = {
+      '285':'rgba(255,26,46,.75)','286':'rgba(255,100,30,.75)','287':'rgba(200,80,16,.75)',
+      '198':'rgba(160,100,200,.75)','155':'rgba(0,153,158,.75)','138':'rgba(0,117,190,.75)',
+      '154':'rgba(0,153,158,.6)','236':'rgba(0,117,190,.65)','237':'rgba(0,117,190,.6)',
+      '235':'rgba(0,90,160,.65)','232':'rgba(50,150,200,.65)','233':'rgba(30,120,180,.65)',
+      '234':'rgba(80,160,200,.6)','258':'rgba(160,80,210,.65)','231':'rgba(0,140,200,.65)',
+      '157':'rgba(90,117,144,.6)','159':'rgba(90,117,144,.55)','151':'rgba(90,117,144,.5)',
+      '197':'rgba(90,117,144,.6)','160':'rgba(90,117,144,.6)',
+    };
+    // Sort by downtime descending, only include stations with actual DT
+    const entries = Object.entries(p)
+      .filter(([,v])=>v>0)
+      .sort((a,b)=>b[1]-a[1]);
+    labels=[];data=[];bgCols=[];
+    entries.forEach(([code,min])=>{
+      const lbl = STATION_LABELS[code]||code;
+      labels.push(`${lbl} (${min}m)`);
+      data.push(min);
+      bgCols.push(STATION_COLS[code]||'rgba(90,117,144,.55)');
+    });
     if(!data.length){labels=['No downtime recorded'];data=[1];bgCols=['rgba(90,117,144,.2)'];}
   } else {
     labels=['No downtime data for this day'];data=[1];bgCols=['rgba(90,117,144,.15)'];
@@ -1404,7 +1410,7 @@ function buildLossType(){
     data:{labels,datasets:[{data,backgroundColor:bgCols,borderWidth:hasPBI?1.5:0,hoverOffset:hasPBI?6:0}]},
     options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'58%',
       plugins:{
-        legend:{position:'bottom',labels:{color:'#5a7590',usePointStyle:true,padding:8,font:{size:11}}},
+        legend:{position:'right',labels:{color:'#c8d8e8',usePointStyle:true,padding:10,font:{size:10},boxWidth:12}},
         tooltip:{callbacks:{label:ctx=>{if(!hasPBI) return ' No data';const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return ` ${ctx.label}: ${ctx.parsed} min (${(ctx.parsed/t*100).toFixed(0)}%)`}}}
       }
     }
@@ -1959,7 +1965,7 @@ function switchDay(dayKey){
 
   // ── 1. ALL SECTIONS — charts + side panel ───────────────────────
   try { buildJPH();        } catch(e){ console.error('buildJPH error:',e); }
-  try { buildWaterfall();  } catch(e){ console.error('buildWaterfall error:',e); }
+  // waterfall removed — replaced by full-width fault type donut
   try { buildLossType();   } catch(e){ console.error('buildLossType error:',e); }
   try { buildGantt();      } catch(e){ console.error('buildGantt error:',e); }
   try { buildFlowMap();    } catch(e){ console.error('buildFlowMap error:',e); }

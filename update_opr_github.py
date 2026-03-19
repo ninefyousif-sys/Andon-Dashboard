@@ -51,37 +51,47 @@ def last_7_working_days():
         d -= datetime.timedelta(days=1)
     return days   # newest first
 
-# Scan hours in CET for each of the 8 production windows
-# W1(06-07) → scan hr 11, W2(07-08) → 12, ..., W8(13:40-14:40) → 18
-SCAN_HOURS = [11, 12, 13, 14, 15, 16, 17, 18]
+# Exact scan-time boundaries per production window (CET scan time = prod time + ~5h transit)
+# W5 prod 10:40-11:40 → scan 15:40-16:40 (old hourly mapping missed this, causing wrong values)
+WIN_SCAN_RANGES = [
+    ('W1','11:00','12:00'), ('W2','12:00','13:00'),
+    ('W3','13:10','14:10'), ('W4','14:10','15:00'),
+    ('W5','15:40','16:40'), ('W6','16:40','17:30'),
+    ('W7','17:40','18:40'), ('W8','18:40','19:40'),
+]
 
 def get_production(date_str):
+    win_cases = '\n'.join([
+        f"      WHEN TO_TIME(CONVERT_TIMEZONE('Europe/Brussels', \"timestampRegistrationPoint\")) "
+        f"BETWEEN '{s}:00' AND '{e}:59' THEN {i+1}"
+        for i,(lbl,s,e) in enumerate(WIN_SCAN_RANGES)
+    ])
     sql = f"""
         SELECT "registrationPoint",
-               HOUR(CONVERT_TIMEZONE('Europe/Brussels',
-                    "timestampRegistrationPoint")) AS cet_hr,
+               CASE
+{win_cases}
+               END AS window_num,
                COUNT(*) AS cars
         FROM   VCCH.PRODUCTION_TRACKING.BODY_TRACKING
         WHERE  DATE(CONVERT_TIMEZONE('Europe/Brussels',
                     "timestampRegistrationPoint")) = '{date_str}'
           AND  "registrationPoint" IN ('13000', '19900')
-          AND  HOUR(CONVERT_TIMEZONE('Europe/Brussels',
-                    "timestampRegistrationPoint")) BETWEEN 10 AND 20
+          AND  TO_TIME(CONVERT_TIMEZONE('Europe/Brussels',
+                    "timestampRegistrationPoint"))
+               BETWEEN '11:00:00' AND '19:59:59'
         GROUP BY 1, 2
+        HAVING window_num IS NOT NULL
         ORDER BY 1, 2
     """
     cursor = conn.cursor()
     cursor.execute(sql)
     rows = cursor.fetchall()
 
-    bol = {r[1]: r[2] for r in rows if str(r[0]) == '13000'}
-    emp = {r[1]: r[2] for r in rows if str(r[0]) == '19900'}
+    bol = {r[1]: r[2] for r in rows if str(r[0]) == '13000' and r[1]}
+    emp = {r[1]: r[2] for r in rows if str(r[0]) == '19900' and r[1]}
 
-    bol_h = [bol.get(h, 0) for h in SCAN_HOURS]
-    emp_h = [emp.get(h, 0) for h in SCAN_HOURS]
-    # include any hour-19 late cars in the last window
-    bol_h[-1] += bol.get(19, 0)
-    emp_h[-1] += emp.get(19, 0)
+    bol_h = [bol.get(i+1, 0) for i in range(8)]
+    emp_h = [emp.get(i+1, 0) for i in range(8)]
 
     bol_tot = sum(bol_h)
     emp_tot = sum(emp_h)

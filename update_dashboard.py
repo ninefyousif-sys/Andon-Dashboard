@@ -218,12 +218,33 @@ def _load_snowflake_cfg():
 
 SNOWFLAKE_CFG = _load_snowflake_cfg()  # None if file missing
 
-# Hours in CET at which each production window's cars appear at Empty Skid scan point
-# Empirically verified: W1(06-07) → scan hr 11, W2(07-08) → 12, ... W8(13:40-14:40) → 18-19
-SCAN_HOURS_PER_WIN = [11, 12, 13, 14, 15, 16, 17, 18]  # one per window
+# Production windows and their scan time boundaries (CET)
+# Cars traverse ~5h through the shop → BOL/Empty Skid scans appear ~5h after production
+# Window boundaries account for breaks (08:00-08:10, 10:00-10:40, 12:30-12:40)
+# Each tuple: (window_label, scan_start_CET, scan_end_CET)
+WIN_SCAN_RANGES = [
+    # Prod W1: 06:00-07:00  → scan 11:00-12:00
+    ('W1', '11:00', '12:00'),
+    # Prod W2: 07:00-08:00  → scan 12:00-13:00
+    ('W2', '12:00', '13:00'),
+    # Prod W3: 08:10-09:10  → scan 13:10-14:10  (break 08:00-08:10 skipped)
+    ('W3', '13:10', '14:10'),
+    # Prod W4: 09:10-10:00  → scan 14:10-15:00
+    ('W4', '14:10', '15:00'),
+    # [break 10:00-10:40 → scan gap 15:00-15:40]
+    # Prod W5: 10:40-11:40  → scan 15:40-16:40
+    ('W5', '15:40', '16:40'),
+    # Prod W6: 11:40-12:30  → scan 16:40-17:30
+    ('W6', '16:40', '17:30'),
+    # [break 12:30-12:40 → scan gap 17:30-17:40]
+    # Prod W7: 12:40-13:40  → scan 17:40-18:40
+    ('W7', '17:40', '18:40'),
+    # Prod W8: 13:40-14:40  → scan 18:40-19:40
+    ('W8', '18:40', '19:40'),
+]
 
 def get_production_from_snowflake(date_str):
-    """Query Snowflake for per-window BOL + Empty Skid counts."""
+    """Query Snowflake for per-window BOL + Empty Skid counts using exact time ranges."""
     if not SNOWFLAKE_AVAILABLE:
         log("  Snowflake connector not installed — pip install snowflake-connector-python")
         return None
@@ -233,29 +254,36 @@ def get_production_from_snowflake(date_str):
     try:
         conn = snowflake.connector.connect(**SNOWFLAKE_CFG)
         cursor = conn.cursor()
+        # Query with exact scan-time ranges for each production window
+        win_cases = '\n'.join([
+            f"      WHEN TO_TIME(CONVERT_TIMEZONE('Europe/Brussels', \"timestampRegistrationPoint\")) "
+            f"BETWEEN '{s}:00' AND '{e}:59' THEN {i+1}"
+            for i,(lbl,s,e) in enumerate(WIN_SCAN_RANGES)
+        ])
         sql = f"""
             SELECT "registrationPoint",
-                   HOUR(CONVERT_TIMEZONE('Europe/Brussels', "timestampRegistrationPoint")) AS cet_hr,
+                   CASE
+{win_cases}
+                   END AS window_num,
                    COUNT(*) AS cars
             FROM   VCCH.PRODUCTION_TRACKING.BODY_TRACKING
             WHERE  DATE(CONVERT_TIMEZONE('Europe/Brussels', "timestampRegistrationPoint")) = '{date_str}'
               AND  "registrationPoint" IN ('13000', '19900')
-              AND  HOUR(CONVERT_TIMEZONE('Europe/Brussels', "timestampRegistrationPoint")) BETWEEN 10 AND 20
+              AND  TO_TIME(CONVERT_TIMEZONE('Europe/Brussels', "timestampRegistrationPoint"))
+                   BETWEEN '11:00:00' AND '19:59:59'
             GROUP BY 1, 2
+            HAVING window_num IS NOT NULL
             ORDER BY 1, 2
         """
         cursor.execute(sql)
         rows = cursor.fetchall()
         conn.close()
 
-        bol_h_map = {r[1]: r[2] for r in rows if str(r[0]) == '13000'}
-        emp_h_map = {r[1]: r[2] for r in rows if str(r[0]) == '19900'}
+        bol_by_win = {r[1]: r[2] for r in rows if str(r[0]) == '13000' and r[1]}
+        emp_by_win = {r[1]: r[2] for r in rows if str(r[0]) == '19900' and r[1]}
 
-        # Map scan hours to 8 windows; include hour-19 cars in last window
-        bol_h = [bol_h_map.get(h, 0) for h in SCAN_HOURS_PER_WIN]
-        emp_h = [emp_h_map.get(h, 0) for h in SCAN_HOURS_PER_WIN]
-        bol_h[-1] += bol_h_map.get(19, 0)
-        emp_h[-1] += emp_h_map.get(19, 0)
+        bol_h = [bol_by_win.get(i+1, 0) for i in range(8)]
+        emp_h = [emp_by_win.get(i+1, 0) for i in range(8)]
 
         bol_tot = sum(bol_h)
         emp_tot = sum(emp_h)
