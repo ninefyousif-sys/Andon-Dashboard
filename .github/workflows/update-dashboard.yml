@@ -1,0 +1,45 @@
+name: Update Dashboard OPR Data
+
+on:
+  schedule:
+    # CET = UTC+1 (winter) / CEST = UTC+2 (summer, after Mar 29)
+    - cron: '0 7 * * 1-5'    # 08:00 CET / 09:00 CEST
+    - cron: '0 9 * * 1-5'    # 10:00 CET / 11:00 CEST
+    - cron: '30 12 * * 1-5'  # 13:30 CET / 14:30 CEST
+    - cron: '0 14 * * 1-5'   # 15:00 CET / 16:00 CEST
+  workflow_dispatch:           # Allow manual trigger from GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write          # Needed to push changes back to the repo
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install snowflake-connector-python
+
+      - name: Update OPR data from Snowflake
+        env:
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_TOKEN:     ${{ secrets.SNOWFLAKE_TOKEN }}
+          SNOWFLAKE_ROLE:      ${{ secrets.SNOWFLAKE_ROLE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+        run: python update_opr_github.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name  "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add body_shop_intelligence.html
+          git diff --staged --quiet || git commit -m "Auto-update OPR $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
