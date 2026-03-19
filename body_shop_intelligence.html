@@ -541,14 +541,18 @@ const AREA_CT = { UnB:286, UpB:187, DoorSA:223, TailgatePA:184, WG:257, DoorLine
 // 287:     5 racks min × 8 tailgates = 40 cars → 40 × 270s / 60 = 180 min
 // 198:     Door→Manual buffer 2–9 positions → 2 × 270s / 60 = 9 min
 const BUFFER_CFG = {
+  // ── Source: SSIT buffer table + main line diagram ──────────────────
+  // HOP area doors/tailgate
   '285':{bufMin:16, bufMax:40, impactCT:274, note:'2–5 racks doors (8/rack)'},
   '286':{bufMin:16, bufMax:40, impactCT:274, note:'shared door buffer'},
   '287':{bufMin:40, bufMax:56, impactCT:270, note:'5–7 racks tailgate (8/rack)'},
-  '198':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual Line 2–9 pos'},
-  '160':{bufMin:2,  bufMax:17, impactCT:274, note:'HO→W&G 2–17, W&G→Door 1–3'},
-  '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Stud→Framer 2–6 pos'},
-  '155':{bufMin:2,  bufMax:6,  impactCT:187, note:'Respot→Roof 2–6 pos'},
-  '138':{bufMin:1,  bufMax:14, impactCT:286, note:'RFC→BOL 1–14 pos'},
+  // Main line — from diagram: buffer AFTER each station
+  '138':{bufMin:2,  bufMax:16, impactCT:286, note:'MARR-138→Stud: 2–16 pos'},
+  '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Framing→Respot: 2–6 pos'},
+  '155':{bufMin:2,  bufMax:17, impactCT:257, note:'Roof→W&G: 2–17 pos'},
+  '160':{bufMin:1,  bufMax:3,  impactCT:274, note:'W&G→Door: 1–3 pos (⚠ very small)'},
+  '197':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual: 2–9 pos'},
+  '198':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual: 2–9 pos'},
 };
 
 // Helper: cars actually lost after buffer absorbs what it can (uses min buffer = worst case)
@@ -1429,6 +1433,16 @@ function buildFlowMap(){
   }
 
   const ar=`<span class="farrow" style="flex-shrink:0">→</span>`;
+  // Buffer indicator arrow: shows Min/Max positions between stations
+  // Colour: green=large buffer, amber=medium, red=very small (≤3)
+  function bufAr(min, max){
+    const col = max<=3?'#f04858':max<=6?'#f0b828':max<=9?'#d07018':'#25c878';
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;margin:0 1px;cursor:default"
+                 title="Buffer ${min}–${max} positions · min=${min}×CT min = protection time">
+      <div style="font-size:7px;font-weight:700;color:${col};line-height:1;white-space:nowrap">${min}/${max}</div>
+      <div style="font-size:10px;color:var(--dim)">→</div>
+    </div>`;
+  }
   let html=`
 
   <!-- ── ROW 1: BODY SIDES ── -->
@@ -1457,13 +1471,13 @@ function buildFlowMap(){
   <div style="margin-bottom:8px">
     <div style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">→ MAIN PRODUCTION FLOW (BOL → Empty Skid)</div>
     <div class="flow-row" style="flex-wrap:wrap;gap:2px 2px">
-      ${fNode('138','MARR-138','MAIN LINE',0,true)}${ar}
-      ${fNode('139','139 Stud','UNDERBODY',0,true)}${ar}
-      ${fNode('154','154 Framing','UPPERBODY',0,true)}${ar}
-      ${fNode('resp','Respot','UPPERBODY',0,true)}${ar}
-      ${fNode('155','155 Roof','UPPERBODY',0,true)}${ar}
-      ${fNode('160','160 W&G','HANG ON PT',0,true)}${ar}
-      ${fNode('197','197 Door','HANG ON PT',0,true)}${ar}
+      ${fNode('138','MARR-138','MAIN LINE',0,true)}${bufAr(2,16)}
+      ${fNode('139','139 Stud','UNDERBODY',0,true)}${bufAr(2,6)}
+      ${fNode('154','154 Framing','UPPERBODY',0,true)}${bufAr(2,6)}
+      ${fNode('resp','Respot','UPPERBODY',0,true)}${bufAr(2,6)}
+      ${fNode('155','155 Roof','UPPERBODY',0,true)}${bufAr(2,17)}
+      ${fNode('160','160 W&G','HANG ON PT',0,true)}${bufAr(1,3)}
+      ${fNode('197','197 Door','HANG ON PT',0,true)}${bufAr(2,9)}
       ${fNode('198','198 Manual','HANG ON PT',0,true)}
     </div>
   </div>
