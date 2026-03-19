@@ -1039,22 +1039,34 @@ function makeOPRChart(ctx, label, carsData, ctSec, oprTarget, lineColor) {
 function makeCompareChart(ctx, d){
   const bolOPR   = calcOPR(d.bol_h,   BOL_CT);
   const emptyOPR = calcOPR(d.empty_h, EMPTY_CT);
+  const dlCfg = (target)=>({
+    display:true, anchor:'end', align:'end',
+    font:{size:9, weight:'700'},
+    formatter:v=>v+'%',
+    color: ctx => {
+      const v = ctx.dataset.data[ctx.dataIndex];
+      return v >= target ? '#25c878' : v >= target-10 ? '#f0b828' : '#f04858';
+    }
+  });
   return new Chart(ctx, {
     type:'bar',
     plugins:[ChartDataLabels],
     data:{labels:WIN_LABELS,datasets:[
-      {label:'BOL OPR %',   data:bolOPR,   backgroundColor:'rgba(0,153,158,.6)',borderColor:'#30c0c5',borderWidth:1.5,borderRadius:3,datalabels:{display:false}},
-      {label:'Skid OPR %',  data:emptyOPR, backgroundColor:'rgba(0,117,190,.6)',borderColor:'#78c8f8',borderWidth:1.5,borderRadius:3,datalabels:{display:false}},
+      {label:'BOL OPR %',   data:bolOPR,   backgroundColor:'rgba(0,153,158,.6)',borderColor:'#30c0c5',borderWidth:1.5,borderRadius:3,
+       datalabels:dlCfg(BOL_OPR_TARGET)},
+      {label:'Skid OPR %',  data:emptyOPR, backgroundColor:'rgba(0,117,190,.6)',borderColor:'#78c8f8',borderWidth:1.5,borderRadius:3,
+       datalabels:dlCfg(EMPTY_OPR_TARGET)},
     ]},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
+      layout:{padding:{top:16}},
       plugins:{
         legend:{position:'top',labels:{color:'#5a7590',usePointStyle:true,padding:8,font:{size:9}}},
-        datalabels:{display:false},
+        datalabels:{display:true},
         tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}}
       },
       scales:{
         x:{grid:{color:gridColor},ticks:{color:'#5a7590',font:{size:8},maxRotation:30}},
-        y:{grid:{color:gridColor},min:40,max:115,ticks:{color:'#5a7590',callback:v=>v+'%'}}
+        y:{grid:{color:gridColor},min:40,max:120,ticks:{color:'#5a7590',callback:v=>v+'%'}}
       }
     }
   });
@@ -1116,16 +1128,23 @@ buildJPH();
   );
   new Chart(ctx,{
     type:'bar',
+    plugins:[ChartDataLabels],
     data:{labels,datasets:[
-      {label:'Cars produced',data:cars,backgroundColor:bgCols,borderRadius:3},
-      {label:'Target 102',type:'line',data:Array(DAILY_PROD.length).fill(102),borderColor:'rgba(255,255,255,.2)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false},
+      {label:'Cars produced',data:cars,backgroundColor:bgCols,borderRadius:3,
+       datalabels:{display:true,anchor:'end',align:'end',color:'#c8d8e8',
+                   font:{size:10,weight:'700'},formatter:v=>v}},
+      {label:'Target 102',type:'line',data:Array(DAILY_PROD.length).fill(102),
+       borderColor:'rgba(255,255,255,.2)',borderWidth:1.5,borderDash:[5,4],
+       pointRadius:0,fill:false, datalabels:{display:false}},
     ]},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
+      layout:{padding:{top:18}},
       plugins:{legend:{display:false},
+        datalabels:{display:true},
         tooltip:{callbacks:{label:ctx=>{
           if(ctx.datasetIndex===1) return ' Target: 102';
           const d=DAILY_PROD[ctx.dataIndex];
-          return ` ${d.cars} cars · ${d.day}${d.today?' (today)':d.overtime?' ⏱ OVERTIME (ended 16:38)':''}`;
+          return ` ${d.cars} cars${d.overtime?' ⏱ OVERTIME':''}`;
         }}}
       },
       scales:{
