@@ -55,15 +55,17 @@
 html{scroll-behavior:smooth}
 /* Outer page background */
 html{background:#020509;min-height:100vh}
-/* Dashboard: fixed 1520px design width, JS scales it to fill any viewport */
+/* Dashboard: centred, max 1600px wide */
 body{
   min-height:100vh;
   background:var(--bg);
   color:var(--text);
   font-family:var(--font-body);
   overflow-x:hidden;
-  width:1520px;         /* design width — JS zoom scales this to fit viewport */
-  box-shadow:0 0 40px rgba(0,0,0,.5);
+  max-width:1600px;
+  width:100%;
+  margin:0 auto;
+  box-shadow:0 0 60px rgba(0,0,0,.6);
 }
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -730,8 +732,8 @@ const DAYS_DATA = {
       {line:'Dash-231 SPA2',s:'13:55',e:'14:05',sec:600,col:'#0075be',lbl:'Equipment Issues/ Technical  · Glue Optimization'},
       {line:'FF-234 SPA2',s:'13:56',e:'13:58',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tip Dress Faults'}]},
   '2026-03-16':{label:'Mon 16-Mar',overtime:true,otNote:'Shift ran until 16:38',
-    bol_h:[9,12,5,11,4,12,8,21], empty_h:[12,12,10,12,3,9,10,20],
-    bol_tot:82, empty_tot:88,
+    bol_h:[9,12,5,11,12,8,12,9], empty_h:[12,12,10,12,9,10,11,9],
+    bol_tot:98, empty_tot:104,
     // WK12 D1 · Equipment DT only · 300 min
     pbi:{'231':84.0,'285':53.0,'258':27.0,'287':24.0,'198':22.0,'197':20.0,'232':14.0,'138':12.0,'236':11.0,'234':11.0,'233':9.0,'257':7.0,'286':6.0},
     gantt:[{line:'HOP - 198',s:'06:00',e:'06:14',sec:840,col:'#a880e0',lbl:'Equipment Issues/ Technical  · Transport Faults'},
@@ -2032,9 +2034,8 @@ function initDayPicker(){
 }
 initDayPicker();
 
-// Init BOL strip + KPI with default day
-updateBOLStrip(activeDay);
-updateKPIBar(activeDay);
+// Full init — call switchDay to populate ALL sections (charts, titles, donut, side panel)
+switchDay(activeDay);
 
 // ════════════════════════════════════════════════════════════════════
 // CLOCK + AUTO-REFRESH
@@ -2048,15 +2049,7 @@ setInterval(tick,1000);tick();
 
 // Made by Ninef Yousif
 
-// ── Auto-scale: fit the 1520px design width to the actual viewport ───────────
-// Uses CSS zoom (affects layout, unlike transform). Cap at 1.0 so it never
-// enlarges beyond design size on very wide screens.
-function fitViewport(){
-  const scale = Math.min(1, window.innerWidth / 1520);
-  document.body.style.zoom = scale;
-}
-fitViewport();
-window.addEventListener('resize', fitViewport);
+// Viewport scaling removed — using CSS max-width:1600px
 </script>
 </body>
 </html>

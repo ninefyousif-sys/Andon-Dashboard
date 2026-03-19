@@ -124,11 +124,17 @@ print(f"=== GitHub Actions OPR update {datetime.datetime.utcnow().strftime('%Y-%
 with open(DASH, encoding='utf-8') as f:
     html = f.read()
 
+# Overtime days: Snowflake standard-shift query misses OT cars → always keep known values
+OVERTIME_DATES = {'2026-03-16'}  # add dates here when OT occurs
+
 days = last_7_working_days()
 for d in days:
     date_str = str(d)
     if date_str not in html:
         print(f"  {date_str} not in DAYS_DATA yet — skipping (laptop update will add it)")
+        continue
+    if date_str in OVERTIME_DATES:
+        print(f"  {date_str} is overtime — keeping existing values (Snowflake misses OT cars)")
         continue
     try:
         bol_h, emp_h, bol_tot, emp_tot = get_production(date_str)
