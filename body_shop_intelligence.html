@@ -271,7 +271,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px">DATE</span>
       <select class="day-select" id="dayPicker" onchange="switchDay(this.value)">
-        <option value="2026-03-18">Wed 18-Mar (Today)</option>
+        <option value="2026-03-18">Wed 18-Mar</option>
         <option value="2026-03-17">Tue 17-Mar</option>
         <option value="2026-03-16">Mon 16-Mar ⏱ OT</option>
         <option value="2026-03-13">Fri 13-Mar</option>
@@ -404,7 +404,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
 
   <!-- ROOT CAUSE SIGNALS — REAL Power BI operator-entered faults today -->
   <div class="section">
-    <div class="sec-title">Top Root Cause Faults — Today WK12 Day 3 · Power BI Manual Entry · Breaks excluded</div>
+    <div class="sec-title" id="root-cause-title">Top Root Cause Faults — WK12 Day 3 · Power BI Manual Entry · Breaks excluded</div>
     <div class="card" style="padding:10px 14px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
@@ -431,7 +431,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
 
   <!-- GANTT TIMELINE -->
   <div class="section">
-    <div class="sec-title">What Stopped the Line · Today Shift 06:00–14:40 · Breaks excluded (08:00–08:10 · 10:00–10:40 · 13:30–13:40) · False Alarm & Process Overtime removed</div>
+    <div class="sec-title">What Stopped the Line · Shift 06:00–14:40 · Breaks & False Alarms excluded</div>
     <div class="gantt-wrap" id="gantt-container"></div>
   </div>
 
@@ -458,7 +458,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
 <!-- ── RIGHT / SIDE COLUMN ── -->
 <div class="col-side">
 
-  <div class="sec-title">Line Status · Today</div>
+  <div class="sec-title" id="line-status-title">Line Status · Daily Review</div>
 
   <!-- Area summary cards — rebuilt per day by buildSidePanel() -->
   <div class="area-grid" id="area-grid-container"></div>
@@ -1830,6 +1830,12 @@ function switchDay(dayKey){
   }
   const sub = document.querySelector('.hdr-title p');
   if(sub) sub.textContent = `${d.label} · DAY SHIFT 06:00–14:40${d.overtime?' · ⏱ OVERTIME':''}`;
+
+  // ── Update section titles with selected day ────────────────────────
+  const lsTitle = document.getElementById('line-status-title');
+  if(lsTitle) lsTitle.textContent = `Line Status · ${d.label}`;
+  const rcTitle = document.getElementById('root-cause-title');
+  if(rcTitle) rcTitle.textContent = `Top Root Cause Faults · ${d.label} · Power BI Manual Entry · Breaks excluded`;
 
   // ── 3. Production strip & KPI bar ─────────────────────────────────
   try { updateBOLStrip(dayKey); } catch(e){ console.error('BOL strip error:',e); }
