@@ -55,17 +55,15 @@
 html{scroll-behavior:smooth}
 /* Outer page background */
 html{background:#020509;min-height:100vh}
-/* Dashboard constrained to 16:9 width, centred on the page */
+/* Dashboard: fixed 1520px design width, JS scales it to fill any viewport */
 body{
   min-height:100vh;
   background:var(--bg);
   color:var(--text);
   font-family:var(--font-body);
   overflow-x:hidden;
-  max-width:calc(100vh * 16 / 9);   /* 16:9 based on viewport height */
-  width:100%;
-  margin:0 auto;
-  box-shadow:0 0 60px rgba(0,0,0,.6);
+  width:1520px;         /* design width — JS zoom scales this to fit viewport */
+  box-shadow:0 0 40px rgba(0,0,0,.5);
 }
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -113,7 +111,7 @@ body{
 .kpi-bar-fill{height:100%;border-radius:1px;transition:width .6s}
 
 /* ═══════════════════════════════════════════ LAYOUT */
-.main{display:grid;grid-template-columns:1fr 320px;gap:0;align-items:start}
+.main{display:grid;grid-template-columns:1fr 340px;gap:0;align-items:start}
 .col-main{padding:12px}
 /* Side panel sticks in viewport while main content scrolls */
 .col-side{background:var(--s1);border-left:1px solid var(--b1);padding:12px;
@@ -1963,6 +1961,16 @@ function tick(){
 setInterval(tick,1000);tick();
 
 // Made by Ninef Yousif
+
+// ── Auto-scale: fit the 1520px design width to the actual viewport ───────────
+// Uses CSS zoom (affects layout, unlike transform). Cap at 1.0 so it never
+// enlarges beyond design size on very wide screens.
+function fitViewport(){
+  const scale = Math.min(1, window.innerWidth / 1520);
+  document.body.style.zoom = scale;
+}
+fitViewport();
+window.addEventListener('resize', fitViewport);
 </script>
 </body>
 </html>
