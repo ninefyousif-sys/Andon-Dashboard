@@ -1,0 +1,33 @@
+# Temp Excel copies (not needed in repo)
+*_tmp.xlsm
+*_temp.xlsm
+*_fresh*.xlsm
+HOP_*.xlsm
+DT_*.xlsm
+
+# Old dashboard versions
+andon_body_*.html
+dashboard*.html
+index.html
+preview_labels.html
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Old scripts
+server.py
+streamlit_*.py
+auth_test.py
+
+# Bat files not needed for sharing
+START_*.bat
+STOP_*.vbs
+START_*.vbs
+RUN_TEMP.vbs
+SETUP.bat
+
+# Misc
+*.txt
+requirements_*.txt
+github_deploy/

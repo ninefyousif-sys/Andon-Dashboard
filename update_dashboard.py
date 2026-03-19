@@ -17,7 +17,7 @@ LOG     = os.path.join(WORK, "update_log.txt")
 
 # GitHub repo — set this to your repo path after cloning
 GITHUB_REPO = r"C:\Users\NYOUSIF\Desktop\AShop_Dashboard"  # same folder if repo is here
-GITHUB_ENABLED = False  # set True after 'git init' and GitHub remote is configured
+GITHUB_ENABLED = True   # git configured — pushes to github.com/ninefyousif-sys/Andon-Dashboard
 
 # Production calendar: WK12 D1 = Mon 16 Mar 2026 (reference anchor)
 WK12_MON = datetime.date(2026, 3, 16)
