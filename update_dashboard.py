@@ -8,6 +8,13 @@ Reads HOP + DT Excel files, updates HTML DAYS_DATA, pushes to GitHub
 import openpyxl, warnings, datetime, json, re, shutil, subprocess, sys, os
 warnings.filterwarnings('ignore')
 
+# ── Optional Snowflake import (skipped gracefully if not installed) ─────────────
+try:
+    import snowflake.connector
+    SNOWFLAKE_AVAILABLE = True
+except ImportError:
+    SNOWFLAKE_AVAILABLE = False
+
 # ── CONFIGURATION ──────────────────────────────────────────────────────────────
 HOP_SRC = r"C:\Users\NYOUSIF\OneDrive - Volvo Cars\A Shop Production SI and Supervisors - General\Hop Line Downtime\HOP New Downtime Breakdown.xlsm"
 DT_SRC  = r"C:\Users\NYOUSIF\OneDrive - Volvo Cars\A Shop Production SI and Supervisors - General\Downtime Tracker Logv6a.xlsm"
@@ -165,15 +172,85 @@ def read_day(hop_ws, dt_ws, wk_str, day_int):
                     'col': col, 'lbl': lbl
                 })
 
-    # Sort gantt by start time, keep only shift hours
-    gantt = sorted([g for g in gantt if '06:00' <= g['s'] <= '15:00'], key=lambda x: x['s'])
+    # Keep only shift hours, sort by duration DESC so critical events are never dropped
+    # then re-sort by start time for display — this way the top-40 always includes
+    # the longest stops (e.g. tool changer) even if they occur late in the shift
+    shift_gantt = [g for g in gantt if '06:00' <= g['s'] <= '15:00']
+    top_by_dur  = sorted(shift_gantt, key=lambda x: -x['sec'])[:40]   # top 40 by duration
+    gantt       = sorted(top_by_dur, key=lambda x: x['s'])             # re-sort by time for display
     return pbi, gantt
+
+# ── SNOWFLAKE: per-window production data ──────────────────────────────────────
+# Connects to VCCH.PRODUCTION_TRACKING.BODY_TRACKING
+# reg 13000 = BOL (entry), reg 19900 = Empty Skid (exit)
+# Timestamps are stored in US/Eastern (UTC-4/-5); we convert to Brussels CET/CEST
+# Cars traverse the shop in ~5h, so scan times appear 5h after production window start.
+# Windows shift: W1 prod 06-07 CET → scans ~11-12 CET, W8 prod 13:40-14:40 → scans ~19:00
+
+SNOWFLAKE_CFG = {
+    'account':   'volvocars',          # ← Volvo Snowflake account name
+    'user':      'ninef.yousif@volvocars.com',   # ← your Volvo email
+    'authenticator': 'externalbrowser',  # SSO login — opens browser on first run
+    'database':  'VCCH',
+    'schema':    'PRODUCTION_TRACKING',
+    'warehouse': 'COMPUTE_WH',          # ← check with Snowflake admin if different
+}
+
+# Hours in CET at which each production window's cars appear at Empty Skid scan point
+# Empirically verified: W1(06-07) → scan hr 11, W2(07-08) → 12, ... W8(13:40-14:40) → 18-19
+SCAN_HOURS_PER_WIN = [11, 12, 13, 14, 15, 16, 17, 18]  # one per window
+
+def get_production_from_snowflake(date_str):
+    """Query Snowflake for per-window BOL + Empty Skid counts."""
+    if not SNOWFLAKE_AVAILABLE:
+        log("Snowflake connector not installed — pip install snowflake-connector-python")
+        return None
+    try:
+        conn = snowflake.connector.connect(**SNOWFLAKE_CFG)
+        cursor = conn.cursor()
+        sql = f"""
+            SELECT "registrationPoint",
+                   HOUR(CONVERT_TIMEZONE('Europe/Brussels', "timestampRegistrationPoint")) AS cet_hr,
+                   COUNT(*) AS cars
+            FROM   VCCH.PRODUCTION_TRACKING.BODY_TRACKING
+            WHERE  DATE(CONVERT_TIMEZONE('Europe/Brussels', "timestampRegistrationPoint")) = '{date_str}'
+              AND  "registrationPoint" IN ('13000', '19900')
+              AND  HOUR(CONVERT_TIMEZONE('Europe/Brussels', "timestampRegistrationPoint")) BETWEEN 10 AND 20
+            GROUP BY 1, 2
+            ORDER BY 1, 2
+        """
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        conn.close()
+
+        bol_h_map = {r[1]: r[2] for r in rows if str(r[0]) == '13000'}
+        emp_h_map = {r[1]: r[2] for r in rows if str(r[0]) == '19900'}
+
+        # Map scan hours to 8 windows; include hour-19 cars in last window
+        bol_h = [bol_h_map.get(h, 0) for h in SCAN_HOURS_PER_WIN]
+        emp_h = [emp_h_map.get(h, 0) for h in SCAN_HOURS_PER_WIN]
+        bol_h[-1] += bol_h_map.get(19, 0)
+        emp_h[-1] += emp_h_map.get(19, 0)
+
+        bol_tot = sum(bol_h)
+        emp_tot = sum(emp_h)
+
+        if emp_tot == 0:
+            log(f"  Snowflake returned 0 Empty Skid scans for {date_str} — using STATIC_PROD")
+            return None
+
+        log(f"  Snowflake OK: BOL={bol_tot}  Empty={emp_tot}  windows={bol_h}")
+        return {'bol_h': bol_h, 'empty_h': emp_h, 'bol_tot': bol_tot, 'empty_tot': emp_tot}
+
+    except Exception as e:
+        log(f"  Snowflake error: {e}")
+        return None
 
 # ── BUILD DAYS_DATA JAVASCRIPT ─────────────────────────────────────────────────
 LABEL_MAP = {0:'Mon', 1:'Tue', 2:'Wed', 3:'Thu', 4:'Fri'}
 
-# BOL/Empty hourly data — these are static per day from Snowflake
-# In a full implementation, fetch from Snowflake. For now, keep last known values.
+# Static production data (used as fallback when Snowflake is unavailable)
+# Will be replaced by Snowflake data when SNOWFLAKE_AVAILABLE=True and creds are set
 STATIC_PROD = {
     '2026-03-10': {'bol_h':[8,10,9,10,4,9,11,7],  'empty_h':[10,9,9,10,3,8,10,8],  'bol_tot':70, 'empty_tot':71},
     '2026-03-11': {'bol_h':[10,9,10,10,10,10,11,3],'empty_h':[9,9,9,11,10,8,10,8],  'bol_tot':76, 'empty_tot':77},
@@ -190,7 +267,7 @@ def pbi_to_js(pbi):
 
 def gantt_to_js(gantt):
     items = []
-    for g in gantt[:25]:  # max 25 events to keep file size reasonable
+    for g in gantt[:40]:  # up to 40 events (sorted by duration DESC then time ASC)
         items.append(
             f"{{line:'{g['line']}',s:'{g['s']}',e:'{g['e']}',sec:{g['sec']},col:'{g['col']}',lbl:'{g['lbl']}'}}"
         )
@@ -200,9 +277,12 @@ def build_day_entry(date_str, wk_str, day_int, pbi, gantt, is_today=False):
     d = datetime.date.fromisoformat(date_str)
     day_name = LABEL_MAP[d.weekday()]
     label = f"{day_name} {d.day}-{d.strftime('%b')}"
-    prod = STATIC_PROD.get(date_str, {
-        'bol_h': [8]*8, 'empty_h': [8]*8, 'bol_tot': 80, 'empty_tot': 80
-    })
+    # Try Snowflake first for dates not in STATIC_PROD (gives real per-window OPR data)
+    prod = STATIC_PROD.get(date_str)
+    if not prod:
+        prod = get_production_from_snowflake(date_str)
+    if not prod:
+        prod = {'bol_h': [8]*8, 'empty_h': [8]*8, 'bol_tot': 80, 'empty_tot': 80}
     overtime = prod.get('overtime', False)
     ot_note  = prod.get('otNote', '')
 
@@ -293,7 +373,7 @@ def update():
             cmds = [
                 ['git', '-C', repo, 'add', 'body_shop_intelligence.html'],
                 ['git', '-C', repo, 'commit', '-m', f'Auto-update {today} 17:00'],
-                ['git', '-C', repo, 'push', '--set-upstream', 'origin', 'main'],
+                ['git', '-C', repo, 'push', 'origin', 'main'],
             ]
             for cmd in cmds:
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
