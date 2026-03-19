@@ -188,12 +188,12 @@ def read_day(hop_ws, dt_ws, wk_str, day_int):
 # Windows shift: W1 prod 06-07 CET → scans ~11-12 CET, W8 prod 13:40-14:40 → scans ~19:00
 
 SNOWFLAKE_CFG = {
-    'account':   'volvocars',          # ← Volvo Snowflake account name
-    'user':      'ninef.yousif@volvocars.com',   # ← your Volvo email
-    'authenticator': 'externalbrowser',  # SSO login — opens browser on first run
-    'database':  'VCCH',
-    'schema':    'PRODUCTION_TRACKING',
-    'warehouse': 'COMPUTE_WH',          # ← check with Snowflake admin if different
+    'account':       'VOLVOCARS-MANUFACTURINGANALYTICS',
+    'user':          '9413-APP-POWERBI-PRO-LICENSE-USER',
+    'authenticator': 'externalbrowser',   # SSO — same login as Volvo intranet
+    'database':      'VCCH',
+    'schema':        'PRODUCTION_TRACKING',
+    'warehouse':     'REPORTING',
 }
 
 # Hours in CET at which each production window's cars appear at Empty Skid scan point
@@ -259,6 +259,7 @@ STATIC_PROD = {
     '2026-03-16': {'bol_h':[9,12,5,11,12,8,12,9],  'empty_h':[12,12,10,12,9,10,11,9],'bol_tot':98,'empty_tot':104,'overtime':True,'otNote':'Shift ran until 16:38'},
     '2026-03-17': {'bol_h':[7,12,6,12,11,10,11,7], 'empty_h':[12,12,11,11,13,10,10,7],'bol_tot':80,'empty_tot':89},
     '2026-03-18': {'bol_h':[8,13,12,11,10,7,13,12], 'empty_h':[10,10,12,11,11,6,13,13],'bol_tot':86,'empty_tot':86},
+    '2026-03-19': {'bol_h':[9,8,10,10,4,10,8,8],   'empty_h':[10,11,12,10,5,10,13,10],'bol_tot':67,'empty_tot':81},
 }
 
 def pbi_to_js(pbi):
