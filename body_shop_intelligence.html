@@ -271,13 +271,7 @@ body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--f
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px">DATE</span>
       <select class="day-select" id="dayPicker" onchange="switchDay(this.value)">
-        <option value="2026-03-18">Wed 18-Mar</option>
-        <option value="2026-03-17">Tue 17-Mar</option>
-        <option value="2026-03-16">Mon 16-Mar ⏱ OT</option>
-        <option value="2026-03-13">Fri 13-Mar</option>
-        <option value="2026-03-12">Thu 12-Mar</option>
-        <option value="2026-03-11">Wed 11-Mar</option>
-        <option value="2026-03-10">Tue 10-Mar</option>
+        <!-- Populated dynamically from DAYS_DATA by initDayPicker() -->
       </select>
       <span class="day-badge" id="dayBadge"></span>
     </div>
@@ -829,7 +823,9 @@ const DAYS_DATA = {
 function adjJPH(carsArr){ return carsArr.map((c,i)=>+(c/(WIN_MINS[i]/60)).toFixed(1)); }
 
 // Active day state — switch via dropdown
-let activeDay = '2026-03-18';
+// Auto-detect: use isToday entry if it exists, otherwise most recent day
+let activeDay = Object.keys(DAYS_DATA).find(k => DAYS_DATA[k].isToday)
+             || Object.keys(DAYS_DATA).sort().pop();
 
 // 10-day Empty Skid production (BODY_TRACKING · reg 19900 = 998320 Empty Skid)
 // Numbers corrected vs user's "Daily Bodies to Paint" Power BI chart
@@ -1918,6 +1914,23 @@ function switchDay(dayKey){
   const staleNote = document.getElementById('gantt-day-note');
   if(staleNote) staleNote.remove();
 }
+
+// ── Build dropdown from DAYS_DATA (always reflects latest update) ────
+function initDayPicker(){
+  const picker = document.getElementById('dayPicker');
+  if(!picker) return;
+  picker.innerHTML = '';
+  const keys = Object.keys(DAYS_DATA).sort().reverse(); // newest first
+  keys.forEach(k => {
+    const d = DAYS_DATA[k];
+    const opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = d.label + (d.overtime ? ' ⏱ OT' : '');
+    if(k === activeDay) opt.selected = true;
+    picker.appendChild(opt);
+  });
+}
+initDayPicker();
 
 // Init BOL strip + KPI with default day
 updateBOLStrip(activeDay);
