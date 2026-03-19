@@ -53,7 +53,20 @@
   --font-mono:'IBM Plex Mono',monospace;
 }
 html{scroll-behavior:smooth}
-body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow-x:hidden}
+/* Outer page background */
+html{background:#020509;min-height:100vh}
+/* Dashboard constrained to 16:9 width, centred on the page */
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  overflow-x:hidden;
+  max-width:calc(100vh * 16 / 9);   /* 16:9 based on viewport height */
+  width:100%;
+  margin:0 auto;
+  box-shadow:0 0 60px rgba(0,0,0,.6);
+}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--b3);border-radius:3px}
