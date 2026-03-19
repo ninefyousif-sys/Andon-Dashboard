@@ -436,7 +436,7 @@ canvas{image-rendering:auto}
 
   <!-- EQUIPMENT ALARM MAP -->
   <div class="section">
-    <div class="sec-title">Production Downtime — <span id="alarmDateLabel">WK12 Day 3 · 18-Mar-2026</span> · Source: Power BI manual entry only</div>
+    <div class="sec-title">Production Downtime — <span id="alarmDateLabel">—</span> · Source: Power BI manual entry only</div>
     <div id="alarmDayWarning" style="display:none"></div>
     <div class="flow-wrap">
       <div class="biw-layout" id="flow-map"></div>
@@ -856,7 +856,8 @@ const DAYS_DATA = {
       {line:'HOP - 198',s:'14:28',e:'14:30',sec:120,col:'#a880e0',lbl:'Production · Online Repair(s)'}]},
   '2026-03-19':{label:'Thu 19-Mar',overtime:false,isToday:true,
     // Real data from VCCH.PRODUCTION_TRACKING.BODY_TRACKING — Snowflake query
-    bol_h:[9,8,10,10,4,10,8,11], empty_h:[10,11,12,10,5,10,13,10],
+    // Snowflake prod-time query (DATEADD -5h) verified exact per-window
+    bol_h:[9,8,10,10,8,10,8,7], empty_h:[10,11,13,9,11,13,12,2],
     bol_tot:70, empty_tot:81,
     // WK12 D4 · Equipment DT only · 378 min
     pbi:{'231':127.0,'138':60.0,'287':57.0,'235':56.0,'237':42.0,'285':22.0,'236':8.0,'286':5.0,'198':1.0},
@@ -1355,7 +1356,7 @@ function buildWaterfall(){
     }
   });
 }
-buildWaterfall();
+// waterfall canvas removed — function kept but not called at startup
 
 // ════════════════════════════════════════════════════════════════════
 // LOSS TYPE DONUT
@@ -1981,34 +1982,33 @@ function switchDay(dayKey){
   const sub = document.querySelector('.hdr-title p');
   if(sub) sub.textContent = `${d.label} · DAY SHIFT 06:00–14:40${d.overtime?' · ⏱ OVERTIME':''}`;
 
-  // ── Update ALL section titles with selected day ─────────────────────
+  // ── Update line status title ──────────────────────────────────────
   const lsTitle = document.getElementById('line-status-title');
   if(lsTitle) lsTitle.textContent = `Line Status · ${d.label}`;
-  const rcTitle = document.getElementById('root-cause-title');
-  if(rcTitle) rcTitle.textContent = `Top Root Cause Faults · ${d.label} · Breaks & False Alarms excluded`;
-  const ftTitle = document.getElementById('fault-type-title');
-  if(ftTitle) ftTitle.textContent = `Fault Type Breakdown · ${d.label}`;
-  const hasPBI = Object.keys(d.pbi||{}).length > 0;
-  const totalDT = hasPBI ? Math.round(Object.values(d.pbi).reduce((s,v)=>s+v,0)) : 0;
-  const ftSub = document.getElementById('fault-type-sub');
-  if(ftSub) ftSub.textContent = hasPBI
-    ? `${totalDT} min total · Equipment stops only (Blocked/Starved excluded)`
-    : `No downtime data loaded for ${d.label}`;
 
   // ── 3. Production strip & KPI bar ─────────────────────────────────
   try { updateBOLStrip(dayKey); } catch(e){ console.error('BOL strip error:',e); }
   try { updateKPIBar(dayKey);   } catch(e){ console.error('KPI bar error:',e); }
 
-  // ── 4. Alarm section note ─────────────────────────────────────────
+  // ── 4. Update ALL day-dependent labels ───────────────────────────
   const alarmWarn = document.getElementById('alarmDayWarning');
-  const alarmLbl  = document.getElementById('alarmDateLabel');
-  if(alarmWarn && alarmLbl){
-    const hasPBI = Object.keys(d.pbi||{}).length > 0;
-    alarmWarn.style.display = hasPBI ? 'none' : 'block';
-    alarmLbl.textContent = hasPBI
-      ? `· ${d.label} (live downtime)`
-      : `· 18-Mar-2026 data shown — ${d.label} downtime not yet in files`;
-  }
+  if(alarmWarn) alarmWarn.style.display = 'none';
+
+  // "Production Downtime — {day}" label
+  const alarmLbl = document.getElementById('alarmDateLabel');
+  if(alarmLbl) alarmLbl.textContent = d.label;
+
+  // Root cause + production downtime section sec-titles
+  const rcTitle = document.getElementById('root-cause-title');
+  if(rcTitle) rcTitle.textContent = `Top Root Cause Faults · ${d.label} · Breaks & False Alarms excluded`;
+  const ftTitle = document.getElementById('fault-type-title');
+  if(ftTitle) ftTitle.textContent = `Fault Type Breakdown · ${d.label}`;
+  const _dayHasPBI = Object.keys(d.pbi||{}).length > 0;
+  const _dayDT = _dayHasPBI ? Math.round(Object.values(d.pbi).reduce((s,v)=>s+v,0)) : 0;
+  const ftSub = document.getElementById('fault-type-sub');
+  if(ftSub) ftSub.textContent = _dayHasPBI
+    ? `${_dayDT} min total · Equipment stops only (Blocked/Starved excluded)`
+    : `No downtime data loaded for ${d.label}`;
 
   // ── 5. Remove stale day-note ──────────────────────────────────────
   const staleNote = document.getElementById('gantt-day-note');

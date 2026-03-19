@@ -61,27 +61,25 @@ WIN_SCAN_RANGES = [
 ]
 
 def get_production(date_str):
-    win_cases = '\n'.join([
-        f"      WHEN TO_TIME(CONVERT_TIMEZONE('Europe/Brussels', \"timestampRegistrationPoint\")) "
-        f"BETWEEN '{s}:00' AND '{e}:59' THEN {i+1}"
-        for i,(lbl,s,e) in enumerate(WIN_SCAN_RANGES)
-    ])
     sql = f"""
         SELECT "registrationPoint",
                CASE
-{win_cases}
-               END AS window_num,
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '06:00:00' AND '06:59:59' THEN 1
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '07:00:00' AND '07:59:59' THEN 2
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '08:10:00' AND '09:09:59' THEN 3
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '09:10:00' AND '09:59:59' THEN 4
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '10:40:00' AND '11:39:59' THEN 5
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '11:40:00' AND '12:29:59' THEN 6
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '12:40:00' AND '13:39:59' THEN 7
+                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '13:40:00' AND '14:39:59' THEN 8
+               END AS win,
                COUNT(*) AS cars
         FROM   VCCH.PRODUCTION_TRACKING.BODY_TRACKING
-        WHERE  DATE(CONVERT_TIMEZONE('Europe/Brussels',
-                    "timestampRegistrationPoint")) = '{date_str}'
-          AND  "registrationPoint" IN ('13000', '19900')
-          AND  TO_TIME(CONVERT_TIMEZONE('Europe/Brussels',
-                    "timestampRegistrationPoint"))
-               BETWEEN '11:00:00' AND '19:59:59'
-        GROUP BY 1, 2
-        HAVING window_num IS NOT NULL
-        ORDER BY 1, 2
+        WHERE  DATE(CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint")) = '{date_str}'
+          AND  "registrationPoint" IN ('13000','19900')
+        GROUP BY 1,2
+        HAVING win IS NOT NULL
+        ORDER BY 1,2
     """
     cursor = conn.cursor()
     cursor.execute(sql)
@@ -93,7 +91,7 @@ def get_production(date_str):
     bol_h = [bol.get(i+1, 0) for i in range(8)]
     emp_h = [emp.get(i+1, 0) for i in range(8)]
 
-    bol_tot = sum(bol_h)
+        bol_tot = sum(bol_h)
     emp_tot = sum(emp_h)
     print(f"  {date_str}: BOL={bol_tot} Empty={emp_tot}  windows={emp_h}")
     return bol_h, emp_h, bol_tot, emp_tot
