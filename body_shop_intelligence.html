@@ -613,7 +613,7 @@ function oprAvg(oprArr) {
 
 const DAYS_DATA = {
   '2026-03-11':{label:'Wed 11-Mar',overtime:false,
-    bol_h:[10,9,10,10,10,10,11,3], empty_h:[9,9,9,11,10,8,10,8],
+    bol_h:[10,9,10,10,3,10,10,14], empty_h:[9,9,9,11,3,10,8,18],
     bol_tot:76, empty_tot:77,
     // WK11 D3 · Equipment DT only · 172 min
     pbi:{'231':50.0,'155':39.0,'197':19.0,'236':16.0,'160':13.0,'198':13.0,'233':6.0,'256':5.0,'235':5.0,'285':4.0,'286':2.0},
@@ -651,8 +651,8 @@ const DAYS_DATA = {
       {line:'HOP - 198',s:'12:45',e:'12:46',sec:60,col:'#a880e0',lbl:'Production · Operator Overcycle'},
       {line:'W&G -160',s:'13:15',e:'13:23',sec:480,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Missing Weld'}]},
   '2026-03-12':{label:'Thu 12-Mar',overtime:false,
-    bol_h:[10,8,9,10,11,9,10,6], empty_h:[10,10,6,10,12,9,5,11],
-    bol_tot:76, empty_tot:75,
+    bol_h:[10,8,9,10,2,11,9,16], empty_h:[10,10,6,10,2,12,9,16],
+    bol_tot:75, empty_tot:75,
     // WK11 D4 · Equipment DT only · 332 min
     pbi:{'231':143.0,'160':48.0,'237':38.0,'236':26.0,'233':25.0,'197':18.0,'138':13.0,'286':9.0,'235':8.0,'198':4.0},
     gantt:[{line:'W&G -160',s:'06:00',e:'06:25',sec:1500,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Sensor Faults'},
@@ -692,7 +692,7 @@ const DAYS_DATA = {
       {line:'RWHRH-237 SPA2',s:'12:40',e:'12:46',sec:360,col:'#0075be',lbl:'Equipment Issues/ Technical  · Rivet Fault'},
       {line:'DOOR-197',s:'13:20',e:'13:30',sec:600,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Perceptron Fault'}]},
   '2026-03-13':{label:'Fri 13-Mar',overtime:false,
-    bol_h:[11,11,10,8,10,7,10,7], empty_h:[11,10,8,9,7,7,12,8],
+    bol_h:[11,11,10,8,3,10,7,17], empty_h:[11,10,8,9,3,7,7,20],
     bol_tot:77, empty_tot:75,
     // WK11 D5 · Equipment DT only · 381 min
     pbi:{'231':160.0,'198':64.0,'287':42.0,'197':40.0,'235':22.0,'233':22.0,'286':12.0,'236':6.0,'237':6.0,'285':5.0,'234':2.0},
@@ -737,8 +737,8 @@ const DAYS_DATA = {
       {line:'Dash-231 SPA2',s:'13:55',e:'14:05',sec:600,col:'#0075be',lbl:'Equipment Issues/ Technical  · Glue Optimization'},
       {line:'FF-234 SPA2',s:'13:56',e:'13:58',sec:120,col:'#0075be',lbl:'Equipment Issues/ Technical  · Tip Dress Faults'}]},
   '2026-03-16':{label:'Mon 16-Mar',overtime:true,otNote:'Shift ran until 16:38',
-    bol_h:[9,12,5,11,12,8,12,9], empty_h:[12,12,10,12,9,10,11,9],
-    bol_tot:98, empty_tot:104,
+    bol_h:[9,12,5,11,4,12,8,21], empty_h:[12,12,10,12,3,9,10,20],
+    bol_tot:82, empty_tot:88,
     // WK12 D1 · Equipment DT only · 300 min
     pbi:{'231':84.0,'285':53.0,'258':27.0,'287':24.0,'198':22.0,'197':20.0,'232':14.0,'138':12.0,'236':11.0,'234':11.0,'233':9.0,'257':7.0,'286':6.0},
     gantt:[{line:'HOP - 198',s:'06:00',e:'06:14',sec:840,col:'#a880e0',lbl:'Equipment Issues/ Technical  · Transport Faults'},
@@ -782,8 +782,8 @@ const DAYS_DATA = {
       {line:'DOOR-197',s:'14:20',e:'14:30',sec:600,col:'#5a7590',lbl:'Equipment Issues/ Technical  · Bolt Fault'},
       {line:'287030-060 Tailgate In',s:'14:36',e:'15:00',sec:1440,col:'#d07018',lbl:'Production · Tip Dress Faults'}]},
   '2026-03-17':{label:'Tue 17-Mar',overtime:false,
-    bol_h:[7,12,6,12,11,10,11,7], empty_h:[12,12,11,11,13,10,10,7],
-    bol_tot:80, empty_tot:89,
+    bol_h:[7,12,6,12,3,11,10,18], empty_h:[12,12,11,11,3,13,10,17],
+    bol_tot:79, empty_tot:89,
     // WK12 D2 · Equipment DT only · 113 min
     pbi:{'231':28.0,'233':19.0,'286':13.0,'198':11.0,'138':10.0,'287':9.0,'236':9.0,'256':8.0,'252':4.0,'285':2.0},
     gantt:[{line:'FWHRH-233 SPA2',s:'06:03',e:'06:08',sec:300,col:'#0075be',lbl:'Equipment Issues/ Technical  · Glue Heating'},
@@ -817,7 +817,7 @@ const DAYS_DATA = {
       {line:'HOP - 198',s:'14:21',e:'14:22',sec:60,col:'#a880e0',lbl:'Production · Operator Overcycle'},
       {line:'HOP - 198',s:'14:32',e:'14:33',sec:60,col:'#a880e0',lbl:'Production · Operator Overcycle'}]},
   '2026-03-18':{label:'Wed 18-Mar',overtime:false,
-    bol_h:[8,13,12,11,10,7,13,12], empty_h:[10,10,12,11,11,6,13,13],
+    bol_h:[8,13,10,13,4,8,9,21], empty_h:[10,10,10,13,3,11,8,21],
     bol_tot:86, empty_tot:86,
     // WK12 D3 · Equipment DT only · 429 min
     pbi:{'285':156.0,'287':95.0,'155':54.0,'236':37.0,'198':20.0,'286':11.0,'237':11.0,'235':10.0,'138':9.0,'231':8.0,'232':6.0,'258':5.0,'233':4.0,'234':3.0},
@@ -863,8 +863,8 @@ const DAYS_DATA = {
       {line:'HOP - 198',s:'14:28',e:'14:30',sec:120,col:'#a880e0',lbl:'Production · Online Repair(s)'}]},
   '2026-03-19':{label:'Thu 19-Mar',overtime:false,isToday:true,
     // Real data from VCCH.PRODUCTION_TRACKING.BODY_TRACKING — Snowflake query
-    bol_h:[9,8,10,10,4,10,8,8], empty_h:[10,11,12,10,5,10,13,10],
-    bol_tot:67, empty_tot:81,
+    bol_h:[9,8,10,10,4,10,8,11], empty_h:[10,11,12,10,5,10,13,10],
+    bol_tot:70, empty_tot:81,
     // WK12 D4 · Equipment DT only · 378 min
     pbi:{'231':127.0,'138':60.0,'287':57.0,'235':56.0,'237':42.0,'285':22.0,'236':8.0,'286':5.0,'198':1.0},
     gantt:[{line:'RWHLH-235 SPA2',s:'06:01',e:'06:06',sec:300,col:'#0075be',lbl:'Equipment Issues/ Technical  · Rivet Fault'},
