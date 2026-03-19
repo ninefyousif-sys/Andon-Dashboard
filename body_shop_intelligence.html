@@ -530,11 +530,13 @@ const AREA_CT = { UnB:286, UpB:187, DoorSA:223, TailgatePA:184, WG:257, DoorLine
 // 287:     5 racks min × 8 tailgates = 40 cars → 40 × 270s / 60 = 180 min
 // 198:     Door→Manual buffer 2–9 positions → 2 × 270s / 60 = 9 min
 const BUFFER_CFG = {
-  // ── Source: SSIT buffer table + main line diagram ──────────────────
+  // ── Source: SSIT buffer table + flow map diagram (MAX values from production picture) ────
+  // MAX buffer times verified from diagram: 285=140min, 286=140min, 287=170min
+  // Min times: 285/286 min=16 cars × 274s/60=73min, 287 min=40 cars × 270s/60=180min
   // HOP area doors/tailgate
-  '285':{bufMin:16, bufMax:40, impactCT:274, note:'2–5 racks doors (8/rack)'},
-  '286':{bufMin:16, bufMax:40, impactCT:274, note:'shared door buffer'},
-  '287':{bufMin:40, bufMax:56, impactCT:270, note:'5–7 racks tailgate (8/rack)'},
+  '285':{bufMin:16, bufMax:30, impactCT:274, note:'Doors LH · Min 73min (16 cars) · Max 140min (30 cars) at CT 274s'},
+  '286':{bufMin:16, bufMax:30, impactCT:274, note:'Doors RH · Min 73min (16 cars) · Max 140min (30 cars) at CT 274s'},
+  '287':{bufMin:40, bufMax:38, impactCT:270, note:'Tailgate · Min 180min (40 pieces) · Max 170min (38 pieces) at CT 270s'},
   // Main line — from diagram: buffer AFTER each station
   '138':{bufMin:2,  bufMax:16, impactCT:286, note:'MARR-138→Stud: 2–16 pos'},
   '154':{bufMin:2,  bufMax:6,  impactCT:187, note:'Framing→Respot: 2–6 pos'},
@@ -542,6 +544,16 @@ const BUFFER_CFG = {
   '160':{bufMin:1,  bufMax:3,  impactCT:274, note:'W&G→Door: 1–3 pos (⚠ very small)'},
   '197':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual: 2–9 pos'},
   '198':{bufMin:2,  bufMax:9,  impactCT:270, note:'Door→Manual: 2–9 pos'},
+  // Underbody sub-assembly — MAX buffer times from flow map diagram:
+  // Left→right order between stations: 69m · 79m · 79m · 79m · 33m · 33m · 33m
+  '231':{bufMin:2,  bufMax:14, impactCT:286, note:'DASH-231 · Buffer max 69min (14 cars at CT 286s)'},
+  '236':{bufMin:2,  bufMax:16, impactCT:286, note:'RFC-236  · Buffer max 79min (16 cars at CT 286s)'},
+  '235':{bufMin:2,  bufMax:16, impactCT:286, note:'RWHLH-235 · Buffer max 79min (16 cars at CT 286s)'},
+  '237':{bufMin:2,  bufMax:16, impactCT:286, note:'RWHRH-237 · Buffer max 79min (16 cars at CT 286s)'},
+  '232':{bufMin:2,  bufMax:7,  impactCT:286, note:'FWHLH-232 · Buffer max 33min (7 cars at CT 286s)'},
+  '233':{bufMin:2,  bufMax:7,  impactCT:286, note:'FWHRH-233 · Buffer max 33min (7 cars at CT 286s)'},
+  '234':{bufMin:2,  bufMax:7,  impactCT:286, note:'FF-234    · Buffer max 33min (7 cars at CT 286s)'},
+  '258':{bufMin:2,  bufMax:7,  impactCT:286, note:'BSO-258   · Buffer ~33min'},
 };
 
 // Helper: cars actually lost after buffer absorbs what it can (uses min buffer = worst case)
@@ -1579,13 +1591,28 @@ function buildFlowMap(){
   }
 
   const ar=`<span class="farrow" style="flex-shrink:0">→</span>`;
-  // Buffer indicator arrow: shows Min/Max positions between stations
-  // Colour: green=large buffer, amber=medium, red=very small (≤3)
-  function bufAr(min, max){
-    const col = max<=3?'#f04858':max<=6?'#f0b828':max<=9?'#d07018':'#25c878';
+  // Buffer indicator arrow: shows min–max buffer time in minutes (from BUFFER_CFG when available)
+  // Colour: green=large buffer (>60min), amber=medium (20-60min), red=small (≤20min)
+  function bufAr(stnCode_or_minCars, maxCars){
+    // If called with a station code string, look up BUFFER_CFG for times
+    let minMin, maxMin, col, tooltip;
+    if(typeof stnCode_or_minCars === 'string' && BUFFER_CFG[stnCode_or_minCars]){
+      const b = BUFFER_CFG[stnCode_or_minCars];
+      minMin = Math.round(b.bufMin * b.impactCT / 60);
+      maxMin = Math.round(b.bufMax * b.impactCT / 60);
+      tooltip = b.note;
+    } else {
+      // Legacy: called with (minCars, maxCars) — keep working as before
+      const minC = stnCode_or_minCars, maxC = maxCars;
+      minMin = Math.round(minC * 286 / 60);  // approximate at UnB CT
+      maxMin = Math.round(maxC * 286 / 60);
+      tooltip = `Buffer ${minC}–${maxC} pos · ~${minMin}–${maxMin} min`;
+    }
+    col = maxMin<=20?'#f04858':maxMin<=60?'#f0b828':'#25c878';
+    const label = maxMin>=60 ? `${Math.round(maxMin/60*10)/10}h` : `${maxMin}m`;
     return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;margin:0 1px;cursor:default"
-                 title="Buffer ${min}–${max} positions · min=${min}×CT min = protection time">
-      <div style="font-size:7px;font-weight:700;color:${col};line-height:1;white-space:nowrap">${min}/${max}</div>
+                 title="${tooltip} · min ${minMin}min / max ${maxMin}min">
+      <div style="font-size:7px;font-weight:700;color:${col};line-height:1;white-space:nowrap">${label}</div>
       <div style="font-size:10px;color:var(--dim)">→</div>
     </div>`;
   }
@@ -1610,20 +1637,21 @@ function buildFlowMap(){
       ${subNode('233','FWHRH-233',0,'Robot/Sensor')}
       ${subNode('234','FF-234',0,'Tip Dress')}
     </div>
-    <div style="margin-top:3px;font-size:9px;color:var(--dim)">Sub-total: <strong style="color:var(--amber-l)">${[236,237,235,232,233,234,258,138].reduce((s,id)=>s+pbi(String(id)),0)} min</strong> · Buffer absorbs if &lt; buffer capacity${hasPBI?'':' · No downtime data for this day'}</div>
+    <div style="margin-top:3px;font-size:9px;color:var(--dim)">Sub-total: <strong style="color:var(--amber-l)">${[236,237,235,232,233,234,258,138].reduce((s,id)=>s+pbi(String(id)),0)} min</strong>
+      · Buffer capacity: <strong style="color:var(--green-l)">33–69 min MAX</strong> · Absorbed unless stop exceeds buffer capacity${hasPBI?'':' · No downtime data for this day'}</div>
   </div>
 
   <!-- ── ROW 3: MAIN PRODUCTION FLOW ── -->
   <div style="margin-bottom:8px">
     <div style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">→ MAIN PRODUCTION FLOW (BOL → Empty Skid)</div>
     <div class="flow-row" style="flex-wrap:wrap;gap:2px 2px">
-      ${fNode('138','MARR-138','MAIN LINE',0,true)}${bufAr(2,16)}
+      ${fNode('138','MARR-138','MAIN LINE',0,true)}${bufAr('138')}
       ${fNode('139','139 Stud','UNDERBODY',0,true)}${bufAr(2,6)}
-      ${fNode('154','154 Framing','UPPERBODY',0,true)}${bufAr(2,6)}
+      ${fNode('154','154 Framing','UPPERBODY',0,true)}${bufAr('154')}
       ${fNode('resp','Respot','UPPERBODY',0,true)}${bufAr(2,6)}
-      ${fNode('155','155 Roof','UPPERBODY',0,true)}${bufAr(2,17)}
-      ${fNode('160','160 W&G','HANG ON PT',0,true)}${bufAr(1,3)}
-      ${fNode('197','197 Door','HANG ON PT',0,true)}${bufAr(2,9)}
+      ${fNode('155','155 Roof','UPPERBODY',0,true)}${bufAr('155')}
+      ${fNode('160','160 W&G','HANG ON PT',0,true)}${bufAr('160')}
+      ${fNode('197','197 Door','HANG ON PT',0,true)}${bufAr('197')}
       ${fNode('198','198 Manual','HANG ON PT',0,true)}
     </div>
   </div>
@@ -1636,7 +1664,8 @@ function buildFlowMap(){
       ${fNode('286','286 Door R','HANG ON PT',0,false)}${ar}
       ${fNode('287','287 Tailgate','HANG ON PT',0,false)}
     </div>
-    <div style="margin-top:3px;font-size:9px;color:var(--dim)">Sub-total: <strong style="color:var(--crit)">${[285,286,287].reduce((s,id)=>s+pbi(String(id)),0)} min</strong>${hasPBI?' · HOP source: downtime file':' · No downtime data for this day'}</div>
+    <div style="margin-top:3px;font-size:9px;color:var(--dim)">Sub-total: <strong style="color:var(--crit)">${[285,286,287].reduce((s,id)=>s+pbi(String(id)),0)} min</strong>
+      · Buffer MAX: <span style="color:var(--amber-l)">Doors 140min · Tailgate 170min</span> · Exceeds buffer = direct output loss${hasPBI?'':' · No data'}</div>
   </div>
 
   <!-- ── SHOP CAPACITY INFO ── -->
