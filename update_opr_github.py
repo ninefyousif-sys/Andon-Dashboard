@@ -13,15 +13,33 @@ import snowflake.connector
 DASH = 'body_shop_intelligence.html'
 
 # ── Snowflake connection from GitHub Secrets ─────────────────────────────────
-conn = snowflake.connector.connect(
-    account   = os.environ['SNOWFLAKE_ACCOUNT'],
-    user      = os.environ['SNOWFLAKE_USER'],
-    password  = os.environ['SNOWFLAKE_TOKEN'],
-    role      = os.environ.get('SNOWFLAKE_ROLE', ''),
-    warehouse = os.environ.get('SNOWFLAKE_WAREHOUSE', 'REPORTING'),
-    database  = 'VCCH',
-    schema    = 'PRODUCTION_TRACKING',
-)
+# Uses private key if SNOWFLAKE_PRIVATE_KEY secret exists, else falls back to token
+_pk_pem = os.environ.get('SNOWFLAKE_PRIVATE_KEY', '')
+if _pk_pem:
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key, Encoding, PrivateFormat, NoEncryption
+    from cryptography.hazmat.backends import default_backend
+    _pk = load_pem_private_key(_pk_pem.encode(), password=None, backend=default_backend())
+    _pk_der = _pk.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption())
+    conn = snowflake.connector.connect(
+        account     = os.environ['SNOWFLAKE_ACCOUNT'],
+        user        = os.environ['SNOWFLAKE_USER'],
+        private_key = _pk_der,
+        role        = os.environ.get('SNOWFLAKE_ROLE', ''),
+        warehouse   = os.environ.get('SNOWFLAKE_WAREHOUSE', 'REPORTING'),
+        database    = 'VCCH',
+        schema      = 'PRODUCTION_TRACKING',
+    )
+else:
+    # Fallback: JWT token (works until June 2026)
+    conn = snowflake.connector.connect(
+        account   = os.environ['SNOWFLAKE_ACCOUNT'],
+        user      = os.environ['SNOWFLAKE_USER'],
+        password  = os.environ['SNOWFLAKE_TOKEN'],
+        role      = os.environ.get('SNOWFLAKE_ROLE', ''),
+        warehouse = os.environ.get('SNOWFLAKE_WAREHOUSE', 'REPORTING'),
+        database  = 'VCCH',
+        schema    = 'PRODUCTION_TRACKING',
+    )
 
 # ── Date helpers ──────────────────────────────────────────────────────────────
 def last_7_working_days():

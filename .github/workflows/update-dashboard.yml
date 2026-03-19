@@ -25,7 +25,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install snowflake-connector-python
+        run: pip install snowflake-connector-python cryptography
 
       - name: Update OPR data from Snowflake
         env:

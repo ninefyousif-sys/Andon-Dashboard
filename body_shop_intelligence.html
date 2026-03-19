@@ -397,7 +397,7 @@ canvas{image-rendering:auto}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div class="card">
         <div class="card-title">Production Loss Waterfall — Empty Skid vs Target 102</div>
-        <div class="card-sub">HOP area (285/286/287/198) = direct loss (CT 270s) · UB/UPB = buffer-absorbed · hover for detail</div>
+        <div class="card-sub">Only DT-file equipment stops shown · HOP exceeds buffer = direct loss · hover bars for detail</div>
         <div class="chart-canvas-wrap md"><canvas id="waterfallChart"></canvas></div>
       </div>
       <div class="card">
@@ -1290,37 +1290,33 @@ function buildWaterfall(){
   const ubTotalMin = UB_IDS.reduce((s,id)=>s+(p[id]||0),0);
   const ubAbsorbedEq = Math.round(ubTotalMin/(AREA_CT.UnB/60));
 
-  // Cap direct loss at actual
-  const directCars = Math.min(Math.round(hopDirectCars), totalLost);
-  const otherLost  = Math.max(0, totalLost - directCars);
+  // Only show what the Downtime file explains — no "Other" category
+  const directCars = Math.round(hopDirectCars);
 
   const hopDetailStr = hopDetail
     .filter(h=>h.dtMin>0)
     .map(h=>` ${h.name}: ${h.dtMin}m → ${h.exceeded ? '⚠ exceeds buf ('+h.bufMin+'m) = ~'+h.cars+' cars lost' : '✓ within buffer ('+h.bufMin+'m)'}`)
     .join('\n');
   const ubNote = ubTotalMin>0
-    ? `Buffer-absorbed UB/UpB: ${ubTotalMin} min (~${ubAbsorbedEq} car-eq) — large buffer, no direct loss`
+    ? `Buffer-absorbed UB/UpB: ${ubTotalMin} min (~${ubAbsorbedEq} car-eq) — no direct impact`
     : '';
 
-  // Build waterfall steps
+  // Build waterfall — Target → [HOP direct loss if any] → Actual
+  // Gap between explained losses and actual is intentionally not shown (not in DT files)
   let cur = TARGET;
   const steps = [{lbl:'Target\n'+TARGET, range:[0,TARGET], col:'rgba(0,117,190,.8)',
                   loss:0, type:'target'}];
 
   if(directCars > 0){
-    steps.push({lbl:`HOP Loss\n−${directCars}`,
-                range:[cur-directCars, cur], col:'rgba(255,26,46,.85)',
-                loss:directCars, type:'direct', hopDetail:hopDetailStr});
-    cur -= directCars;
+    const clampedLoss = Math.min(directCars, TARGET - ACTUAL);
+    steps.push({lbl:`HOP Direct\n−${clampedLoss}`,
+                range:[cur-clampedLoss, cur], col:'rgba(255,26,46,.85)',
+                loss:clampedLoss, type:'direct', hopDetail:hopDetailStr});
+    cur -= clampedLoss;
   }
-  if(otherLost > 0){
-    steps.push({lbl:`Other\n−${otherLost}`,
-                range:[cur-otherLost, cur], col:'rgba(90,117,144,.7)',
-                loss:otherLost, type:'other'});
-    cur -= otherLost;
-  }
+  // Actual bar always anchored at 0 → ACTUAL (gap to cur is visual, not labelled)
   steps.push({lbl:`Actual\n${ACTUAL}`, range:[0,ACTUAL], col:'rgba(0,153,158,.85)',
-              loss:0, type:'actual', ubNote});
+              loss:0, type:'actual', ubNote, gap: cur - ACTUAL});
 
   const ymin = Math.max(0, ACTUAL - 8);
   new Chart(ctx,{
@@ -1347,13 +1343,11 @@ function buildWaterfall(){
               if(s.type==='target') lines.push(` Daily target: ${s.range[1]} cars`);
               else if(s.type==='actual'){
                 lines.push(` Actual output: ${s.range[1]} cars (${Math.round(s.range[1]/TARGET*100)}% of target)`);
+                if(s.gap>0) lines.push(` Gap of ${s.gap} cars not in DT files (startup losses, quality, overcycle)`);
                 if(s.ubNote) lines.push(` ↳ ${s.ubNote}`);
               } else if(s.type==='direct'){
                 lines.push(` HOP buffer-exceeded loss: −${s.loss} cars`);
                 if(s.hopDetail) s.hopDetail.split('\n').forEach(l=>l&&lines.push(l));
-              } else {
-                lines.push(` Other factors: −${s.loss} cars`);
-                lines.push(` (startup, quality, minor stops, overcycle)`);
               }
               return lines;
             } catch(e){ return ''; }

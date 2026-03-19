@@ -32,5 +32,7 @@ SETUP.bat
 requirements_*.txt
 github_deploy/
 
-# Snowflake credentials — NEVER commit this file
+# Snowflake credentials — NEVER commit these files
 snowflake_credentials.json
+snowflake_rsa_key.p8
+snowflake_rsa_key.pub

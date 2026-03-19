@@ -193,16 +193,27 @@ def _load_snowflake_cfg():
     try:
         with open(_CREDS_FILE, encoding='utf-8') as f:
             c = json.load(f)
-        return {
+        cfg = {
             'account':   c['account'],
             'user':      c['user'],
-            'password':  c['password'],
             'role':      c.get('role', ''),
             'database':  c.get('database', 'VCCH'),
             'schema':    'PRODUCTION_TRACKING',
             'warehouse': c.get('warehouse', 'REPORTING'),
         }
+        # Key-pair auth (preferred — never expires)
+        if 'private_key_file' in c:
+            from cryptography.hazmat.primitives.serialization import load_pem_private_key
+            from cryptography.hazmat.backends import default_backend
+            with open(c['private_key_file'], 'rb') as kf:
+                pk = load_pem_private_key(kf.read(), password=None, backend=default_backend())
+            from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
+            cfg['private_key'] = pk.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption())
+        else:
+            cfg['password'] = c['password']   # fallback: token/password
+        return cfg
     except Exception as e:
+        log(f"  Snowflake creds load error: {e}")
         return None
 
 SNOWFLAKE_CFG = _load_snowflake_cfg()  # None if file missing
