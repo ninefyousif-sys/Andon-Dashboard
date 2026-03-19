@@ -399,28 +399,20 @@ canvas{image-rendering:auto}
     </div>
   </div>
 
-  <!-- ROOT CAUSE SIGNALS — REAL Power BI operator-entered faults today -->
+  <!-- ROOT CAUSE SIGNALS — built dynamically from DAYS_DATA[activeDay].gantt -->
   <div class="section">
-    <div class="sec-title" id="root-cause-title">Top Root Cause Faults — WK12 Day 3 · Power BI Manual Entry · Breaks excluded</div>
+    <div class="sec-title" id="root-cause-title">Top Root Cause Faults · Breaks & False Alarms excluded</div>
     <div class="card" style="padding:10px 14px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
           <div style="font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">HOP</div>
           <div class="signal-row" style="font-size:10px;color:var(--dim);font-weight:700"><span>Location</span><span></span><span></span><span>Min</span></div>
-          <div class="signal-row"><div class="signal-tag own" style="background:rgba(255,26,46,.25);color:var(--crit)">CRIT</div><span></span><div style="font-size:10px;color:var(--text)">LH-285 Stn271 · Tool changer locked (still down)</div><div class="signal-min" style="color:var(--crit);font-size:10px">136</div></div>
-          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">287 Tailgate Stn010 · Sequence fault after lens change</div><div class="signal-min" style="color:var(--amber-l);font-size:10px">29</div></div>
-          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">LH-285 Stn231 · Miss part sensor</div><div class="signal-min" style="color:var(--dim);font-size:10px">11</div></div>
-          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">LH-285 Stn010 · Missing part sensor</div><div class="signal-min" style="color:var(--dim);font-size:10px">7</div></div>
-          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">RH-286 Stn232 · M12 clamp sensor (x2)</div><div class="signal-min" style="color:var(--dim);font-size:10px">8</div></div>
+          <div id="hop-signal-rows">—</div>
         </div>
         <div>
           <div style="font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">Upperbody + Underbody</div>
           <div class="signal-row" style="font-size:10px;color:var(--dim);font-weight:700"><span>Location</span><span></span><span></span><span>Min</span></div>
-          <div class="signal-row"><div class="signal-tag wi" style="background:rgba(0,153,158,.25);color:var(--teal-l)">UPP</div><span></span><div style="font-size:10px;color:var(--text)">ROOF-155 Stn015 · Safety: logistics bad rack</div><div class="signal-min" style="color:var(--amber-l);font-size:10px">31</div></div>
-          <div class="signal-row"><div class="signal-tag wi" style="background:rgba(0,153,158,.25);color:var(--teal-l)">LOG</div><span></span><div style="font-size:10px;color:var(--text)">ROOF-155 Stn015 · Bad part rack (Logistics)</div><div class="signal-min" style="color:var(--amber-l);font-size:10px">23</div></div>
-          <div class="signal-row"><div class="signal-tag wo">UND</div><span></span><div style="font-size:10px;color:var(--text)">RFC-236 Stn080 · Flow drill screws jammed</div><div class="signal-min" style="color:var(--dim);font-size:10px">13</div></div>
-          <div class="signal-row"><div class="signal-tag wo">UND</div><span></span><div style="font-size:10px;color:var(--text)">RWHRH-237 Stn040 · No rivet in receiver</div><div class="signal-min" style="color:var(--dim);font-size:10px">11</div></div>
-          <div class="signal-row"><div class="signal-tag wo">UND</div><span></span><div style="font-size:10px;color:var(--text)">FS-231 Stn100 · Bolt 7 stripped (nutrunner)</div><div class="signal-min" style="color:var(--dim);font-size:10px">8</div></div>
+          <div id="oth-signal-rows">—</div>
         </div>
       </div>
     </div>
@@ -1418,6 +1410,73 @@ function buildLossType(){
 buildLossType();
 
 // ════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════
+// ROOT CAUSE TABLE — rebuilt from DAYS_DATA[activeDay].gantt per day
+// ════════════════════════════════════════════════════════════════════
+
+function buildRootCauseTable(){
+  const d = DAYS_DATA[activeDay];
+  const gantt = d.gantt || [];
+
+  // Classify events into HOP vs Upperbody+Underbody
+  const HOP_CODES = ['285','286','287','198','197','160'];
+  function isHOP(line){
+    const l = line.toUpperCase();
+    return HOP_CODES.some(c => l.includes(c));
+  }
+  function getAreaTag(line){
+    const l = line.toUpperCase();
+    if(l.includes('155') || l.includes('154') || l.includes('ROOF') || l.includes('FRAMER')) return 'UPP';
+    if(isHOP(line)) return 'HOP';
+    return 'UND';
+  }
+
+  // Aggregate duration per line name
+  const agg = {};
+  gantt.forEach(ev => {
+    if(!agg[ev.line]) agg[ev.line] = {line:ev.line, sec:0, lbl:ev.lbl, area:getAreaTag(ev.line)};
+    agg[ev.line].sec += ev.sec;
+    // Keep the most descriptive label (longest)
+    if((ev.lbl||'').length > (agg[ev.line].lbl||'').length) agg[ev.line].lbl = ev.lbl;
+  });
+
+  const all = Object.values(agg).sort((a,b) => b.sec - a.sec);
+  const hop = all.filter(e => e.area === 'HOP');
+  const oth = all.filter(e => e.area !== 'HOP');
+
+  function makeRows(events){
+    if(!events.length)
+      return `<div style="padding:10px 0;color:var(--dim);font-size:10px">No downtime recorded</div>`;
+    return events.slice(0,6).map(ev => {
+      const min = Math.round(ev.sec/60);
+      const minCol = min>=100?'var(--crit)':min>=30?'var(--amber-l)':'var(--dim)';
+      const tag = ev.area === 'UPP' ? 'UPP' : ev.area === 'UND' ? 'UND' : (min>=100?'CRIT':'HOP');
+      const tagStyle = ev.area==='UPP'
+        ? `background:rgba(0,153,158,.25);color:var(--teal-l)`
+        : min>=100 ? `background:rgba(255,26,46,.25);color:var(--crit)` : '';
+      const tagCls = ev.area==='UPP' ? 'signal-tag wi' : ev.area==='UND' ? 'signal-tag wo' : 'signal-tag own';
+      // Clean up label — remove boilerplate prefix
+      const lbl = (ev.lbl||'')
+        .replace(/Equipment Issues\/ Technical\s*[·•]\s*/gi,'')
+        .replace(/Production\s*[·•]\s*/gi,'')
+        .trim() || ev.line;
+      return `<div class="signal-row">
+        <div class="${tagCls}" ${tagStyle?'style="'+tagStyle+'"':''}>${tag}</div>
+        <span></span>
+        <div style="font-size:10px;color:var(--text)">${ev.line} · ${lbl.slice(0,55)}</div>
+        <div class="signal-min" style="color:${minCol};font-size:10px">${min}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const hopEl = document.getElementById('hop-signal-rows');
+  const othEl = document.getElementById('oth-signal-rows');
+  if(hopEl) hopEl.innerHTML = makeRows(hop);
+  if(othEl) othEl.innerHTML = makeRows(oth);
+}
+buildRootCauseTable();
+
+// ════════════════════════════════════════════════════════════════════
 // GANTT TIMELINE
 // ════════════════════════════════════════════════════════════════════
 
@@ -1803,13 +1862,16 @@ buildSidePanel();
 function updateBOLStrip(dayKey){
   const d = DAYS_DATA[dayKey];
   if(!d) return;
-  const diff = d.empty_tot - d.bol_tot;
+  // Buffer Δ = BOL entries minus Empty Skid exits
+  // Positive (+) = more entered than left = buffer INCREASED (green)
+  // Negative (-) = more left than entered = buffer DEPLETED (red)
+  const diff = d.bol_tot - d.empty_tot;
   const diffStr = (diff>0?'+':'')+diff;
   const diffCol = diff>0?'var(--green-l)':diff<0?'var(--red-l)':'var(--blue-b)';
-  const note = diff>0
-    ? `Shop ran ${Math.abs(diff)} more than entered — buffer depleted`
-    : diff<0
-    ? `Shop built ${Math.abs(diff)} units of buffer`
+  const note = diff<0
+    ? `Buffer depleted · ${Math.abs(diff)} more cars left than entered${d.overtime?' · ⏱ Overtime ('+d.otNote+')':''}`
+    : diff>0
+    ? `Shop built ${diff} units of buffer`
     : 'Balanced — no buffer change';
   setText(document.getElementById('bolTotal'),   d.bol_tot);
   setText(document.getElementById('emptyTotal'), d.empty_tot);
@@ -1906,10 +1968,17 @@ function updateKPIBar(dayKey){
     const HOP_IDS=['285','286','287','198'];
     const hopMin = HOP_IDS.reduce((s,id)=>s+(p[id]||0),0);
     const hopCars = Math.round(hopMin/4.5);
-    kpis[3].className = 'kpi ' + (lost<=0?'ok':lost<=10?'warn':'bad');
+    // lost<0 = above target (GREEN), lost=0 = exact (blue), lost>0 = below target (amber/red)
+    const lostCls = lost<0?'ok':lost===0?'ok':lost<=10?'warn':'bad';
+    kpis[3].className = 'kpi ' + lostCls;
     const lostEl = qs(kpis[3],'.kpi-val');
-    if(lostEl) lostEl.innerHTML = (lost>0?'−'+lost:lost===0?'0':'+'+Math.abs(lost))+'<sub> cars</sub>';
+    const lostCol = lost<0?'var(--green-l)':lost===0?'var(--blue-b)':lost<=10?'var(--amber-l)':'var(--red-l)';
+    if(lostEl){
+      lostEl.innerHTML = (lost>0?'−'+lost:lost===0?'0':'+'+Math.abs(lost))+'<sub> cars</sub>';
+      lostEl.style.color = lostCol;
+    }
     setStyle(qs(kpis[3],'.kpi-bar-fill'),'width',Math.min(Math.abs(lost)/20*100,100)+'%');
+    setStyle(qs(kpis[3],'.kpi-bar-fill'),'background', lost<0?'var(--green)':lost<=10?'var(--amber)':'var(--red)');
     const dtTip = hopCars>0 ? `~${hopCars} cars from HOP DT · ` : '';
     setText(qs(kpis[3],'.kpi-sub'),`102 target · ${d.empty_tot} actual · ${dtTip}CT 270s`);
   }
@@ -1966,7 +2035,8 @@ function switchDay(dayKey){
   try { buildJPH();        } catch(e){ console.error('buildJPH error:',e); }
   // waterfall removed — replaced by full-width fault type donut
   try { buildLossType();   } catch(e){ console.error('buildLossType error:',e); }
-  try { buildGantt();      } catch(e){ console.error('buildGantt error:',e); }
+  try { buildGantt();             } catch(e){ console.error('buildGantt error:',e); }
+  try { buildRootCauseTable();    } catch(e){ console.error('rootCause error:',e); }
   try { buildFlowMap();    } catch(e){ console.error('buildFlowMap error:',e); }
   try { buildSidePanel();  } catch(e){ console.error('buildSidePanel error:',e); }
 
