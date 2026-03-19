@@ -290,7 +290,7 @@ def get_production_from_snowflake(date_str):
         bol_tot = sum(bol_h)
         emp_tot = sum(emp_h)
 
-                if emp_tot == 0:
+        if emp_tot == 0:
             log(f"  Snowflake returned 0 Empty Skid scans for {date_str} — using STATIC_PROD")
             return None
 
