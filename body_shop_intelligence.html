@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Body Shop · Andon Intelligence | Volvo Cars Ghent</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js" crossorigin="anonymous"></script>
+<style>
+/* ═══════════════════════════════════════════ RESET & TOKENS */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0f1520;--s2:#141d2b;--s3:#1a2435;
+  --b1:#1c2d40;--b2:#243650;--b3:#2e4468;
+  --text:#c0d4e8;--dim:#5a7590;--bright:#ddeeff;
+  --blue:#0075be;--blue-l:#40a0d8;--blue-b:#78c8f8;
+  --teal:#00999e;--teal-l:#30c0c5;
+  --orange:#d07018;--orange-l:#f09838;
+  --green:#159a58;--green-l:#25c878;
+  --amber:#c89010;--amber-l:#f0b828;
+  --red:#cc2838;--red-l:#f04858;
+  --crit:#ff1a2e;
+  --font-head:'Rajdhani',sans-serif;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--b3);border-radius:3px}
+
+/* ═══════════════════════════════════════════ HEADER */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;height:52px;background:var(--s1);
+  border-bottom:1px solid var(--b2);flex-shrink:0;
+  background-image:linear-gradient(90deg,rgba(0,117,190,.08) 0%,transparent 50%);
+}
+.hdr-left{display:flex;align-items:center;gap:18px}
+.vlogo{
+  font-family:var(--font-head);font-weight:700;font-size:17px;
+  color:var(--blue-b);letter-spacing:4px;padding:4px 12px;
+  border:1px solid var(--blue);background:rgba(0,117,190,.1)
+}
+.hdr-title h1{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--bright);letter-spacing:.6px}
+.hdr-title p{font-size:10px;color:var(--dim);letter-spacing:.8px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:20px}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:10px;font-family:var(--font-head);font-weight:700;letter-spacing:1.5px;color:var(--green-l)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green-l);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 4px var(--green-l)}50%{opacity:.5;box-shadow:0 0 0}}
+.clk{font-family:var(--font-mono);font-size:12px;color:var(--blue-l)}
+.refresh-badge{font-size:10px;color:var(--dim);cursor:pointer;padding:4px 8px;border:1px solid var(--b2);border-radius:3px}
+.refresh-badge:hover{border-color:var(--blue-l);color:var(--blue-l)}
+.shift-tag{font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);background:var(--s2);border:1px solid var(--b1);padding:3px 9px}
+
+/* ═══════════════════════════════════════════ KPI BAR */
+.kpi-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px 16px;background:var(--s1);border-bottom:1px solid var(--b1)}
+.kpi{padding:8px 14px;background:var(--s2);border:1px solid var(--b1);border-left:3px solid var(--blue);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.02) 0%,transparent 60%)}
+.kpi.ok{border-left-color:var(--green)}
+.kpi.warn{border-left-color:var(--amber)}
+.kpi.bad{border-left-color:var(--red)}
+.kpi.crit{border-left-color:var(--crit);background:rgba(255,26,46,.045);animation:kpicrit 2s ease-in-out infinite}
+@keyframes kpicrit{0%,100%{box-shadow:none}50%{box-shadow:0 0 18px rgba(255,26,46,.3)}}
+.kpi-lbl{font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:1.8px;color:var(--dim);margin-bottom:4px;text-transform:uppercase}
+.kpi-val{font-family:var(--font-mono);font-size:22px;font-weight:600;line-height:1}
+.kpi-val.g{color:var(--green-l)}.kpi-val.b{color:var(--blue-b)}.kpi-val.r{color:var(--red-l)}.kpi-val.c{color:var(--crit)}.kpi-val.a{color:var(--amber-l)}
+.kpi-val sub{font-size:10px;color:var(--dim);font-weight:400;margin-left:2px}
+.kpi-sub{font-size:9px;color:var(--dim);margin-top:3px}
+.kpi-bar-track{height:2px;background:var(--b1);margin-top:5px;border-radius:1px}
+.kpi-bar-fill{height:100%;border-radius:1px;transition:width .6s}
+
+/* ═══════════════════════════════════════════ LAYOUT */
+.main{display:grid;grid-template-columns:1fr 320px;gap:0;align-items:start}
+.col-main{padding:12px}
+/* Side panel sticks in viewport while main content scrolls */
+.col-side{background:var(--s1);border-left:1px solid var(--b1);padding:12px;
+  position:sticky;top:0;max-height:100vh;overflow-y:auto}
+.section{margin-bottom:12px}
+.sec-title{font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--b1)}
+.card{background:var(--s2);border:1px solid var(--b1);padding:12px 14px;margin-bottom:8px}
+.card-title{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--bright);margin-bottom:3px}
+.card-sub{font-size:10px;color:var(--dim);margin-bottom:10px}
+
+/* ═══════════════════════════════════════════ CHARTS */
+.chart-row{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:8px}
+.chart-box{background:var(--s2);border:1px solid var(--b1);padding:12px 14px}
+/* Chart.js requires a relative-positioned parent with explicit height */
+.chart-canvas-wrap{position:relative;height:180px;width:100%}
+.chart-canvas-wrap.tall{height:220px}
+.chart-canvas-wrap.md{height:200px}
+
+/* ═══════════════════════════════════════════ WHY WE MISSED */
+.waterfall-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--b1)}
+.waterfall-row:last-child{border:none}
+.wf-label{font-size:11px;color:var(--text);width:160px;flex-shrink:0}
+.wf-bar-wrap{flex:1;height:12px;background:var(--s3);border-radius:2px;overflow:hidden;position:relative}
+.wf-bar{height:100%;border-radius:2px}
+.wf-val{font-family:var(--font-mono);font-size:11px;font-weight:600;width:55px;text-align:right;flex-shrink:0}
+
+/* ═══════════════════════════════════════════ ROOT CAUSE TABLE */
+.rc-row{display:grid;grid-template-columns:120px 50px 1fr 60px;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--b1);font-size:11px}
+.rc-row:last-child{border:none}
+.rc-tag{font-family:var(--font-head);font-size:9px;font-weight:700;padding:1px 6px;border-radius:2px;letter-spacing:.8px}
+.rc-tag.wi{background:rgba(0,117,190,.25);color:var(--blue-b)}
+.rc-tag.wo{background:rgba(208,112,24,.25);color:var(--orange-l)}
+.rc-tag.own{background:rgba(204,40,56,.25);color:var(--red-l)}
+.rc-bar-bg{height:8px;background:var(--s3);border-radius:1px;overflow:hidden}
+.rc-bar-fill{height:100%;border-radius:1px}
+.rc-min{font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:right}
+
+/* ═══════════════════════════════════════════ LINE STATUS CARDS */
+.area-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.area-card{background:var(--s2);border:1px solid var(--b1);padding:10px 12px;border-left:3px solid var(--b2)}
+.area-card.ok{border-left-color:var(--green)}
+.area-card.warn{border-left-color:var(--amber)}
+.area-card.high{border-left-color:var(--red)}
+.area-card.crit{border-left-color:var(--crit);background:rgba(255,26,46,.03);animation:kpicrit 2.5s ease-in-out infinite}
+.area-name{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--bright);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.area-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.area-stat-row{display:flex;justify-content:space-between;font-size:10px;padding:2px 0;border-bottom:1px solid var(--b1)}
+.area-stat-row:last-child{border:none}
+.area-stat-lbl{color:var(--dim)}
+.area-stat-val{font-family:var(--font-mono);font-weight:600}
+.area-stat-val.r{color:var(--red-l)}.area-stat-val.a{color:var(--amber-l)}.area-stat-val.g{color:var(--green-l)}
+
+/* ═══════════════════════════════════════════ LINE TABLE */
+.line-table{width:100%;border-collapse:collapse;font-size:11px}
+.line-table th{padding:5px 8px;border-bottom:1px solid var(--b2);color:var(--dim);font-size:9px;font-weight:700;letter-spacing:1px;text-align:left;text-transform:uppercase}
+.line-table td{padding:5px 8px;border-bottom:1px solid var(--b1)}
+.line-table tr:hover td{background:rgba(255,255,255,.02)}
+.line-table tr:last-child td{border:none}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.status-dot.ok{background:var(--green)}.status-dot.warn{background:var(--amber)}.status-dot.high{background:var(--red)}.status-dot.crit{background:var(--crit);animation:pulse .9s infinite}
+.line-bar-bg{width:80px;height:5px;background:var(--b1);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle}
+.line-bar-fill{height:100%;border-radius:2px}
+
+/* ═══════════════════════════════════════════ GANTT TIMELINE */
+.gantt-wrap{background:var(--s2);border:1px solid var(--b1);padding:12px 14px}
+.gantt-ruler{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:6px;margin-bottom:6px}
+.gantt-ruler-scale{position:relative;height:14px;background:var(--s3);border-radius:2px;overflow:hidden}
+.gantt-hr-mark{position:absolute;top:0;height:100%;border-left:1px solid var(--b2);font-size:8px;color:var(--dim);padding-left:3px;line-height:14px;white-space:nowrap}
+.gantt-break-mark{position:absolute;top:0;height:100%;background:rgba(90,117,144,.25)}
+.gantt-row{display:grid;grid-template-columns:140px 1fr 44px;align-items:center;gap:6px;margin-bottom:4px}
+.gantt-line-name{font-size:10px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gantt-track{position:relative;height:14px;background:var(--s3);border-radius:2px;overflow:hidden}
+.gantt-bar{position:absolute;height:100%;border-radius:1px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:rgba(255,255,255,.85);overflow:hidden;white-space:nowrap;cursor:pointer;transition:opacity .15s}
+.gantt-bar:hover{opacity:.75}
+.gantt-break{position:absolute;top:0;height:100%;background:rgba(90,117,144,.22);z-index:2}
+.gantt-dur{font-family:var(--font-mono);font-size:10px;color:var(--red-l);text-align:right;white-space:nowrap}
+
+/* ═══════════════════════════════════════════ BIW FLOW MAP */
+.flow-wrap{background:var(--s2);border:1px solid var(--b1);padding:12px 14px;overflow-x:auto}
+.biw-layout{display:grid;grid-template-rows:auto auto auto;gap:6px;min-width:700px}
+.bneck-strip{display:flex;align-items:center;gap:10px;background:rgba(255,26,46,.08);border:1px solid rgba(255,26,46,.35);border-radius:3px;padding:7px 12px;margin-bottom:8px;animation:kpicrit 2s ease-in-out infinite}
+.bneck-text{font-size:11px;line-height:1.5;color:var(--text)}
+.bneck-text strong{color:var(--crit)}
+.flow-row{display:flex;align-items:center;gap:3px;flex-wrap:nowrap}
+.farrow{color:var(--b3);font-size:13px;flex-shrink:0}
+.fnode{border-radius:4px;padding:6px 8px;min-width:82px;border:1.5px solid transparent;cursor:pointer;text-align:center;flex-shrink:0;transition:transform .15s}
+.fnode:hover{transform:translateY(-2px)}
+.fnode.ok{background:#040a05;border-color:#159a58}
+.fnode.low{background:#0a0803;border-color:#c89010}
+.fnode.med{background:#0c0602;border-color:#d07018}
+.fnode.hi{background:#100304;border-color:#cc2838}
+.fnode.cr{background:#140103;border-color:var(--crit);animation:kpicrit 1.6s infinite}
+.fn-tag{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:2px}
+.fn-name{font-size:10px;font-weight:700;color:var(--bright);line-height:1.2;margin-bottom:2px}
+.fn-cnt{font-family:var(--font-mono);font-size:13px;font-weight:700;line-height:1}
+.fn-cnt.ok{color:var(--green-l)}.fn-cnt.low{color:var(--amber-l)}.fn-cnt.med{color:var(--orange-l)}.fn-cnt.hi{color:var(--red-l)}.fn-cnt.cr{color:var(--crit)}
+.fn-mc{font-size:8px;padding:1px 4px;border-radius:2px;display:inline-block;margin-top:2px}
+.fn-bi{font-size:8px;font-weight:700;margin-top:3px;padding:1px 4px;border-radius:2px;display:inline-block}
+.fn-bi.crit{background:rgba(255,26,46,.25);color:var(--crit)}
+.fn-bi.hi{background:rgba(204,40,56,.2);color:var(--red-l)}
+.fn-bi.med{background:rgba(200,144,16,.2);color:var(--amber-l)}
+.fn-bi.ok{color:var(--dim)}
+.ot-badge{font-size:7px;font-weight:700;padding:1px 4px;background:rgba(21,154,88,.25);color:var(--green-l);border-radius:2px;letter-spacing:.5px;vertical-align:middle;margin-left:4px}
+.flow-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--b1)}
+.fl-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--dim)}
+.fl-sw{width:10px;height:10px;border-radius:1px;border:1.5px solid}
+
+/* ═══════════════════════════════════════════ SIDE PANEL */
+.side-kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.side-kpi{background:var(--s2);border:1px solid var(--b1);padding:8px 10px;border-left:2px solid var(--blue)}
+.side-kpi.ok{border-left-color:var(--green)}.side-kpi.warn{border-left-color:var(--amber)}.side-kpi.bad{border-left-color:var(--red)}
+.sk-lbl{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:3px}
+.sk-val{font-family:var(--font-mono);font-size:18px;font-weight:600}
+.sk-val.g{color:var(--green-l)}.sk-val.b{color:var(--blue-b)}.sk-val.r{color:var(--red-l)}.sk-val.a{color:var(--amber-l)}
+.sk-sub{font-size:9px;color:var(--dim);margin-top:2px}
+
+/* ═══════════════════════════════════════════ DAILY TREND */
+.trend-row{display:flex;align-items:flex-end;gap:2px;height:80px;margin-bottom:4px}
+.trend-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.trend-bar{width:100%;background:var(--blue);border-radius:2px 2px 0 0;min-height:2px;position:relative;cursor:default;transition:opacity .15s}
+.trend-bar:hover{opacity:.75}
+.trend-bar.target-line::after{content:'';position:absolute;top:0;left:-1px;right:-1px;height:2px;background:rgba(255,255,255,.25)}
+.trend-bar.today{background:var(--teal);animation:pulse 2s infinite}
+.trend-lbl{font-family:var(--font-mono);font-size:8px;color:var(--dim);text-align:center}
+.trend-cnt{font-family:var(--font-mono);font-size:8px;color:var(--blue-b);text-align:center}
+.trend-cnt.today{color:var(--teal-l)}
+.trend-target-line{position:relative;margin-bottom:0}
+
+/* ═══════════════════════════════════════════ SIGNALS */
+.signal-row{display:grid;grid-template-columns:90px 22px 1fr 44px;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--b1);font-size:10px}
+.signal-row:last-child{border:none}
+.signal-tag{font-family:var(--font-head);font-size:8px;font-weight:700;letter-spacing:.8px;padding:1px 5px;border-radius:2px;white-space:nowrap}
+.signal-bar-bg{height:6px;background:var(--s3);border-radius:1px;overflow:hidden}
+.signal-bar-fill{height:100%;border-radius:1px}
+.signal-min{font-family:var(--font-mono);font-size:9px;text-align:right;color:var(--dim)}
+
+/* ── Day selector ── */
+.day-select{background:var(--s2);border:1px solid var(--b2);color:var(--text);padding:5px 10px;border-radius:4px;font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:.8px;cursor:pointer;min-width:160px}
+.day-select:hover{border-color:var(--blue-l)}
+.day-select option{background:var(--bg);color:var(--text)}
+.day-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:2px;letter-spacing:.8px;text-transform:uppercase;margin-left:6px}
+.day-badge.ot{background:rgba(21,154,88,.25);color:var(--green-l)}
+.day-badge.today{background:rgba(0,153,158,.25);color:var(--teal-l)}
+/* BOL styling */
+.bol-strip{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--b1);padding:8px 12px;border-radius:4px;margin-bottom:8px}
+.bol-metric{text-align:center;flex:1}
+.bol-metric-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;font-weight:700}
+.bol-metric-val{font-family:var(--font-mono);font-size:20px;font-weight:700;line-height:1.1}
+.bol-divider{width:1px;height:40px;background:var(--b2)}
+.bol-arrow{font-size:20px;color:var(--dim);flex-shrink:0}
+.buffer-pill{font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;flex-shrink:0}
+@media(max-width:1100px){.main{grid-template-columns:1fr}.col-side{display:none}.chart-row{grid-template-columns:1fr}.area-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════ HEADER -->
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="vlogo">VOLVO</div>
+    <div class="hdr-title">
+      <h1>Body Shop (RA) · Andon Intelligence</h1>
+      <p>SHIFT PERFORMANCE · ROOT CAUSE · EQUIPMENT STATUS · VCCH LIVE DATA</p>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px">DATE</span>
+      <select class="day-select" id="dayPicker" onchange="switchDay(this.value)">
+        <option value="2026-03-18">Wed 18-Mar (Today)</option>
+        <option value="2026-03-17">Tue 17-Mar</option>
+        <option value="2026-03-16">Mon 16-Mar ⏱ OT</option>
+        <option value="2026-03-13">Fri 13-Mar</option>
+        <option value="2026-03-12">Thu 12-Mar</option>
+        <option value="2026-03-11">Wed 11-Mar</option>
+        <option value="2026-03-10">Tue 10-Mar</option>
+      </select>
+      <span class="day-badge today" id="dayBadge">TODAY</span>
+    </div>
+    <div class="shift-tag">DAY SHIFT · 06:00–14:40</div>
+    <div class="live-badge"><div class="live-dot"></div>VCCH SNOWFLAKE</div>
+    <div class="clk" id="clk">--:--:--</div>
+    <div class="refresh-badge" onclick="location.reload()" id="refresh-pill">🔄 5:00</div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════ KPI BAR -->
+<div class="kpi-bar">
+  <div class="kpi warn">
+    <div class="kpi-lbl">Empty Skids · Shop Output</div>
+    <div class="kpi-val a">86<sub> / 102 target</sub></div>
+    <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:84%;background:var(--amber)"></div></div>
+    <div class="kpi-sub">84% · Shift complete 14:36 · Source: BODY_TRACKING</div>
+  </div>
+  <div class="kpi" id="kpiOPR">
+    <div class="kpi-lbl">OPR % — Empty Skids (day avg)</div>
+    <div class="kpi-val" id="kpiOPRval">—</div>
+    <div class="kpi-bar-track"><div class="kpi-bar-fill" id="kpiOPRbar" style="width:0%"></div></div>
+    <div class="kpi-sub" id="kpiOPRsub">CT 270s · Target 83.3%</div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-lbl">⚠ LH DOOR-285 Stn271</div>
+    <div class="kpi-val a" style="font-size:13px;padding-top:4px">Back 15:01</div>
+    <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:100%;background:var(--amber)"></div></div>
+    <div class="kpi-sub">136 min down (12:24–14:40) · Resolved 15:01 (+21 min post-shift)</div>
+  </div>
+  <div class="kpi bad">
+    <div class="kpi-lbl">Lost Cars (vs Target)</div>
+    <div class="kpi-val r">−16<sub> cars</sub></div>
+    <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:16%;background:var(--red)"></div></div>
+    <div class="kpi-sub">102 target − 86 actual · 342 min downtime (Power BI)</div>
+  </div>
+  <div class="kpi ok">
+    <div class="kpi-lbl">Yesterday · Empty Skids</div>
+    <div class="kpi-val g">89<sub> skids</sub></div>
+    <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:87%;background:var(--green)"></div></div>
+    <div class="kpi-sub">87% of target · Tue 17-Mar</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-lbl">Week 12 Avg</div>
+    <div class="kpi-val b">93<sub> skids/day</sub></div>
+    <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:91%;background:var(--blue)"></div></div>
+    <div class="kpi-sub">Mon=104 · Tue=89 · Wed=86 · Target=102</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ MAIN LAYOUT -->
+<div class="main">
+
+<!-- ── LEFT / MAIN COLUMN ── -->
+<div class="col-main">
+
+  <!-- BOL vs EMPTY SKID COMPARISON STRIP -->
+  <div class="bol-strip" id="bolStrip">
+    <div class="bol-metric">
+      <div class="bol-metric-lbl">BOL · Body On Line (entry)</div>
+      <div class="bol-metric-val" id="bolTotal" style="color:var(--teal-l)">—</div>
+      <div style="font-size:9px;color:var(--dim)">SPA2 BEV BodyOnLine · reg 13000 · CT 286s</div>
+    </div>
+    <div class="bol-divider"></div>
+    <div class="bol-arrow">→</div>
+    <div style="font-size:9px;color:var(--dim);text-align:center;flex:0 0 80px">
+      <div style="font-size:16px;font-weight:800;font-family:var(--font-mono)" id="bufferDelta">—</div>
+      <div>buffer Δ</div>
+    </div>
+    <div class="bol-arrow">→</div>
+    <div class="bol-divider"></div>
+    <div class="bol-metric">
+      <div class="bol-metric-lbl">Empty Skid · Shop Output (exit)</div>
+      <div class="bol-metric-val" id="emptyTotal" style="color:var(--blue-b)">—</div>
+      <div style="font-size:9px;color:var(--dim)">998320 Empty Skid · reg 19900 · CT 286s</div>
+    </div>
+    <div class="bol-divider"></div>
+    <div style="font-size:10px;color:var(--dim);flex:0 0 150px" id="bufferNote"></div>
+  </div>
+
+  <!-- CHARTS ROW: BOL + Empty Skid split into separate charts -->
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="card-title">OPR % — BOL · Hour by Hour</div>
+      <div class="card-sub">SPA2 BEV BodyOnLine · reg 13000 · CT 286s · Target 88.2% · Bars = cars per window · Source: VCCH.BODY_TRACKING</div>
+      <div class="chart-canvas-wrap tall"><canvas id="bolChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="card-title">OPR % — Empty Skids · Hour by Hour</div>
+      <div class="card-sub">998320 Empty Skid · reg 19900 · CT 270s · Target 83.3% · Bars = cars per window · Source: VCCH.BODY_TRACKING</div>
+      <div class="chart-canvas-wrap tall"><canvas id="jphChart"></canvas></div>
+    </div>
+  </div>
+  <!-- TREND + COMPARISON -->
+  <div class="chart-row" style="margin-top:8px">
+    <div class="chart-box">
+      <div class="card-title">Daily Empty Skids — Last 10 Working Days</div>
+      <div class="card-sub">Shop output (998320) · Target 102/shift · Source: VCCH.BODY_TRACKING</div>
+      <div class="chart-canvas-wrap"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="chart-box" id="bolVsEmptyBox">
+      <div class="card-title">BOL vs Empty Skid — Comparison</div>
+      <div class="card-sub">Entry (BOL) vs Exit (Empty Skid) per production window · Buffer Δ visible</div>
+      <div class="chart-canvas-wrap"><canvas id="compareChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- WHY WE DIDN'T MAKE THE NUMBER -->
+  <div class="section">
+    <div class="sec-title">Why We Didn't Make the Number</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="card">
+        <div class="card-title">Production Loss Waterfall — Empty Skid vs Target 102</div>
+        <div class="card-sub">HOP area (285/286/287/198) = direct loss (CT 270s) · UB/UPB = buffer-absorbed · hover for detail</div>
+        <div class="chart-canvas-wrap md"><canvas id="waterfallChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fault Type Breakdown — Power BI WK12 Day 3</div>
+        <div class="card-sub">Manual entry: 342 min total · Tool Changer dominates (40%)</div>
+        <div class="chart-canvas-wrap md"><canvas id="lossTypeChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROOT CAUSE SIGNALS — REAL Power BI operator-entered faults today -->
+  <div class="section">
+    <div class="sec-title">Top Root Cause Faults — Today WK12 Day 3 · Power BI Manual Entry · Breaks excluded</div>
+    <div class="card" style="padding:10px 14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">HOP — data (22).xlsx</div>
+          <div class="signal-row" style="font-size:10px;color:var(--dim);font-weight:700"><span>Location</span><span></span><span></span><span>Min</span></div>
+          <div class="signal-row"><div class="signal-tag own" style="background:rgba(255,26,46,.25);color:var(--crit)">CRIT</div><span></span><div style="font-size:10px;color:var(--text)">LH-285 Stn271 · Tool changer locked (still down)</div><div class="signal-min" style="color:var(--crit);font-size:10px">136</div></div>
+          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">287 Tailgate Stn010 · Sequence fault after lens change</div><div class="signal-min" style="color:var(--amber-l);font-size:10px">29</div></div>
+          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">LH-285 Stn231 · Miss part sensor</div><div class="signal-min" style="color:var(--dim);font-size:10px">11</div></div>
+          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">LH-285 Stn010 · Missing part sensor</div><div class="signal-min" style="color:var(--dim);font-size:10px">7</div></div>
+          <div class="signal-row"><div class="signal-tag own">HOP</div><span></span><div style="font-size:10px;color:var(--text)">RH-286 Stn232 · M12 clamp sensor (x2)</div><div class="signal-min" style="color:var(--dim);font-size:10px">8</div></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">Upperbody + Underbody — data (21).xlsx</div>
+          <div class="signal-row" style="font-size:10px;color:var(--dim);font-weight:700"><span>Location</span><span></span><span></span><span>Min</span></div>
+          <div class="signal-row"><div class="signal-tag wi" style="background:rgba(0,153,158,.25);color:var(--teal-l)">UPP</div><span></span><div style="font-size:10px;color:var(--text)">ROOF-155 Stn015 · Safety: logistics bad rack</div><div class="signal-min" style="color:var(--amber-l);font-size:10px">31</div></div>
+          <div class="signal-row"><div class="signal-tag wi" style="background:rgba(0,153,158,.25);color:var(--teal-l)">LOG</div><span></span><div style="font-size:10px;color:var(--text)">ROOF-155 Stn015 · Bad part rack (Logistics)</div><div class="signal-min" style="color:var(--amber-l);font-size:10px">23</div></div>
+          <div class="signal-row"><div class="signal-tag wo">UND</div><span></span><div style="font-size:10px;color:var(--text)">RFC-236 Stn080 · Flow drill screws jammed</div><div class="signal-min" style="color:var(--dim);font-size:10px">13</div></div>
+          <div class="signal-row"><div class="signal-tag wo">UND</div><span></span><div style="font-size:10px;color:var(--text)">RWHRH-237 Stn040 · No rivet in receiver</div><div class="signal-min" style="color:var(--dim);font-size:10px">11</div></div>
+          <div class="signal-row"><div class="signal-tag wo">UND</div><span></span><div style="font-size:10px;color:var(--text)">FS-231 Stn100 · Bolt 7 stripped (nutrunner)</div><div class="signal-min" style="color:var(--dim);font-size:10px">8</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GANTT TIMELINE -->
+  <div class="section">
+    <div class="sec-title">What Stopped the Line · Today Shift 06:00–14:40 · Breaks excluded (08:00–08:10 · 10:00–10:40 · 13:30–13:40) · False Alarm & Process Overtime removed</div>
+    <div class="gantt-wrap" id="gantt-container"></div>
+  </div>
+
+  <!-- EQUIPMENT ALARM MAP -->
+  <div class="section">
+    <div class="sec-title">Production Downtime — <span id="alarmDateLabel">WK12 Day 3 · 18-Mar-2026</span> · Source: Power BI manual entry only</div>
+    <div id="alarmDayWarning" style="display:none"></div>
+    <div class="flow-wrap">
+      <div class="biw-layout" id="flow-map"></div>
+      <div class="flow-legend">
+        <span style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px">DOWNTIME SEVERITY (Power BI minutes):</span>
+        <div class="fl-item"><div class="fl-sw" style="background:var(--s3);border-color:#159a58"></div>No downtime</div>
+        <div class="fl-item"><div class="fl-sw" style="background:#0a0803;border-color:#c89010"></div>&lt;10 min</div>
+        <div class="fl-item"><div class="fl-sw" style="background:#0c0602;border-color:#d07018"></div>10–30 min</div>
+        <div class="fl-item"><div class="fl-sw" style="background:#100304;border-color:#cc2838"></div>30–100 min</div>
+        <div class="fl-item"><div class="fl-sw" style="background:#140103;border-color:var(--crit)"></div>CRITICAL &gt;100 min</div>
+        <span style="font-size:9px;color:var(--dim);margin-left:8px">· All data from manual operator entries</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /col-main -->
+
+<!-- ── RIGHT / SIDE COLUMN ── -->
+<div class="col-side">
+
+  <div class="sec-title">Line Status · Today</div>
+
+  <!-- Area summary cards — rebuilt per day by buildSidePanel() -->
+  <div class="area-grid" id="area-grid-container"></div>
+
+  <!-- Line detail table — rebuilt per day -->
+  <div style="margin-top:10px">
+    <div class="sec-title" id="critical-lines-title">Critical Lines · DT File Data</div>
+    <div style="background:var(--s2);border:1px solid var(--b1);overflow:hidden">
+      <table class="line-table">
+        <thead><tr><th>Line</th><th>Area</th><th>Duration</th><th>Cars lost</th></tr></thead>
+        <tbody id="line-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Top station tiles — rebuilt per day -->
+  <div style="margin-top:10px">
+    <div class="sec-title" id="dt-breakdown-title">Downtime Breakdown · Top Stations</div>
+    <div style="background:var(--s2);border:1px solid var(--b1);padding:10px 12px">
+      <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap" id="fault-tiles"></div>
+      <div style="font-size:10px;color:var(--dim);padding:6px;background:var(--s3);border-radius:3px;line-height:1.5" id="dt-alert-text">—</div>
+    </div>
+  </div>
+
+  <!-- 10-day mini trend -->
+  <div style="margin-top:10px">
+    <div class="sec-title">Production Trend · Last 10 Days</div>
+    <div style="background:var(--s2);border:1px solid var(--b1);padding:10px 12px">
+      <div class="trend-row" id="trend-bars"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="trend-labels"></div>
+      <div style="margin-top:8px;padding:6px;background:var(--s3);border-radius:2px">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim)">
+          <span>Target <span style="color:var(--bright)">102</span></span>
+          <span>2-wk avg <span style="color:var(--blue-b)">76</span></span>
+          <span>Best <span style="color:var(--green-l)">104</span> Mon-16</span>
+          <span>Worst <span style="color:var(--red-l)">37</span> Fri</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:10px 0;font-size:9px;color:var(--dim)">
+    Sources: VCCH.ANDON.STOPTIME · PRODUCTION_TRACKING.BODY_TRACKING · CHA_HRES.ALARM · CHA_ASHOP_VCCH_TEST.ASHOP_NINEF · AXXOS_VCCH_A<br>
+    <span id="load-time"></span>
+  </div>
+
+</div><!-- /col-side -->
+</div><!-- /main -->
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// DATA — VCCH.PRODUCTION_TRACKING.BODY_TRACKING (Empty Skid 998320)
+//      + Power BI manual downtime (Underbody/Upperbody/HOP reports)
+// ════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────
+// MULTI-DAY DATA — BOL (SPA2 BEV BodyOnLine, reg 13000) +
+//                  Empty Skid (998320, reg 19900)
+// Source: VCCH.PRODUCTION_TRACKING.BODY_TRACKING
+// Production windows (cal hours 6,7,8,9,11,12,13,14 → skip 10 = lunch)
+// prodMins: [60,60,60,50, 60,60,50,60] (breaks excluded)
+// ─────────────────────────────────────────────────────────────────
+// Production windows — breaks at 08:00-08:10, 10:00-10:40, 12:30-12:40
+const WIN_LABELS = ['06:00-07:00','07:00-08:00','08:10-09:10','09:10-10:00',
+                    '10:40-11:40','11:40-12:30','12:40-13:40','13:40-14:40'];
+const WIN_MINS   = [60,60,60,50, 60,50,60,60]; // effective production minutes per window
+const JPH_TARGET = 13.3;
+
+// OPR parameters — OPR% = actual cars / planned cars × 100
+// planned cars per window = win_min/60 × (3600/CT)
+const BOL_CT          = 286;   // seconds — Underbody takt
+const EMPTY_CT        = 270;   // seconds — HOP takt (slightly faster)
+const BOL_OPR_TARGET  = 88.2;  // % OPR target for BOL
+const EMPTY_OPR_TARGET= 83.3;  // % OPR target for Empty Skids
+
+function calcOPR(carsArr, ctSec) {
+  const maxJPH = 3600 / ctSec;
+  return carsArr.map((c, i) => +((c / (WIN_MINS[i] / 60 * maxJPH)) * 100).toFixed(1));
+}
+function oprAvg(oprArr) {
+  return +(oprArr.reduce((s, v) => s + v, 0) / oprArr.length).toFixed(1);
+}
+
+const DAYS_DATA = {
+  '2026-03-10':{label:'Tue 10-Mar',overtime:false,
+    bol_h :[8,10,9,10,4,9,11,7],  empty_h:[10,9,9,10,3,8,10,8],
+    bol_tot:70, empty_tot:71,
+    pbi:{'138':45,'236':49,'154':65,'234':10,'231':26,'157':32},
+    gantt:[
+      {line:'EMS Underbody',s:'07:05',e:'08:18',sec:4380,col:'#5a7590',lbl:'EMS system fault'},
+      {line:'MARR-138',s:'08:00',e:'08:14',sec:840,col:'#0075be',lbl:'Work Bit Lost'},
+      {line:'RESPOT-154',s:'09:35',e:'09:45',sec:600,col:'#30c0c5',lbl:'Weld Faults'},
+      {line:'MARR-138',s:'09:47',e:'10:03',sec:960,col:'#0075be',lbl:'Work Bit Lost'},
+      {line:'FF-234',s:'09:48',e:'09:58',sec:600,col:'#0075be',lbl:'Robot Faults'},
+      {line:'FRAMER-154',s:'09:54',e:'10:15',sec:1260,col:'#30c0c5',lbl:'Sensor Faults'},
+      {line:'FS-231',s:'11:50',e:'12:01',sec:660,col:'#0075be',lbl:'Sensor Faults'},
+      {line:'BSI-157',s:'11:58',e:'12:30',sec:1920,col:'#5a7590',lbl:'Work Bit Lost'},
+      {line:'FRAMER-154',s:'12:48',e:'13:03',sec:900,col:'#30c0c5',lbl:'I/O Faults'},
+      {line:'FRAMER-154',s:'13:09',e:'13:28',sec:1140,col:'#30c0c5',lbl:'Work Bit Lost'},
+      {line:'RFC-236',s:'13:17',e:'13:25',sec:480,col:'#0075be',lbl:'Weld Faults'},
+    ]},
+  '2026-03-11':{label:'Wed 11-Mar',overtime:false,
+    bol_h :[10,9,10,10,10,10,11,3], empty_h:[9,9,9,11,10,8,10,8],
+    bol_tot:76, empty_tot:77,
+    pbi:{'231':23,'138':114,'236':6,'157':70,'159':46,'151':24,'154':21},
+    gantt:[
+      {line:'FS-231',s:'07:05',e:'07:23',sec:1080,col:'#0075be',lbl:'Glue Faults'},
+      {line:'MARR-138',s:'07:05',e:'07:18',sec:780,col:'#0075be',lbl:'Work Bit Lost'},
+      {line:'RFC-236',s:'07:19',e:'07:25',sec:360,col:'#0075be',lbl:'Air Pressure'},
+      {line:'BSI-157',s:'07:20',e:'07:26',sec:360,col:'#5a7590',lbl:'Robot Faults'},
+      {line:'BSO-159',s:'08:23',e:'08:30',sec:420,col:'#5a7590',lbl:'Clamping Fault'},
+      {line:'BSC-151',s:'08:36',e:'09:00',sec:1440,col:'#5a7590',lbl:'Sensor Faults'},
+      {line:'BSO-159',s:'10:36',e:'10:56',sec:1200,col:'#5a7590',lbl:'Pick Faults'},
+      {line:'FRAMER-154',s:'12:19',e:'12:29',sec:600,col:'#30c0c5',lbl:'Clamping Fault'},
+      {line:'FRAMER-154',s:'12:34',e:'12:45',sec:660,col:'#30c0c5',lbl:'Sensor Faults'},
+      {line:'MARR-138',s:'13:00',e:'13:11',sec:660,col:'#0075be',lbl:'Transport Faults'},
+      {line:'MARR-138',s:'13:15',e:'13:56',sec:2460,col:'#0075be',lbl:'Transport Faults'},
+      {line:'MARR-138',s:'13:56',e:'14:40',sec:2640,col:'#0075be',lbl:'Transport Faults (continued)'},
+      {line:'BSI-157',s:'14:16',e:'14:40',sec:1440,col:'#5a7590',lbl:'Loading Faults'},
+    ]},
+  '2026-03-12':{label:'Thu 12-Mar',overtime:false,
+    bol_h :[10,8,9,10,11,9,10,6],  empty_h:[10,10,6,10,12,9,5,11],
+    bol_tot:76, empty_tot:75,
+    pbi:{'157':19,'154':3,'159':8},
+    gantt:[
+      {line:'BSI-157',s:'07:06',e:'07:25',sec:1140,col:'#5a7590',lbl:'Tip Dress Faults'},
+      {line:'FRAMER-154',s:'07:40',e:'07:43',sec:180,col:'#30c0c5',lbl:'Sensor Faults'},
+      {line:'BSO-159',s:'07:47',e:'07:55',sec:480,col:'#5a7590',lbl:'Pick Faults'},
+    ]},
+  '2026-03-13':{label:'Fri 13-Mar',overtime:false,
+    bol_h :[11,11,10,8,10,7,10,7], empty_h:[11,10,8,9,7,7,12,8],
+    bol_tot:77, empty_tot:75, pbi:{}, gantt:[]},
+  '2026-03-16':{label:'Mon 16-Mar',overtime:true, otNote:'Shift ran until 16:38',
+    bol_h :[9,12,5,11,12,8,12,9],  empty_h:[12,12,10,12,9,10,11,9],
+    bol_tot:98, empty_tot:104,
+    // WK12 D1 · Equipment stops only (Blocked/Starved/ShopFlow excluded) · 300 min
+    pbi:{'231':84,'285':53,'258':27,'287':24,'198':22,'197':20,'232':14,'138':12,'236':11,'234':11,'233':9,'286':6},
+    gantt:[
+      {line:'HOP-198',s:'06:00',e:'06:14',sec:840,col:'#a880e0',lbl:'Transport Faults'},
+      {line:'LH DOOR-285',s:'06:09',e:'06:18',sec:540,col:'#cc2838',lbl:'Work Bit Lost'},
+      {line:'LH DOOR-285',s:'06:19',e:'06:27',sec:480,col:'#cc2838',lbl:'Turntable Faults'},
+      {line:'FS-231',s:'06:20',e:'06:32',sec:720,col:'#0075be',lbl:'Sensor Faults'},
+      {line:'FF-234',s:'06:50',e:'06:59',sec:540,col:'#0075be',lbl:'Sensor Faults'},
+      {line:'FS-231',s:'08:21',e:'08:56',sec:2100,col:'#0075be',lbl:'Gripper Fault — motion supervision toolchanger'},
+      {line:'FS-231',s:'08:34',e:'08:44',sec:600,col:'#0075be',lbl:'Robot Faults'},
+      {line:'FRAMER-154',s:'09:35',e:'10:00',sec:1500,col:'#30c0c5',lbl:'Weld Faults — water flow fault tip hard'},
+      {line:'BSO-258',s:'09:49',e:'10:00',sec:660,col:'#a880e0',lbl:'Robot Faults'},
+      {line:'BSO-258',s:'11:15',e:'11:31',sec:960,col:'#a880e0',lbl:'Robot Faults — hose came off fitting'},
+      {line:'MARR-138',s:'14:19',e:'14:31',sec:720,col:'#0075be',lbl:'Weld Faults'},
+      {line:'DOOR-197',s:'14:20',e:'14:30',sec:600,col:'#5a7590',lbl:'Bolt Fault'},
+    ]},
+  '2026-03-17':{label:'Tue 17-Mar',overtime:false,
+    bol_h :[7,12,6,12,11,10,11,7], empty_h:[12,12,11,11,13,10,10,7],
+    bol_tot:80, empty_tot:89,
+    // WK12 D2 · Equipment stops only (Blocked/Starved/ShopFlow excluded) · 113 min
+    pbi:{'231':28,'233':19,'286':13,'198':11,'138':10,'287':9,'236':9,'256':8,'252':4,'285':2},
+    gantt:[
+      {line:'FWHRH-233',s:'06:03',e:'06:19',sec:960,col:'#0075be',lbl:'Glue Heating / Glue Faults'},
+      {line:'RH DOOR-286',s:'06:07',e:'06:13',sec:360,col:'#d07018',lbl:'Sensor Faults'},
+      {line:'FWHRH-233',s:'07:00',e:'07:07',sec:420,col:'#0075be',lbl:'Illegal Safety Faults'},
+      {line:'RH DOOR-286',s:'07:42',e:'07:44',sec:120,col:'#d07018',lbl:'Sensor Faults'},
+      {line:'FS-231',s:'09:08',e:'09:16',sec:480,col:'#0075be',lbl:'Weld Faults — weld not ready fixture 81'},
+      {line:'RFC-236',s:'09:11',e:'09:16',sec:300,col:'#0075be',lbl:'Rivet Fault'},
+      {line:'MARR-138',s:'09:49',e:'09:55',sec:360,col:'#0075be',lbl:'Glue check'},
+      {line:'FS-231',s:'11:11',e:'11:17',sec:360,col:'#0075be',lbl:'Tooling Fault'},
+      {line:'RFC-236',s:'12:07',e:'12:11',sec:240,col:'#0075be',lbl:'Flow Drill Fault'},
+      {line:'RH DOOR-286',s:'12:15',e:'12:20',sec:300,col:'#d07018',lbl:'Laser fault'},
+      {line:'287 Tailgate',s:'13:00',e:'13:07',sec:420,col:'#d07018',lbl:'Lens Change'},
+      {line:'MARR-138',s:'13:25',e:'13:29',sec:240,col:'#0075be',lbl:'Weld Tip Measurement Fault'},
+      {line:'FS-231',s:'13:59',e:'14:09',sec:600,col:'#0075be',lbl:'Tip Dress — robot missed dress after tip change'},
+    ]},
+  '2026-03-18':{label:'Wed 18-Mar',overtime:false, isToday:true,
+    bol_h  :[8, 13, 12, 11, 10, 7,  13, 12],
+    empty_h:[10, 10, 12, 11, 11, 6, 13, 13],
+    bol_tot:86, empty_tot:86,
+    // WK12 D3 · Equipment stops only (Blocked/Starved/ShopFlow excluded) · 437 min
+    pbi:{'285':156,'287':95,'155':54,'236':37,'198':28,'286':11,'237':11,'235':10,'138':9,'231':8,'232':6,'258':5,'233':4,'234':3},
+    gantt:[
+      {line:'287 Tailgate',s:'06:06',e:'06:35',sec:1740,col:'#d07018',lbl:'Sequence Faults — lens change'},
+      {line:'RH DOOR-286', s:'06:10',e:'06:15',sec:300, col:'#d07018',lbl:'Sensor Faults — M12 clamp missing'},
+      {line:'FWHRH-233',   s:'06:20',e:'06:22',sec:120, col:'#0075be',lbl:'Robot Faults'},
+      {line:'FWHLH-232',   s:'06:23',e:'06:27',sec:240, col:'#0075be',lbl:'Rivet Fault — wrong program'},
+      {line:'HOP-198',     s:'06:30',e:'06:38',sec:480, col:'#a880e0',lbl:'Operator Overcycle / Part Quality'},
+      {line:'FS-231',      s:'06:33',e:'06:39',sec:360, col:'#0075be',lbl:'Tooling Fault'},
+      {line:'RFC-236',     s:'06:33',e:'06:36',sec:180, col:'#0075be',lbl:'Flow Drill — no screw R1'},
+      {line:'RFC-236',     s:'07:10',e:'07:12',sec:120, col:'#0075be',lbl:'Flow Drill — no screw R7'},
+      {line:'RH DOOR-286', s:'07:15',e:'07:18',sec:180, col:'#d07018',lbl:'Sensor Faults — M12 clamp'},
+      {line:'RFC-236',     s:'07:23',e:'07:27',sec:240, col:'#0075be',lbl:'Flow Drill fault R7'},
+      {line:'HOP-198',     s:'08:21',e:'08:23',sec:120, col:'#a880e0',lbl:'Operator Overcycle'},
+      {line:'FF-234',      s:'08:42',e:'08:45',sec:180, col:'#0075be',lbl:'Tip Dress fault R04'},
+      {line:'MARR-138',    s:'09:00',e:'09:04',sec:240, col:'#0075be',lbl:'Sequence Fault — parts out of sequence'},
+      {line:'LH DOOR-285', s:'09:28',e:'09:39',sec:660, col:'#cc2838',lbl:'Sensor Faults — miss part sensor Stn231'},
+      {line:'MARR-138',    s:'09:40',e:'09:45',sec:300, col:'#0075be',lbl:'Weld Faults — reweld dirty tip'},
+      {line:'RFC-236',     s:'09:43',e:'09:56',sec:780, col:'#0075be',lbl:'Flow Drill — screws jammed R07'},
+      {line:'BSO-258',     s:'09:44',e:'09:49',sec:300, col:'#a880e0',lbl:'Turntable out of position'},
+      {line:'287 Tailgate',s:'09:56',e:'10:55',sec:3540,col:'#d07018',lbl:'Clamping Fault'},
+      {line:'LH DOOR-285', s:'10:52',e:'10:59',sec:420, col:'#cc2838',lbl:'Sensor Faults — missing part Stn010'},
+      {line:'ROOF-155',    s:'11:09',e:'11:40',sec:1860,col:'#30c0c5',lbl:'Safety: logistics loaded bad rack into cell'},
+      {line:'RWHLH-235',   s:'11:45',e:'11:50',sec:300, col:'#0075be',lbl:'Rivet: no rivet in receiver'},
+      {line:'RWHRH-237',   s:'11:51',e:'12:02',sec:660, col:'#0075be',lbl:'Rivet: no rivet in receiver'},
+      {line:'ROOF-155',    s:'12:07',e:'12:30',sec:1380,col:'#30c0c5',lbl:'Part quality: bad part rack (Logistics)'},
+      {line:'LH DOOR-285', s:'12:24',e:'14:40',sec:8160,col:'#cc2838',lbl:'TOOL CHANGER LOCKED — Stn271 (still down at shift end)'},
+      {line:'RFC-236',     s:'12:25',e:'12:28',sec:180, col:'#0075be',lbl:'Flow Drill exceeds torque R06'},
+      {line:'RFC-236',     s:'13:47',e:'13:49',sec:120, col:'#0075be',lbl:'Flow Drill final tightening NOK'},
+      {line:'RWHLH-235',   s:'14:14',e:'14:19',sec:300, col:'#0075be',lbl:'Rivet magazine fill fault R01'},
+      {line:'HOP-198',     s:'14:28',e:'14:30',sec:120, col:'#a880e0',lbl:'Online Repair'},
+    ]},
+};
+
+// Helper: compute adjJPH array for a dataset (cars/hour)
+function adjJPH(carsArr){ return carsArr.map((c,i)=>+(c/(WIN_MINS[i]/60)).toFixed(1)); }
+
+// Active day state — switch via dropdown
+let activeDay = '2026-03-18';
+
+// 10-day Empty Skid production (BODY_TRACKING · reg 19900 = 998320 Empty Skid)
+// Numbers corrected vs user's "Daily Bodies to Paint" Power BI chart
+const DAILY_PROD = [
+  { d:'04-Mar',day:'Wed',cars:84 },
+  { d:'05-Mar',day:'Thu',cars:81 },
+  { d:'06-Mar',day:'Fri',cars:37 },  // short shift
+  { d:'09-Mar',day:'Mon',cars:70 },
+  { d:'10-Mar',day:'Tue',cars:71 },  // corrected: user chart shows 71
+  { d:'11-Mar',day:'Wed',cars:77 },  // corrected: user chart shows 77
+  { d:'12-Mar',day:'Thu',cars:75 },  // corrected: user chart shows 75
+  { d:'13-Mar',day:'Fri',cars:75 },  // corrected: user chart shows 75
+  { d:'16-Mar',day:'Mon',cars:104, overtime:true }, // shift ran until 16:38 (overtime)
+  { d:'17-Mar',day:'Tue',cars:89 },  // corrected: user chart shows 89 (not 86)
+  { d:'18-Mar',day:'Wed',cars:86, today:true }, // today · full shift complete 14:36
+];
+
+// Line status — Power BI manual downtime (WK12 Day 3)
+// dur = total downtime minutes per line/area from Power BI reports
+const LINE_STATUS = [
+  // HOP — data22.xlsx Power BI
+  { name:'LH DOOR-285',    area:'Hang On Parts',dur:154, events:3, ct:270, alarm:6906, note:'Tool changer locked 136m' },
+  { name:'287 Tailgate',   area:'Hang On Parts',dur:29,  events:1, ct:270, alarm:4529, note:'Sequence fault after lens change' },
+  { name:'RH DOOR-286',    area:'Hang On Parts',dur:11,  events:4, ct:270, alarm:4327, note:'M12 clamp sensor (x2)' },
+  // Upperbody — data21.xlsx Power BI
+  { name:'ROOF-155',       area:'Upperbody',    dur:54,  events:2, ct:183, alarm:0,    note:'Safety triggered + bad part rack' },
+  // Underbody — data21.xlsx Power BI
+  { name:'RFC-236 Rear Fl',area:'Underbody',    dur:32,  events:8, ct:286, alarm:0,    note:'Flow drill faults (screws)' },
+  { name:'RWHRH-237',      area:'Underbody',    dur:11,  events:1, ct:286, alarm:0,    note:'No rivet in receiver' },
+  { name:'MARR-138',       area:'Main Line',     dur:9,   events:2, ct:286, alarm:0,    note:'Sequence + dirty weld tip' },
+  { name:'FS-231 Front Str',area:'Underbody',   dur:8,   events:2, ct:286, alarm:0,    note:'Bolt 7 stripped (nutrunner)' },
+  { name:'RWHLH-235',      area:'Underbody',    dur:10,  events:2, ct:286, alarm:0,    note:'Rivet faults' },
+  { name:'FWHLH-232',      area:'Underbody',    dur:6,   events:2, ct:286, alarm:0,    note:'Rivet SPR + glue fault' },
+  { name:'BSO-258',        area:'Bodysides',    dur:5,   events:1, ct:183, alarm:0,    note:'Turntable out of position' },
+];
+
+// ── POWER BI MANUAL DOWNTIME EVENTS (operator entries, WK12 Day 3) ──
+// Gantt events now stored per-day in DAYS_DATA[key].gantt
+// This helper returns the active day's events:
+function getGanttEvents(){ return (DAYS_DATA[activeDay]||{}).gantt||[]; }
+// PBI helper — reads from active day
+function getPBI(id){ return ((DAYS_DATA[activeDay]||{}).pbi||{})[id]||0; }
+
+// Equipment alarm data (CHA_HRES.ALARM · today)
+const ALARM_DATA = [
+  { line:'231', name:'231 DASH',     total:40314, mc:'FD', mcCol:'#cc2838' },
+  { line:'285', name:'285 Door L',   total:6906,  mc:'ZPS',mcCol:'#d07018' },
+  { line:'287', name:'287 Tailgate', total:4529,  mc:'ZPS',mcCol:'#d07018' },
+  { line:'286', name:'286 Door R',   total:4327,  mc:'ZPS',mcCol:'#d07018' },
+  { line:'257', name:'257 BSide',    total:1826,  mc:'ZPS',mcCol:'#d07018' },
+  { line:'256', name:'256 BSide',    total:1778,  mc:'FD', mcCol:'#cc2838' },
+  { line:'252', name:'252 BSide',    total:1741,  mc:'ZPS',mcCol:'#d07018' },
+];
+
+const MC_COLORS = {FD:'#cc2838',ZPS:'#d07018',F:'#c89010',MSR:'#7a55b8',CA:'#0075be',ZM:'#5a7590',R:'#a880e0'};
+
+// ════════════════════════════════════════════════════════════════════
+// CHART.JS DEFAULTS
+// ════════════════════════════════════════════════════════════════════
+
+Chart.defaults.color = '#5a7590';
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 10;
+
+const gridColor = 'rgba(44,54,72,.7)';
+
+// ── Bulletproof canvas destroy (Chart.js 4) ──────────────────────
+// Uses Chart.getChart() which ALWAYS finds the chart on the canvas,
+// even if our stored reference is stale. Prevents "Canvas already in use" errors.
+function destroyChart(canvasId){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const existing = Chart.getChart(canvas);
+  if(existing) existing.destroy();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// JPH CHART — shows BOL (entry) + Empty Skid (exit) by production window
+// ════════════════════════════════════════════════════════════════════
+
+// OPR % line chart — matches user's reference dashboard format
+// Gray bars = cars per window · Colored line = OPR% · Dashed lines = target + avg
+function makeOPRChart(ctx, label, carsData, ctSec, oprTarget, lineColor) {
+  const opr  = calcOPR(carsData, ctSec);
+  const avg  = oprAvg(opr);
+  const n    = carsData.length;
+
+  // Point color: green ≥ target, amber ≥ target-10, red below
+  const ptColor = opr.map(v =>
+    v >= oprTarget        ? '#25c878' :
+    v >= oprTarget - 10   ? '#f0b828' :
+                            '#f04858'
+  );
+
+  // Register datalabels plugin for this chart only
+  return new Chart(ctx, {
+    type: 'bar',
+    plugins: [ChartDataLabels],
+    data: {
+      labels: WIN_LABELS,
+      datasets: [
+        // Gray bars = car counts (background reference)
+        {
+          label: 'Cars',
+          data: carsData,
+          backgroundColor: 'rgba(90,117,144,.2)',
+          borderColor: 'rgba(90,117,144,.35)',
+          borderWidth: 1,
+          borderRadius: 2,
+          yAxisID: 'y2',
+          order: 4,
+          datalabels: {
+            display: true,
+            anchor: 'end', align: 'end',
+            color: 'rgba(90,117,144,.6)',
+            font: { size: 9 },
+            formatter: v => v,
+          }
+        },
+        // OPR % line
+        {
+          label: label + ' OPR %',
+          type: 'line',
+          data: opr,
+          borderColor: lineColor,
+          backgroundColor: 'transparent',
+          borderWidth: 2.5,
+          pointRadius: 7,
+          pointHoverRadius: 9,
+          pointBackgroundColor: ptColor,
+          pointBorderColor: ptColor,
+          tension: 0.35,
+          yAxisID: 'y',
+          order: 1,
+          datalabels: {
+            display: true,
+            color: ptColor,
+            font: { weight: 'bold', size: 11 },
+            formatter: v => v + '%',
+            anchor: 'top', align: 'top', offset: 5,
+          }
+        },
+        // Target dashed line
+        {
+          label: oprTarget + '% target',
+          type: 'line',
+          data: Array(n).fill(oprTarget),
+          borderColor: '#f0b828',
+          borderWidth: 1.8,
+          borderDash: [8, 4],
+          pointRadius: 0,
+          yAxisID: 'y',
+          order: 2,
+          datalabels: { display: false }
+        },
+        // Average dashed line
+        {
+          label: avg + '% avg',
+          type: 'line',
+          data: Array(n).fill(avg),
+          borderColor: lineColor,
+          borderWidth: 1.5,
+          borderDash: [4, 4],
+          borderDashOffset: 2,
+          pointRadius: 0,
+          yAxisID: 'y',
+          order: 3,
+          datalabels: { display: false }
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 26 } },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: '#5a7590', usePointStyle: true, padding: 8, font: { size: 9 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              if(c.datasetIndex === 0) return ` Cars: ${c.parsed.y}`;
+              if(c.datasetIndex === 1) return ` OPR: ${c.parsed.y}% (${c.parsed.y>=oprTarget?'✓':'✗'} target ${oprTarget}%)`;
+              if(c.datasetIndex === 2) return ` Target: ${c.parsed.y}%`;
+              return ` Avg: ${c.parsed.y}%`;
+            }
+          }
+        },
+        datalabels: {}  // plugin required even if empty
+      },
+      scales: {
+        x: { grid:{color:gridColor}, ticks:{color:'#5a7590',font:{size:8},maxRotation:30} },
+        y: {
+          grid: {color:gridColor}, min: 45, max: 112,
+          ticks: { color:'#5a7590', callback: v => v+'%' },
+          title: { display:true, text:'OPR %', color:'#5a7590', font:{size:9} }
+        },
+        y2: {
+          position: 'right', grid: {drawOnChartArea:false},
+          beginAtZero: true, max: Math.max(...carsData) * 2.5,
+          ticks: { display: false },
+          title: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// Comparison chart: BOL vs Empty Skid OPR% side by side per window
+function makeCompareChart(ctx, d){
+  const bolOPR   = calcOPR(d.bol_h,   BOL_CT);
+  const emptyOPR = calcOPR(d.empty_h, EMPTY_CT);
+  return new Chart(ctx, {
+    type:'bar',
+    plugins:[ChartDataLabels],
+    data:{labels:WIN_LABELS,datasets:[
+      {label:'BOL OPR %',   data:bolOPR,   backgroundColor:'rgba(0,153,158,.6)',borderColor:'#30c0c5',borderWidth:1.5,borderRadius:3,datalabels:{display:false}},
+      {label:'Skid OPR %',  data:emptyOPR, backgroundColor:'rgba(0,117,190,.6)',borderColor:'#78c8f8',borderWidth:1.5,borderRadius:3,datalabels:{display:false}},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{
+        legend:{position:'top',labels:{color:'#5a7590',usePointStyle:true,padding:8,font:{size:9}}},
+        datalabels:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}%`}}
+      },
+      scales:{
+        x:{grid:{color:gridColor},ticks:{color:'#5a7590',font:{size:8},maxRotation:30}},
+        y:{grid:{color:gridColor},min:40,max:115,ticks:{color:'#5a7590',callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+// Update the OPR avg KPI card dynamically
+function updateOPRKPI(d){
+  const emptyOPR = calcOPR(d.empty_h, EMPTY_CT);
+  const avg = oprAvg(emptyOPR);
+  const isGood = avg >= EMPTY_OPR_TARGET;
+  const isOK   = avg >= EMPTY_OPR_TARGET - 5;
+  const col  = isGood ? 'var(--green-l)' : isOK ? 'var(--amber-l)' : 'var(--red-l)';
+  const barC = isGood ? 'var(--green)' : isOK ? 'var(--amber)' : 'var(--red)';
+  const el = document.getElementById('kpiOPRval');
+  const bar = document.getElementById('kpiOPRbar');
+  const sub = document.getElementById('kpiOPRsub');
+  const kpi = document.getElementById('kpiOPR');
+  if(!el) return;
+  el.textContent = avg + '%';
+  el.style.color = col;
+  if(bar){ bar.style.width = Math.min(avg, 115) + '%'; bar.style.background = barC; }
+  if(sub) sub.textContent = `CT 270s · Target ${EMPTY_OPR_TARGET}% · ${avg>=EMPTY_OPR_TARGET?'✓ Above':'✗ Below'} target`;
+  if(kpi) kpi.className = 'kpi ' + (isGood?'ok':isOK?'warn':'bad');
+}
+
+function buildJPH(){
+  const d = DAYS_DATA[activeDay];
+  // Always destroy via Chart.getChart — works even if stored refs are stale
+  destroyChart('bolChart');
+  destroyChart('jphChart');
+  destroyChart('compareChart');
+  makeOPRChart(document.getElementById('bolChart').getContext('2d'),
+               'BOL', d.bol_h, BOL_CT, BOL_OPR_TARGET, '#30c0c5');
+  makeOPRChart(document.getElementById('jphChart').getContext('2d'),
+               'Skid', d.empty_h, EMPTY_CT, EMPTY_OPR_TARGET, '#25c878');
+  makeCompareChart(document.getElementById('compareChart').getContext('2d'), d);
+  updateOPRKPI(d);
+}
+buildJPH();
+
+// ════════════════════════════════════════════════════════════════════
+// TREND CHART
+// ════════════════════════════════════════════════════════════════════
+
+(function buildTrend(){
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  // Use DAYS_DATA for consistent source
+  const DAILY_PROD_KEYS = Object.keys(DAYS_DATA).sort();
+  const labels = DAILY_PROD_KEYS.map(k=>DAYS_DATA[k].label.split(' ')[0]+' '+DAYS_DATA[k].label.split(' ')[1]);
+  const cars   = DAILY_PROD_KEYS.map(k=>DAYS_DATA[k].empty_tot);
+  const DAILY_PROD = DAILY_PROD_KEYS.map(k=>({...DAYS_DATA[k], cars:DAYS_DATA[k].empty_tot, today:DAYS_DATA[k].isToday}));
+  // Overtime day gets its own distinct green (lighter) — below target but extra hours
+  const bgCols = DAILY_PROD.map(d=>
+    d.today?'rgba(0,153,158,.8)':
+    d.overtime?'rgba(21,154,88,.45)': // overtime: dashed-style lighter green
+    d.cars>=102?'rgba(21,154,88,.75)':
+    d.cars>=85?'rgba(0,117,190,.6)':
+    'rgba(204,40,56,.55)'
+  );
+  new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Cars produced',data:cars,backgroundColor:bgCols,borderRadius:3},
+      {label:'Target 102',type:'line',data:Array(DAILY_PROD.length).fill(102),borderColor:'rgba(255,255,255,.2)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.datasetIndex===1) return ' Target: 102';
+          const d=DAILY_PROD[ctx.dataIndex];
+          return ` ${d.cars} cars · ${d.day}${d.today?' (today)':d.overtime?' ⏱ OVERTIME (ended 16:38)':''}`;
+        }}}
+      },
+      scales:{
+        x:{grid:{color:gridColor},ticks:{color:'#5a7590',font:{size:8}}},
+        y:{grid:{color:gridColor},beginAtZero:false,min:0,ticks:{color:'#5a7590'}}
+      }
+    }
+  });
+})();
+
+// ════════════════════════════════════════════════════════════════════
+// WATERFALL LOSS CHART
+// ════════════════════════════════════════════════════════════════════
+
+function buildWaterfall(){
+  destroyChart('waterfallChart');
+  const ctx = document.getElementById('waterfallChart').getContext('2d');
+  const d = DAYS_DATA[activeDay];
+  const p = d.pbi||{};
+
+  // ── Buffer-aware waterfall logic ────────────────────────────────────
+  // Empty Skid CT = 270s = 4.5 min/car
+  // HOP area (285, 286, 287, 198): NO buffer before Empty Skid → DIRECT impact
+  //   - Every minute of HOP downtime = 1/4.5 car lost
+  // Underbody + Upperbody + MARR-138: buffer exists upstream → ABSORBED if buffer OK
+  //   - Shown as informational, may or may not reduce output
+  const CTMIN = EMPTY_CT / 60;  // 270/60 = 4.5 min per car
+
+  // Stations by impact type
+  const HOP_IDS = ['285','286','287','198'];       // Direct — end of line, no buffer
+  const BUF_IDS = ['236','237','235','232','233','234','258','231',  // Underbody
+                   '154','155','138'];              // Upperbody + Main line (buffer upstream)
+
+  const hopMin = HOP_IDS.reduce((s,id)=>s+(p[id]||0),0);
+  const bufMin = BUF_IDS.reduce((s,id)=>s+(p[id]||0),0);
+  const hopCars = Math.max(0, Math.round(hopMin / CTMIN));  // direct car loss
+
+  const TARGET = 102;
+  const ACTUAL = d.empty_tot;   // ← Empty Skid output (what leaves the shop)
+  const totalLost = Math.max(0, TARGET - ACTUAL);
+
+  // Unexplained gap (startup losses, overcycle, quality, minor stops not in DT)
+  const hopExplained = Math.min(hopCars, totalLost);
+  const other = Math.max(0, totalLost - hopExplained);
+
+  const noPBI = Object.keys(p).length === 0;
+
+  // Build waterfall steps
+  let cur = TARGET;
+  const steps = [{lbl:'Target\n'+TARGET, range:[0,TARGET], col:'rgba(0,117,190,.8)',
+                  tip:`Daily target: ${TARGET} cars`, loss:0, type:'target'}];
+
+  if(hopExplained > 0){
+    steps.push({lbl:`HOP Direct\n−${hopExplained}`,
+                range:[cur-hopExplained, cur], col:'rgba(255,26,46,.85)', loss:hopExplained,
+                type:'direct',
+                tip:`HOP area (285/286/287/198): ${hopMin} min ÷ ${CTMIN} min/car = ~${hopCars} cars lost\n285=${p['285']||0}m · 286=${p['286']||0}m · 287=${p['287']||0}m · 198=${p['198']||0}m`});
+    cur -= hopExplained;
+  }
+
+  if(other > 0){
+    steps.push({lbl:`Other\n−${other}`,
+                range:[cur-other, cur], col:'rgba(90,117,144,.7)', loss:other,
+                type:'other',
+                tip:`Residual loss: startup losses, quality stops, overcycle, minor events not captured in downtime log`});
+    cur -= other;
+  }
+
+  steps.push({lbl:`Actual\n${ACTUAL}`, range:[0,ACTUAL], col:'rgba(0,153,158,.85)',
+              loss:0, type:'actual',
+              tip:`Actual Empty Skid output: ${ACTUAL} cars (${Math.round(ACTUAL/TARGET*100)}% of target)\nCT 270s · Buffer absorbed ${bufMin} min UB/UPB downtime`});
+
+  // Annotation: buffer area info
+  const bufLabel = bufMin>0
+    ? `Buffer-absorbed UB/UPB: ${bufMin} min (${Math.round(bufMin/CTMIN)} car-eq) — not direct loss`
+    : '';
+
+  const ymin = Math.max(0, ACTUAL - 8);
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: steps.map(s=>s.lbl),
+      datasets:[{
+        label:'Cars',
+        data: steps.map(s=>s.range),
+        backgroundColor: steps.map(s=>s.col),
+        borderRadius:3,
+        borderSkipped:false,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{
+          title: items => steps[items[0].dataIndex]?.lbl.replace('\n',' ') || '',
+          label: ctx=>{
+            try{
+              const s=steps[ctx.dataIndex];
+              if(!s) return '';
+              const lines = [];
+              if(s.type==='target') lines.push(` Target: ${s.range[1]} cars`);
+              else if(s.type==='actual'){
+                lines.push(` Actual output: ${s.range[1]} cars · ${Math.round(s.range[1]/TARGET*100)}% of target`);
+                if(bufLabel) lines.push(` ↳ ${bufLabel}`);
+              } else if(s.type==='direct'){
+                lines.push(` HOP direct loss: −${s.loss} cars`);
+                lines.push(` 285=${p['285']||0}m · 286=${p['286']||0}m · 287=${p['287']||0}m · 198=${p['198']||0}m`);
+                lines.push(` Total HOP downtime: ${hopMin} min ÷ 4.5 min/car = ~${hopCars} cars`);
+              } else {
+                lines.push(` Other factors: −${s.loss} cars`);
+                lines.push(` (startup, quality, minor stops, overcycle)`);
+              }
+              return lines;
+            } catch(e){ return ''; }
+          }
+        }}
+      },
+      scales:{
+        x:{grid:{color:gridColor},ticks:{color:'#5a7590',font:{size:8},maxRotation:0}},
+        y:{grid:{color:gridColor},min:ymin,max:107,ticks:{color:'#5a7590'},
+          title:{display:true,text:'Cars (Empty Skid output)',color:'#5a7590',font:{size:9}}}
+      }
+    }
+  });
+}
+buildWaterfall();
+
+// ════════════════════════════════════════════════════════════════════
+// LOSS TYPE DONUT
+// ════════════════════════════════════════════════════════════════════
+
+function buildLossType(){
+  destroyChart('lossTypeChart');
+  const ctx = document.getElementById('lossTypeChart').getContext('2d');
+  const d = DAYS_DATA[activeDay];
+  const p = d.pbi||{};
+  const hasPBI = Object.keys(p).length > 0;
+  // Derive fault types from PBI for the selected day
+  // For days without PBI data, show a placeholder
+  let labels, data, bgCols;
+  if(hasPBI){
+    // Map known fault categories
+    const toolChanger = p['285']||0;  // tool changer is primary HOP fault
+    const safety      = p['155']||0;
+    const flowDrill   = p['236']||0;
+    const rivets      = (p['235']||0)+(p['237']||0)+(p['232']||0)+(p['233']||0);
+    const tipDress    = p['234']||0;
+    const sequence    = p['287']||0;
+    const manual      = p['198']||0;
+    const other       = (p['138']||0)+(p['258']||0)+(p['286']||0);
+    labels = [];data=[];bgCols=[];
+    const add=(lbl,v,c)=>{if(v>0){labels.push(`${lbl} (${v}m)`);data.push(v);bgCols.push(c);}};
+    add('Tool Changer',toolChanger,'rgba(255,26,46,.7)');
+    add('Safety/Logistics',safety,'rgba(0,153,158,.7)');
+    add('Flow Drill',flowDrill,'rgba(0,117,190,.7)');
+    add('Rivet Faults',rivets,'rgba(200,144,16,.7)');
+    add('Sequence',sequence,'rgba(208,112,24,.7)');
+    add('Manual Line',manual,'rgba(160,100,200,.7)');
+    add('Other',other,'rgba(90,117,144,.45)');
+    if(!data.length){labels=['No downtime recorded'];data=[1];bgCols=['rgba(90,117,144,.2)'];}
+  } else {
+    labels=['No downtime data for this day'];data=[1];bgCols=['rgba(90,117,144,.15)'];
+  }
+  new Chart(ctx,{type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:bgCols,borderWidth:hasPBI?1.5:0,hoverOffset:hasPBI?6:0}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'58%',
+      plugins:{
+        legend:{position:'bottom',labels:{color:'#5a7590',usePointStyle:true,padding:8,font:{size:9}}},
+        tooltip:{callbacks:{label:ctx=>{if(!hasPBI) return ' No data';const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return ` ${ctx.label}: ${ctx.parsed} min (${(ctx.parsed/t*100).toFixed(0)}%)`}}}
+      }
+    }
+  });
+}
+buildLossType();
+
+// ════════════════════════════════════════════════════════════════════
+// GANTT TIMELINE
+// ════════════════════════════════════════════════════════════════════
+
+function buildGantt(){ try {
+  const el = document.getElementById('gantt-container');
+  const GANTT_EVENTS = getGanttEvents();
+  const SHIFT_S = 6*60, SHIFT_E = 14*60+40, SPAN = SHIFT_E - SHIFT_S;
+  const BREAKS = [{s:'08:00',e:'08:10',lbl:'Break'},{s:'10:00',e:'10:40',lbl:'Lunch'},{s:'12:30',e:'12:40',lbl:'Break'}];
+  const toMin = t=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
+  const pct   = t=>Math.max(0,Math.min(100,(toMin(t)-SHIFT_S)/SPAN*100));
+  const wPct  = (s,e)=>Math.max(.3,Math.min(100-pct(s),pct(e)-pct(s)));
+  const fmtSec = s=>s>=3600?(s/3600).toFixed(1)+'h':Math.round(s/60)+'m';
+
+  if(!GANTT_EVENTS.length){
+    el.innerHTML=`<div style="padding:20px;text-align:center;color:var(--dim);font-size:11px">
+      ⚠ No downtime timeline data for ${DAYS_DATA[activeDay].label}<br>
+      <span style="font-size:9px">Data will appear here once entered in the HOP / DT files for this day</span>
+    </div>`;
+    return;
+  }
+
+  const lineOrder = [...new Set(GANTT_EVENTS.map(e=>e.line))];
+  let html=`<div class="gantt-ruler"><div style="font-size:9px;color:var(--dim);text-align:right">Line</div>
+    <div class="gantt-ruler-scale">`;
+  BREAKS.forEach(b=>{html+=`<div class="gantt-break-mark" style="left:${pct(b.s).toFixed(1)}%;width:${wPct(b.s,b.e).toFixed(1)}%" title="${b.lbl}"></div>`;});
+  for(let h=6;h<=14;h++){const p=((h*60-SHIFT_S)/SPAN*100).toFixed(1);if(p<0||p>100)continue;html+=`<div class="gantt-hr-mark" style="left:${p}%">${h}:00</div>`;}
+  html+=`</div></div>`;
+
+  lineOrder.forEach(lineName=>{
+    const evts = GANTT_EVENTS.filter(e=>e.line===lineName);
+    const totalSec = evts.reduce((s,e)=>s+e.sec,0);
+    const col = evts[0].col;
+    html+=`<div class="gantt-row">
+      <div class="gantt-line-name" title="${lineName}">${lineName}</div>
+      <div class="gantt-track">`;
+    BREAKS.forEach(b=>{html+=`<div class="gantt-break" style="left:${pct(b.s).toFixed(1)}%;width:${wPct(b.s,b.e).toFixed(1)}%"></div>`;});
+    evts.forEach(ev=>{
+      const left=pct(ev.s).toFixed(2),w=wPct(ev.s,ev.e).toFixed(2);
+      const lbl=ev.sec>=600?fmtSec(ev.sec):'';
+      const rawTip = ev.lbl ? `${ev.line} · ${ev.s}-${ev.e} · ${fmtSec(ev.sec)} | ${ev.lbl}` : `${ev.line}: ${ev.s} to ${ev.e} · ${fmtSec(ev.sec)}`;
+      const tooltip = rawTip.replace(/"/g,"'").replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html+=`<div class="gantt-bar" style="left:${left}%;width:${w}%;background:${col};z-index:1;cursor:pointer" title="${tooltip}">${lbl}</div>`;
+    });
+    html+=`</div><div class="gantt-dur">${Math.round(totalSec/60)}m</div></div>`;
+  });
+  el.innerHTML = html;
+} catch(e){ console.error('Gantt error:',e); }
+}
+buildGantt();
+
+// ════════════════════════════════════════════════════════════════════
+// BIW FLOW MAP
+// ════════════════════════════════════════════════════════════════════
+
+function buildFlowMap(){
+  const el = document.getElementById('flow-map');
+  function pbi(id){return getPBI(id);}
+  const hasPBI = Object.values((DAYS_DATA[activeDay]||{}).pbi||{}).some(v=>v>0);
+  function nodeClass(n){
+    if(!n||n===0) return{sev:'ok',cnt:'ok'};
+    if(n<2000)    return{sev:'low',cnt:'low'};
+    if(n<5000)    return{sev:'med',cnt:'med'};
+    if(n<15000)   return{sev:'hi', cnt:'hi'};
+    return              {sev:'cr', cnt:'cr'};
+  }
+  // Severity based on Power BI downtime only (no HRES alarm data)
+  function pbiSev(id){
+    const dt=pbi(id);
+    if(dt>=100) return{sev:'cr', cnt:'cr'};
+    if(dt>=30)  return{sev:'hi', cnt:'hi'};
+    if(dt>=10)  return{sev:'med',cnt:'med'};
+    if(dt>0)    return{sev:'low',cnt:'low'};
+    return            {sev:'ok', cnt:'ok'};
+  }
+  // Power BI only node — no alarm counts, no machine codes
+  function fNode(id,name,tag,_ignored,main){
+    const dt=pbi(id);
+    const nc=pbiSev(id);
+    const dtLbl = dt>0 ? `${dt} min` : '—';
+    const dtCol = nc.cnt==='cr'?'var(--crit)':nc.cnt==='hi'?'var(--red-l)':nc.cnt==='med'?'var(--amber-l)':nc.cnt==='low'?'var(--dim)':'var(--dim)';
+    return `<div class="fnode ${nc.sev}${main?' main-flow':''}" title="${name}${dt>0?' · '+dt+' min Power BI downtime':' · No downtime recorded'}">
+      <div class="fn-tag">${tag}</div>
+      <div class="fn-name">${name}</div>
+      <div class="fn-cnt ${nc.cnt}" style="font-size:${dt>0?'14':'12'}px">${dtLbl}</div>
+      ${dt>0?`<div style="font-size:8px;color:${dtCol};font-weight:700;margin-top:2px">Power BI</div>`:''}
+    </div>`;
+  }
+  // Compact sub-assembly node — reads PBI dynamically for active day
+  function subNode(id, name, _ignored, faultType){
+    const dt = pbi(id);
+    const cls = dt>=30?'hi':dt>=10?'med':dt>0?'low':'ok';
+    const col = dt>=30?'var(--red-l)':dt>=10?'var(--amber-l)':dt>0?'var(--dim)':'var(--green)';
+    const valTxt = dt>0 ? `${dt}m` : '—';
+    return `<div style="background:var(--s3);border:1px solid var(--b2);border-left:3px solid ${col};border-radius:4px;padding:5px 7px;min-width:80px;text-align:center;cursor:default" title="PBI downtime: ${dt||'no data'} min · ${faultType}">
+      <div style="font-size:9px;font-weight:700;color:var(--text)">${name}</div>
+      <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:${col}">${valTxt}</div>
+      <div style="font-size:8px;color:var(--dim)">${faultType}</div>
+      ${dt>0?`<div style="font-size:8px;color:var(--amber-l);font-weight:700">DT file</div>`:''}
+    </div>`;
+  }
+
+  const ar=`<span class="farrow" style="flex-shrink:0">→</span>`;
+  let html=`
+
+  <!-- ── ROW 1: BODY SIDES ── -->
+  <div style="margin-bottom:8px">
+    <div style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">▲ BODY SIDES → EMS → FRAMING</div>
+    <div class="flow-row">${fNode('257','BSI LH','BODYSIDES',0,false)}${ar}${fNode('256','BSO LH','BODYSIDES',0,false)}${ar}${fNode('251','BSC LH','BODYSIDES',0,false)}</div>
+    <div class="flow-row" style="margin-top:4px">${fNode('252','BSI RH','BODYSIDES',0,false)}${ar}${fNode('258','BSO RH','BODYSIDES',0,false)}${ar}${fNode('259','BSC RH','BODYSIDES',0,false)}</div>
+  </div>
+
+  <!-- ── ROW 2: UNDERBODY SUB-ASSEMBLY (Power BI data) ── -->
+  <div style="margin-bottom:8px">
+    <div style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">▼ UNDERBODY SUB-ASSEMBLY (Power BI · feeds BEV Marriage)</div>
+    <div class="flow-row" style="flex-wrap:wrap;gap:4px">
+      ${subNode('231','231 DASH',0,'Tooling')}
+      ${subNode('236','RFC-236',0,'Flow Drill')}
+      ${subNode('235','RWHLH-235',0,'Rivet')}
+      ${subNode('237','RWHRH-237',0,'Rivet')}
+      ${subNode('232','FWHLH-232',0,'Rivet/Glue')}
+      ${subNode('233','FWHRH-233',0,'Robot/Sensor')}
+      ${subNode('234','FF-234',0,'Tip Dress')}
+    </div>
+    <div style="margin-top:3px;font-size:9px;color:var(--dim)">Sub-total: <strong style="color:var(--amber-l)">${[236,237,235,232,233,234,258,138].reduce((s,id)=>s+pbi(String(id)),0)} min</strong> · Buffer absorbs if &lt; buffer capacity${hasPBI?'':' · No downtime data for this day'}</div>
+  </div>
+
+  <!-- ── ROW 3: MAIN PRODUCTION FLOW ── -->
+  <div style="margin-bottom:8px">
+    <div style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">→ MAIN PRODUCTION FLOW (BOL → Empty Skid)</div>
+    <div class="flow-row" style="flex-wrap:wrap;gap:2px 2px">
+      ${fNode('138','MARR-138','MAIN LINE',0,true)}${ar}
+      ${fNode('139','139 Stud','UNDERBODY',0,true)}${ar}
+      ${fNode('154','154 Framing','UPPERBODY',0,true)}${ar}
+      ${fNode('resp','Respot','UPPERBODY',0,true)}${ar}
+      ${fNode('155','155 Roof','UPPERBODY',0,true)}${ar}
+      ${fNode('160','160 W&G','HANG ON PT',0,true)}${ar}
+      ${fNode('197','197 Door','HANG ON PT',0,true)}${ar}
+      ${fNode('198','198 Manual','HANG ON PT',0,true)}
+    </div>
+  </div>
+
+  <!-- ── ROW 4: DOORS + TAILGATE (HOP - direct impact on Empty Skid) ── -->
+  <div style="margin-bottom:6px">
+    <div style="font-size:9px;color:var(--dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">▲ DOORS + TAILGATE (HOP · minimal buffer · DIRECT impact on Empty Skid)</div>
+    <div class="flow-row">
+      ${fNode('285','285 Door L','HANG ON PT',0,false)}${ar}
+      ${fNode('286','286 Door R','HANG ON PT',0,false)}${ar}
+      ${fNode('287','287 Tailgate','HANG ON PT',0,false)}
+    </div>
+    <div style="margin-top:3px;font-size:9px;color:var(--dim)">Sub-total: <strong style="color:var(--crit)">${[285,286,287].reduce((s,id)=>s+pbi(String(id)),0)} min</strong>${hasPBI?' · HOP source: downtime file':' · No downtime data for this day'}</div>
+  </div>
+
+  <!-- ── LEGEND ── -->
+  <div style="margin-top:6px;font-size:9px;color:var(--dim);padding:5px 8px;background:var(--s1);border-radius:3px;display:flex;gap:16px;flex-wrap:wrap">
+    <span><strong style="color:var(--amber-l)">Number on node = Power BI downtime (minutes, manual operator entry)</strong></span>
+    <span>Compact nodes = sub-assembly lines</span>
+    <span>Colour = downtime severity · hover for fault type detail</span>
+  </div>`;
+  el.innerHTML = html;
+}
+buildFlowMap();
+
+// ════════════════════════════════════════════════════════════════════
+// LINE STATUS TABLE
+// ════════════════════════════════════════════════════════════════════
+
+// ── Station metadata: area grouping + display name ───────────────
+const STN_META = {
+  // Hang On Parts (HOP) — Direct impact, CT 270s
+  '285':{name:'LH DOOR-285', area:'Hang On Part', ct:270, direct:true,  col:'#cc2838'},
+  '286':{name:'RH DOOR-286', area:'Hang On Part', ct:270, direct:true,  col:'#d07018'},
+  '287':{name:'287 Tailgate', area:'Hang On Part', ct:270, direct:true,  col:'#d07018'},
+  '198':{name:'HOP-198 Manual',area:'Hang On Part',ct:270, direct:true,  col:'#a880e0'},
+  '197':{name:'DOOR-197',    area:'Hang On Part', ct:270, direct:true,  col:'#5a7590'},
+  '160':{name:'W&G-160',     area:'Hang On Part', ct:270, direct:true,  col:'#5a7590'},
+  // Upperbody — CT 183s, buffered
+  '155':{name:'ROOF-155',    area:'Upperbody',    ct:183, direct:false, col:'#30c0c5'},
+  '154':{name:'FRAMER-154',  area:'Upperbody',    ct:183, direct:false, col:'#30c0c5'},
+  // Main line — buffered
+  '138':{name:'MARR-138',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
+  '139':{name:'139 Stud',    area:'Main Line',    ct:286, direct:false, col:'#0075be'},
+  // Underbody SPA2 — CT 286s, buffered
+  '231':{name:'FS-231',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '232':{name:'FWHLH-232',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '233':{name:'FWHRH-233',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '234':{name:'FF-234',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '235':{name:'RWHLH-235',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '236':{name:'RFC-236',     area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '237':{name:'RWHRH-237',   area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  '258':{name:'BSO-258',     area:'Underbody',    ct:286, direct:false, col:'#a880e0'},
+  '239':{name:'FS-239',      area:'Underbody',    ct:286, direct:false, col:'#0075be'},
+  // Bodysides
+  '157':{name:'BSI-157',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
+  '159':{name:'BSO-159',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
+  '151':{name:'BSC-151',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
+  '252':{name:'BSI-252',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
+  '256':{name:'BSI-256',     area:'Bodysides',    ct:183, direct:false, col:'#5a7590'},
+};
+
+function buildSidePanel(){
+  const d = DAYS_DATA[activeDay];
+  const p = d.pbi || {};
+  const SHIFT = 520; // shift minutes 06:00-14:40
+  const CTMIN_EMPTY = EMPTY_CT/60; // 4.5 min/car
+
+  // ── Aggregate PBI by area ─────────────────────────────────────
+  const areaSum = {}, areaWorst = {};
+  Object.entries(p).forEach(([code, min]) => {
+    const m = STN_META[code] || {area:'Other', ct:286, direct:false};
+    const area = m.area;
+    areaSum[area] = (areaSum[area]||0) + min;
+    if(!areaWorst[area] || min > areaWorst[area].min)
+      areaWorst[area] = {code, name:(STN_META[code]||{}).name||code, min};
+  });
+
+  // ── Area cards ────────────────────────────────────────────────
+  const AREAS = [
+    {key:'Underbody',    dot:'var(--crit)',    ct:'286s', direct:false},
+    {key:'Hang On Part', dot:'var(--orange)',  ct:'270s', direct:true},
+    {key:'Upperbody',    dot:'var(--teal)',    ct:'183s', direct:false},
+    {key:'Bodysides',    dot:'var(--blue-l)',  ct:'183s', direct:false},
+  ];
+  const grid = document.getElementById('area-grid-container');
+  if(grid){
+    grid.innerHTML = AREAS.map(a=>{
+      const total = Math.round(areaSum[a.key]||0);
+      const worst = areaWorst[a.key];
+      const pct   = Math.round(total/SHIFT*100);
+      const cls   = total>200?'crit':total>80?'high':total>20?'warn':'ok';
+      const col   = total>200?'var(--red-l)':total>80?'var(--amber-l)':'var(--green-l)';
+      const impactTxt = a.direct
+        ? `~${Math.round(total/CTMIN_EMPTY)} cars direct`
+        : `${pct}% buffered`;
+      const worstTxt = worst ? `${worst.name.slice(0,10)} ${worst.min}m` : '—';
+      return `<div class="area-card ${cls}">
+        <div class="area-name"><div class="area-dot" style="background:${a.dot}"></div>${a.key}</div>
+        <div class="area-stat-row"><span class="area-stat-lbl">DT Time</span><span class="area-stat-val ${total>200?'r':total>80?'a':'g'}">${total} min</span></div>
+        <div class="area-stat-row"><span class="area-stat-lbl">Worst Line</span><span class="area-stat-val ${total>80?'r':'a'}">${worstTxt}</span></div>
+        <div class="area-stat-row"><span class="area-stat-lbl">CT: ${a.ct}</span><span class="area-stat-val ${a.direct?(total>20?'r':'a'):'dim'}">${impactTxt}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Critical lines table ──────────────────────────────────────
+  setText(document.getElementById('critical-lines-title'), `Critical Lines · ${d.label}`);
+  const tbody = document.getElementById('line-table-body');
+  if(tbody){
+    const lines = Object.entries(p)
+      .map(([code,min])=>({...( STN_META[code]||{name:code,area:'Other',direct:false,ct:286}), code, min}))
+      .filter(l=>l.min>=2)
+      .sort((a,b)=>b.min-a.min)
+      .slice(0,10);
+    if(!lines.length){
+      tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--dim);font-size:10px;padding:12px">No downtime recorded for ${d.label}</td></tr>`;
+    } else {
+      const maxMin = lines[0].min;
+      tbody.innerHTML = lines.map(l=>{
+        const cls = l.min>=100?'crit':l.min>=30?'high':l.min>=10?'warn':'ok';
+        const col = cls==='crit'?'var(--crit)':cls==='high'?'var(--red-l)':cls==='warn'?'var(--amber-l)':'var(--green-l)';
+        const barCol = cls==='crit'?'var(--crit)':cls==='high'?'var(--red)':cls==='warn'?'var(--amber)':'var(--green)';
+        const pct = (l.min/maxMin*100).toFixed(1);
+        const dur = l.min>=60?(l.min/60).toFixed(1)+'h':l.min+'m';
+        const carsLost = l.direct ? `~${Math.round(l.min/CTMIN_EMPTY)}` : '(buf)';
+        const areaShort = l.area==='Hang On Part'?'Hang':l.area.slice(0,5);
+        return `<tr>
+          <td><span class="status-dot ${cls}"></span>${l.name}</td>
+          <td style="font-size:9px;color:var(--dim)">${areaShort}</td>
+          <td><div class="line-bar-bg"><div class="line-bar-fill" style="width:${pct}%;background:${barCol}"></div></div>
+              <span style="font-family:var(--font-mono);font-size:10px;color:${col};margin-left:5px">${dur}</span></td>
+          <td style="font-family:var(--font-mono);font-size:10px;color:${l.direct?col:'var(--dim)'}">${carsLost}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // ── Top station tiles ─────────────────────────────────────────
+  setText(document.getElementById('dt-breakdown-title'), `Downtime Breakdown · ${d.label}`);
+  const tilesEl = document.getElementById('fault-tiles');
+  if(tilesEl){
+    const top5 = Object.entries(p).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if(!top5.length){
+      tilesEl.innerHTML=`<div style="width:100%;text-align:center;color:var(--dim);font-size:10px;padding:12px">No downtime data for ${d.label}</div>`;
+    } else {
+      const TILE_COLS=[
+        ['rgba(255,26,46,.12)','var(--crit)','var(--crit)'],
+        ['rgba(0,153,158,.1)','var(--teal)','var(--teal-l)'],
+        ['rgba(200,144,16,.1)','var(--amber)','var(--amber-l)'],
+        ['rgba(0,117,190,.1)','var(--blue)','var(--blue-b)'],
+        ['rgba(208,112,24,.1)','var(--orange)','var(--orange-l)'],
+      ];
+      tilesEl.innerHTML = top5.map(([code,min],i)=>{
+        const meta = STN_META[code]||{name:code,direct:false};
+        const [bg,border,textCol] = TILE_COLS[i];
+        return `<div style="flex:1;min-width:60px;text-align:center;padding:6px;background:${bg};border:1px solid ${border};border-radius:3px">
+          <div style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:${textCol}">${min}</div>
+          <div style="font-size:8px;color:var(--dim);margin-top:2px">min</div>
+          <div style="font-size:8px;color:var(--dim)">${meta.name.slice(0,10)}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── Alert / summary text ──────────────────────────────────────
+  const alertEl = document.getElementById('dt-alert-text');
+  if(alertEl){
+    const allEntries = Object.entries(p).sort((a,b)=>b[1]-a[1]);
+    if(!allEntries.length){
+      alertEl.innerHTML = `No downtime data loaded for ${d.label}.`;
+    } else {
+      const [topCode, topMin] = allEntries[0];
+      const topMeta = STN_META[topCode]||{name:topCode,area:'?',direct:false};
+      const totalDT = Math.round(Object.values(p).reduce((s,v)=>s+v,0));
+      const pct = Math.round(topMin/totalDT*100);
+      const hopMin = ['285','286','287','198','197','160'].reduce((s,id)=>s+(p[id]||0),0);
+      const directCars = Math.round(hopMin/CTMIN_EMPTY);
+      const impact = topMeta.direct
+        ? `<strong style="color:var(--crit)">▲ Direct HOP impact</strong> — ~${Math.round(topMin/CTMIN_EMPTY)} cars`
+        : `<strong style="color:var(--amber-l)">⊙ Buffered</strong> — absorbed if buffer &gt; ${topMin} min`;
+      alertEl.innerHTML = `<strong style="color:var(--amber-l)">▶ Top loss ${d.label}:</strong> ${topMeta.name} — ${topMin} min (${pct}% of ${totalDT} min total DT). ${impact}. Total HOP direct: ${hopMin} min → ~${directCars} cars lost. Source: HOP + DT Tracker files.`;
+    }
+  }
+}
+buildSidePanel();
+
+// ════════════════════════════════════════════════════════════════════
+// MINI TREND BARS (SIDE)
+// ════════════════════════════════════════════════════════════════════
+
+(function buildMiniTrend(){
+  const wrap = document.getElementById('trend-bars');
+  const lbls = document.getElementById('trend-labels');
+  const target = 102;
+  const maxCars = Math.max(...DAILY_PROD.map(d=>d.cars), target);
+  DAILY_PROD.forEach(d=>{
+    const h = Math.max(3,Math.round(d.cars/maxCars*70));
+    const col = d.today?'var(--teal)':d.overtime?'rgba(21,154,88,.55)':d.cars>=target?'var(--green)':d.cars>=80?'var(--blue)':'var(--red)';
+    const otBadge = d.overtime?'<span class="ot-badge">OT</span>':'';
+    wrap.innerHTML+=`<div class="trend-bar-wrap"><div class="trend-cnt ${d.today?'today':''}">${d.cars}${otBadge}</div><div class="trend-bar ${d.today?'today':''}" style="height:${h}px;background:${col}" title="${d.d}: ${d.cars} cars${d.overtime?' (overtime — ended 16:38)':''}"></div></div>`;
+    lbls.innerHTML+=`<span style="flex:1;text-align:center;font-size:7px;color:var(--dim);white-space:nowrap">${d.d.slice(0,6)}</span>`;
+  });
+  // Target line reference
+  const tPct = Math.round(target/maxCars*70);
+  wrap.style.position='relative';
+  const tLine=document.createElement('div');
+  tLine.style.cssText=`position:absolute;bottom:${tPct}px;left:0;right:0;border-top:1px dashed rgba(255,255,255,.2);z-index:1`;
+  wrap.appendChild(tLine);
+})();
+
+// ════════════════════════════════════════════════════════════════════
+// DAY FILTER — switches all production charts to selected date
+// ════════════════════════════════════════════════════════════════════
+
+function updateBOLStrip(dayKey){
+  const d = DAYS_DATA[dayKey];
+  if(!d) return;
+  const diff = d.empty_tot - d.bol_tot;
+  const diffStr = (diff>0?'+':'')+diff;
+  const diffCol = diff>0?'var(--green-l)':diff<0?'var(--red-l)':'var(--blue-b)';
+  const note = diff>0
+    ? `Shop ran ${Math.abs(diff)} more than entered — buffer depleted`
+    : diff<0
+    ? `Shop built ${Math.abs(diff)} units of buffer`
+    : 'Balanced — no buffer change';
+  setText(document.getElementById('bolTotal'),   d.bol_tot);
+  setText(document.getElementById('emptyTotal'), d.empty_tot);
+  setText(document.getElementById('bufferDelta'), diffStr);
+  setStyle(document.getElementById('bufferDelta'), 'color', diffCol);
+  setText(document.getElementById('bufferNote'),  note);
+  const bolEl = document.getElementById('bolTotal');
+  const noteEl = document.getElementById('bufferNote');
+  if(d.overtime){
+    setStyle(bolEl, 'color', 'var(--amber-l)');
+    if(noteEl) noteEl.textContent += ` · ⏱ Overtime (${d.otNote})`;
+  } else {
+    setStyle(bolEl, 'color', 'var(--teal-l)');
+  }
+}
+
+// Null-safe setter helpers
+function setText(el, val){ if(el) el.textContent = val; }
+function setStyle(el, prop, val){ if(el) el.style[prop] = val; }
+function qs(parent, sel){ return parent ? parent.querySelector(sel) : null; }
+
+// Reverse map: PBI code → display name for KPI card
+const PBI_NAMES = {'285':'LH DOOR-285','286':'RH DOOR-286','287':'287 Tailgate',
+  '198':'HOP-198 Manual','155':'ROOF-155','236':'RFC-236','138':'MARR-138',
+  '154':'FRAMER-154','231':'FS-231','234':'FF-234','157':'BSI-157','159':'BSO-159',
+  '235':'RWHLH-235','237':'RWHRH-237','232':'FWHLH-232','233':'FWHRH-233','258':'BSO-258'};
+
+// Helper: get previous working day key
+function prevDayKey(dayKey){
+  const keys = Object.keys(DAYS_DATA).sort();
+  const idx = keys.indexOf(dayKey);
+  return idx > 0 ? keys[idx-1] : null;
+}
+
+// Helper: week number label for a dayKey
+function weekLabel(dayKey){
+  // WK12 = Mar9-13, WK13 = Mar16-20
+  const wkMap = {
+    '2026-03-10':'WK12','2026-03-11':'WK12','2026-03-12':'WK12','2026-03-13':'WK12',
+    '2026-03-16':'WK13','2026-03-17':'WK13','2026-03-18':'WK13'
+  };
+  return wkMap[dayKey] || 'WK';
+}
+
+function updateKPIBar(dayKey){
+  const d = DAYS_DATA[dayKey];
+  if(!d) return;
+  const pct = Math.round(d.empty_tot/102*100);
+  const kpis = document.querySelectorAll('.kpi');
+
+  // ── Card 0: Empty Skids shop output ─────────────────────
+  if(kpis[0]){
+    const cls = d.empty_tot>=102?'ok':d.empty_tot>=85?'warn':'bad';
+    kpis[0].className = 'kpi '+cls;
+    setText(qs(kpis[0],'.kpi-val'), d.empty_tot);
+    setText(qs(kpis[0],'.kpi-val sub'), ` / 102 target`);
+    setStyle(qs(kpis[0],'.kpi-bar-fill'), 'width', pct+'%');
+    setText(qs(kpis[0],'.kpi-lbl'), `Empty Skids · ${d.label}`);
+    setText(qs(kpis[0],'.kpi-sub'), `${pct}% of target${d.overtime?' · ⏱ OT':''}`);
+  }
+
+  // ── Card 1: OPR% — handled by updateOPRKPI, DO NOT TOUCH ─
+
+  // ── Card 2: Worst downtime line ──────────────────────────
+  if(kpis[2]){
+    const p = d.pbi||{};
+    const entries = Object.entries(p).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if(entries.length){
+      const [code,min] = entries[0];
+      const name = PBI_NAMES[code]||code;
+      const cls = min>=100?'bad':min>=30?'warn':'ok';
+      kpis[2].className = 'kpi '+cls;
+      setText(qs(kpis[2],'.kpi-lbl'), `⚠ Top Loss: ${name}`);
+      setText(qs(kpis[2],'.kpi-val'), `${min}m`);
+      setStyle(qs(kpis[2],'.kpi-val'), 'fontSize', '18px');
+      setStyle(qs(kpis[2],'.kpi-bar-fill'), 'width', Math.min(min/154*100,100)+'%');
+      const totalDT = Object.values(p).reduce((s,v)=>s+v,0);
+      setText(qs(kpis[2],'.kpi-sub'), `${min} min · Total DT: ${totalDT} min · ${d.label}`);
+    } else {
+      kpis[2].className='kpi ok';
+      setText(qs(kpis[2],'.kpi-lbl'),'Top Downtime Line');
+      setText(qs(kpis[2],'.kpi-val'),'—');
+      setStyle(qs(kpis[2],'.kpi-bar-fill'),'width','0%');
+      setText(qs(kpis[2],'.kpi-sub'),`No downtime recorded · ${d.label}`);
+    }
+  }
+
+  // ── Card 3: Lost Cars — always compare EMPTY SKID (exit) vs target ──
+  if(kpis[3]){
+    const lost = 102 - d.empty_tot;   // ← Empty Skid output, not BOL entry
+    const p = d.pbi||{};
+    // HOP direct minutes → cars (CT=270s=4.5min/car)
+    const HOP_IDS=['285','286','287','198'];
+    const hopMin = HOP_IDS.reduce((s,id)=>s+(p[id]||0),0);
+    const hopCars = Math.round(hopMin/4.5);
+    kpis[3].className = 'kpi ' + (lost<=0?'ok':lost<=10?'warn':'bad');
+    const lostEl = qs(kpis[3],'.kpi-val');
+    if(lostEl) lostEl.innerHTML = (lost>0?'−'+lost:lost===0?'0':'+'+Math.abs(lost))+'<sub> cars</sub>';
+    setStyle(qs(kpis[3],'.kpi-bar-fill'),'width',Math.min(Math.abs(lost)/20*100,100)+'%');
+    const dtTip = hopCars>0 ? `~${hopCars} cars from HOP DT · ` : '';
+    setText(qs(kpis[3],'.kpi-sub'),`102 target · ${d.empty_tot} actual · ${dtTip}CT 270s`);
+  }
+
+  // ── Card 4: Yesterday ────────────────────────────────────
+  if(kpis[4]){
+    const prevKey = prevDayKey(dayKey);
+    const prev = prevKey ? DAYS_DATA[prevKey] : null;
+    if(prev){
+      const prevPct = Math.round(prev.empty_tot/102*100);
+      const cls = prev.empty_tot>=102?'ok':prev.empty_tot>=85?'warn':'bad';
+      kpis[4].className='kpi '+cls;
+      setText(qs(kpis[4],'.kpi-lbl'),`Previous Day · Empty Skids`);
+      const yEl = qs(kpis[4],'.kpi-val');
+      if(yEl) yEl.innerHTML = prev.empty_tot+'<sub> skids</sub>';
+      setStyle(qs(kpis[4],'.kpi-bar-fill'),'width',prevPct+'%');
+      setText(qs(kpis[4],'.kpi-sub'),`${prevPct}% of target · ${prev.label}${prev.overtime?' ⏱ OT':''}`);
+    } else {
+      setText(qs(kpis[4],'.kpi-lbl'),'Previous Day');
+      setText(qs(kpis[4],'.kpi-val'),'—');
+      setText(qs(kpis[4],'.kpi-sub'),'No previous day data');
+    }
+  }
+
+  // ── Card 5: Week Avg ─────────────────────────────────────
+  if(kpis[5]){
+    const wk = weekLabel(dayKey);
+    const wkKeys = Object.keys(DAYS_DATA).filter(k=>weekLabel(k)===wk).sort();
+    const wkTots = wkKeys.map(k=>DAYS_DATA[k].empty_tot);
+    const avg = wkTots.length ? Math.round(wkTots.reduce((a,b)=>a+b,0)/wkTots.length) : 0;
+    const avgPct = Math.round(avg/102*100);
+    kpis[5].className='kpi '+(avg>=102?'ok':avg>=85?'warn':'bad');
+    setText(qs(kpis[5],'.kpi-lbl'),`${wk} Week Avg`);
+    const avgEl = qs(kpis[5],'.kpi-val');
+    if(avgEl) avgEl.innerHTML=avg+'<sub> skids/day</sub>';
+    setStyle(qs(kpis[5],'.kpi-bar-fill'),'width',avgPct+'%');
+    const dayLabels = wkKeys.map(k=>DAYS_DATA[k].empty_tot).join('·');
+    setText(qs(kpis[5],'.kpi-sub'),`${avgPct}% · Days: ${dayLabels}`);
+  }
+}
+
+function switchDay(dayKey){
+  activeDay = dayKey;
+  const d = DAYS_DATA[dayKey];
+  if(!d){ console.error('switchDay: no data for', dayKey); return; }
+
+  // ── 1. ALL SECTIONS — charts + side panel ───────────────────────
+  try { buildJPH();        } catch(e){ console.error('buildJPH error:',e); }
+  try { buildWaterfall();  } catch(e){ console.error('buildWaterfall error:',e); }
+  try { buildLossType();   } catch(e){ console.error('buildLossType error:',e); }
+  try { buildGantt();      } catch(e){ console.error('buildGantt error:',e); }
+  try { buildFlowMap();    } catch(e){ console.error('buildFlowMap error:',e); }
+  try { buildSidePanel();  } catch(e){ console.error('buildSidePanel error:',e); }
+
+  // ── 2. Header text ────────────────────────────────────────────────
+  const badge = document.getElementById('dayBadge');
+  if(badge){
+    badge.textContent = d.isToday?'TODAY':d.overtime?'⏱ OT':'';
+    badge.className = 'day-badge '+(d.isToday?'today':d.overtime?'ot':'');
+  }
+  const sub = document.querySelector('.hdr-title p');
+  if(sub) sub.textContent = `${d.label} · DAY SHIFT 06:00–14:40${d.overtime?' · ⏱ OVERTIME':''}`;
+
+  // ── 3. Production strip & KPI bar ─────────────────────────────────
+  try { updateBOLStrip(dayKey); } catch(e){ console.error('BOL strip error:',e); }
+  try { updateKPIBar(dayKey);   } catch(e){ console.error('KPI bar error:',e); }
+
+  // ── 4. Alarm section note ─────────────────────────────────────────
+  const alarmWarn = document.getElementById('alarmDayWarning');
+  const alarmLbl  = document.getElementById('alarmDateLabel');
+  if(alarmWarn && alarmLbl){
+    const hasPBI = Object.keys(d.pbi||{}).length > 0;
+    alarmWarn.style.display = hasPBI ? 'none' : 'block';
+    alarmLbl.textContent = hasPBI
+      ? `· ${d.label} (live downtime)`
+      : `· 18-Mar-2026 data shown — ${d.label} downtime not yet in files`;
+  }
+
+  // ── 5. Remove stale day-note ──────────────────────────────────────
+  const staleNote = document.getElementById('gantt-day-note');
+  if(staleNote) staleNote.remove();
+}
+
+// Init BOL strip + KPI with default day
+updateBOLStrip(activeDay);
+updateKPIBar(activeDay);
+
+// ════════════════════════════════════════════════════════════════════
+// CLOCK + AUTO-REFRESH
+// ════════════════════════════════════════════════════════════════════
+
+let refreshSecs = 300;
+function tick(){
+  const n=new Date();
+  document.getElementById('clk').textContent=n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  refreshSecs--;
+  if(refreshSecs<=0){
+    // Only auto-reload when viewing today — preserve history day selection
+    if(activeDay === '2026-03-18') window.location.reload();
+    else refreshSecs = 300; // reset timer, don't reload when user is browsing history
+    return;
+  }
+  const m=Math.floor(refreshSecs/60),s=refreshSecs%60;
+  document.getElementById('refresh-pill').textContent=`🔄 ${m}:${String(s).padStart(2,'0')}`;
+}
+setInterval(tick,1000);tick();
+
+document.getElementById('load-time').textContent='Dashboard loaded: '+new Date().toLocaleString('en-GB')+'  ·  Data via VCCH.PRODUCTION_TRACKING.BODY_TRACKING + Power BI manual entry';
+</script>
+</body>
+</html>
