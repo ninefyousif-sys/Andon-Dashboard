@@ -528,8 +528,8 @@ table.t tr:hover td{background:rgba(255,255,255,.025);}
       <div class="ph">
         <div>
           <div class="pname">Final 1 FTT</div>
-          <div class="pval bad">91.3%</div>
-          <div class="ptgt">Target 100.0% &nbsp;<span class="kd db">&#9660; -8.7pp below target</span></div>
+          <div class="pval bad" id="pv-final1-ftt">91.3%</div>
+          <div class="ptgt" id="pt-final1-ftt">Target 100.0% &nbsp;<span class="kd db">&#9660; -8.7pp below target</span></div>
         </div>
       </div>
       <div class="pb">
@@ -543,8 +543,8 @@ table.t tr:hover td{background:rgba(255,255,255,.025);}
       <div class="ph">
         <div>
           <div class="pname">Final 2 FTT</div>
-          <div class="pval bad">90.9%</div>
-          <div class="ptgt">Target 100.0% &nbsp;<span class="kd db">&#9660; -9.1pp below target</span></div>
+          <div class="pval bad" id="pv-final2-ftt">90.9%</div>
+          <div class="ptgt" id="pt-final2-ftt">Target 100.0% &nbsp;<span class="kd db">&#9660; -9.1pp below target</span></div>
         </div>
       </div>
       <div class="pb">
@@ -703,7 +703,7 @@ table.t tr:hover td{background:rgba(255,255,255,.025);}
 </div>
 
 </main>
-<div class="footer">Morning Meeting Dashboard &middot; Body Shop (RA) &middot; Volvo Cars &nbsp;&middot;&nbsp; &#9889; Preview &mdash; A-Shop FTT &amp; Final 2 FTT items use actual WK12 D3 data &middot; Other values are sample placeholders</div>
+<div class="footer">Morning Meeting Dashboard &middot; Body Shop (RA) &middot; Volvo Cars &nbsp;&middot;&nbsp; &#9889; Preview &mdash; A-Shop FTT &amp; Final 2 FTT items use actual WK12 D3 data &middot; Other values are sample placeholders<br><span style="font-size:10px;color:var(--muted);opacity:.6;margin-top:4px;display:inline-block;letter-spacing:.5px;">Designed &amp; Built by Ninef Yousif</span></div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1269,12 +1269,14 @@ function renderBOLStops(){
 function updatePostHeaders(){
   const k = MM_DATA.kpis;
   const updates = [
-    ['pv-ashop-ftt', 'pt-ashop-ftt', 'ashop_ftt', k.ashop_ftt?.val],
-    ['pv-ashop-dpv', 'pt-ashop-dpv', 'ashop_dpv', k.ashop_dpv?.val],
-    ['pv-wg-dpv',    'pt-wg-dpv',    'wg_dpv',    k.wg_dpv?.val],
-    ['pv-wd6-ftt',   'pt-wd6-ftt',   'wd6_ftt',   k.wd6_ftt?.val],
-    ['pv-wd6-dpv',   'pt-wd6-dpv',   'wd6_dpv',   k.wd6_dpv?.val],
-    ['pv-cal-ftt',   'pt-cal-ftt',   'cal_ftt',   k.cal_ftt?.val],
+    ['pv-ashop-ftt',  'pt-ashop-ftt',  'ashop_ftt',  k.ashop_ftt?.val],
+    ['pv-ashop-dpv',  'pt-ashop-dpv',  'ashop_dpv',  k.ashop_dpv?.val],
+    ['pv-wg-dpv',     'pt-wg-dpv',     'wg_dpv',     k.wg_dpv?.val],
+    ['pv-wd6-ftt',    'pt-wd6-ftt',    'wd6_ftt',    k.wd6_ftt?.val],
+    ['pv-wd6-dpv',    'pt-wd6-dpv',    'wd6_dpv',    k.wd6_dpv?.val],
+    ['pv-cal-ftt',    'pt-cal-ftt',    'cal_ftt',    k.cal_ftt?.val],
+    ['pv-final1-ftt', 'pt-final1-ftt', 'final1_ftt', k.final1_ftt?.val],
+    ['pv-final2-ftt', 'pt-final2-ftt', 'final2_ftt', k.final2_ftt?.val],
   ];
   for(const [vid, tid, key, val] of updates){
     const vEl = document.getElementById(vid);
