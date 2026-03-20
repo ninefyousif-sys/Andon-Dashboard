@@ -46,9 +46,9 @@ WK12_MON = datetime.date(2026, 3, 16)
 def log(msg):
     ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     line = f"[{ts}] {msg}"
-    print(line)
-    with open(LOG, 'a', encoding='utf-8') as f:
-        f.write(line + '\n')
+    # Only print to stdout — RUN_UPDATE.bat redirects stdout >> update_log.txt
+    # Writing directly to the file AND via bat redirect causes PermissionError on Windows
+    print(line, flush=True)
 
 # ── DATE / WEEK HELPERS ────────────────────────────────────────────────────────
 def date_to_wk_day(d):
