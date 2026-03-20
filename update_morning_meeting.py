@@ -868,7 +868,7 @@ def update():
     patch_html(mm_js, day_dict, report_date, target_file=DASH_MOBILE)
     log("Mobile dashboard also patched.")
 
-    # ── 5. Push mobile dashboard to GitHub Pages ──────────────────────────────
+    # ── 5. Push both dashboards to GitHub Pages ───────────────────────────────
     if GITHUB_ENABLED:
         try:
             now_str = datetime.datetime.now().strftime('%H:%M')
@@ -888,15 +888,15 @@ def update():
 
             run_git(['fetch', 'origin', 'main'])
             run_git(['reset', '--mixed', 'origin/main'])
-            run_git(['add', 'morning_meeting_mobile.html'])
-            run_git(['commit', '-m', f'MM update {report_date} {now_str}'], allow_fail=True)
+            run_git(['add', 'morning_meeting_dashboard.html', 'morning_meeting_mobile.html'])
+            run_git(['commit', '-m', f'MM-update-{report_date}-{now_str}'], allow_fail=True)
             ok = run_git(['push', 'origin', 'main'])
             if not ok:
                 log("Git push failed — retrying with force-with-lease")
                 run_git(['fetch', 'origin', 'main'])
                 run_git(['reset', '--mixed', 'origin/main'])
-                run_git(['add', 'morning_meeting_mobile.html'])
-                run_git(['commit', '-m', f'MM update {report_date} {now_str} (retry)'], allow_fail=True)
+                run_git(['add', 'morning_meeting_dashboard.html', 'morning_meeting_mobile.html'])
+                run_git(['commit', '-m', f'MM-update-{report_date}-retry'], allow_fail=True)
                 run_git(['push', '--force-with-lease', 'origin', 'main'])
         except Exception as e:
             log(f"Git ERROR: {e}")
