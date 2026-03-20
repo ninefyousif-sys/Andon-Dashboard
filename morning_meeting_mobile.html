@@ -165,6 +165,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <div class="kpi-card"><div class="kpi-lbl">CAL FTT</div><div class="kpi-val d" id="mk-cal-ftt">—</div><div class="kpi-sub" id="mks-cal-ftt">Target 100%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-cal-ftt" style="width:0%"></div></div></div>
   <div class="kpi-card"><div class="kpi-lbl">Final 1 FTT</div><div class="kpi-val d" id="mk-final1-ftt">—</div><div class="kpi-sub" id="mks-final1-ftt">Target 100%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-final1-ftt" style="width:0%"></div></div></div>
   <div class="kpi-card"><div class="kpi-lbl">Final 2 FTT</div><div class="kpi-val d" id="mk-final2-ftt">—</div><div class="kpi-sub" id="mks-final2-ftt">Target 100%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-final2-ftt" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">BOK OPR</div><div class="kpi-val d" id="mk-bok-opr">—</div><div class="kpi-sub" id="mks-bok-opr">Target ≥83.3%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-bok-opr" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">BOL OPR</div><div class="kpi-val d" id="mk-bol-opr">—</div><div class="kpi-sub" id="mks-bol-opr">Target ≥88.2%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-bol-opr" style="width:0%"></div></div></div>
 </div>
 
 <!-- SAFETY -->
@@ -489,6 +491,8 @@ const TARGETS = {
   cal_ftt:    { tgt:100.0, dir:'ge', unit:'%'  },
   final1_ftt: { tgt:100.0, dir:'ge', unit:'%'  },
   final2_ftt: { tgt:100.0, dir:'ge', unit:'%'  },
+  bok_opr:    { tgt:83.3,  dir:'ge', unit:'%'  },
+  bol_opr:    { tgt:88.2,  dir:'ge', unit:'%'  },
 };
 
 function kpiOk(key, val){
@@ -582,7 +586,8 @@ function renderDPVItems(elId, items, max){
 function renderKPIs(){
   const kpis=[
     'ashop_ftt','ashop_dpv','wg_dpv','wd6_ftt',
-    'wd6_dpv','cal_ftt','final1_ftt','final2_ftt'
+    'wd6_dpv','cal_ftt','final1_ftt','final2_ftt',
+    'bok_opr','bol_opr'
   ];
   kpis.forEach(key=>{
     const val=MM_DATA.kpis[key]?.val;
