@@ -32,6 +32,9 @@ SETUP.bat
 requirements_*.txt
 github_deploy/
 
+# Python virtualenv — large, local only
+venv/
+
 # Snowflake credentials — NEVER commit these files
 snowflake_credentials.json
 snowflake_rsa_key.p8

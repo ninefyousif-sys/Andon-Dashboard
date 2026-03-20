@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A-Shop Morning Meeting | Volvo Cars</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#2a3038;--border:#30363d;
+  --text:#e6edf3;--muted:#7d8590;
+  --blue-b:#58a6ff;--green:#3fb950;--green-d:#1a4a1e;
+  --amber:#d29922;--amber-d:#4a3800;--red:#f85149;--red-d:#4a1010;
+  --purple:#bc8cff;--purple-d:#3a1f6e;--orange:#e07b39;--teal:#39c5bb;
+  --ub:#1b6eb5;--up:#38a169;--ho:#e07b39;--bs:#9b59b6;
+  --gap:14px;--r:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+
+/* HEADER */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:300;box-shadow:0 2px 12px rgba(0,0,0,.5);}
+.volvo{background:#fff;color:#003057;font-weight:800;font-size:12px;padding:3px 9px;border-radius:3px;letter-spacing:1.5px;}
+.h-tit h1{font-size:16px;font-weight:700;}
+.h-tit p{font-size:11px;color:var(--muted);}
+.h-l{display:flex;align-items:center;gap:12px;}
+.h-r{display:flex;align-items:center;gap:12px;}
+.h-meta{text-align:right;font-size:11px;color:var(--muted);}
+.h-meta strong{display:block;font-size:13px;font-weight:700;color:var(--text);}
+.ptag{background:rgba(210,153,34,.18);border:1px solid rgba(210,153,34,.5);color:var(--amber);font-size:10px;font-weight:700;padding:3px 9px;border-radius:12px;}
+
+/* NAV */
+.nav{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;padding:0 22px;overflow-x:auto;position:sticky;top:52px;z-index:200;}
+.ni{padding:8px 12px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:4px;transition:color .1s;}
+.ni:hover{color:var(--text);}
+.ni.on{color:var(--blue-b);border-bottom-color:var(--blue-b);}
+.nd{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+/* LAYOUT */
+.wrap{max-width:1800px;margin:0 auto;padding:var(--gap);}
+.sh{display:flex;align-items:center;gap:8px;margin:20px 0 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;}
+.sh::after{content:'';flex:1;height:1px;background:var(--border);}
+.anc{scroll-margin-top:100px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--gap);}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);}
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);}
+.mb{margin-bottom:var(--gap);}
+
+/* SHOP BANNER */
+.shop-banner{border-radius:var(--r);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--gap);border:1px solid transparent;}
+.sb-ashop{background:rgba(27,110,181,.1);border-color:rgba(27,110,181,.3);}
+.sb-bshop{background:rgba(155,89,182,.1);border-color:rgba(155,89,182,.3);}
+.sb-cshop{background:rgba(56,161,105,.1);border-color:rgba(56,161,105,.3);}
+.shop-name{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;}
+.sb-ashop .shop-name{color:var(--blue-b);}
+.sb-bshop .shop-name{color:var(--purple);}
+.sb-cshop .shop-name{color:var(--green);}
+.shop-kpis{display:flex;gap:12px;flex-wrap:wrap;}
+.shop-kpi{background:rgba(0,0,0,.25);border-radius:6px;padding:6px 14px;text-align:center;}
+.skv{font-size:18px;font-weight:800;}
+.skv.good{color:var(--green);}.skv.bad{color:var(--red);}.skv.warn{color:var(--amber);}.skv.neut{color:var(--text);}
+.skl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:1px;}
+.shop-status{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;}
+
+/* KPI MINI */
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;border-left:3px solid transparent;}
+.kpi.cb{border-left-color:var(--blue-b);}.kpi.cg{border-left-color:var(--green);}
+.kpi.cr{border-left-color:var(--red);}.kpi.ca{border-left-color:var(--amber);}
+.kpi.cp{border-left-color:var(--purple);}.kpi.ct{border-left-color:var(--teal);}
+.kl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:4px;}
+.kv{font-size:22px;font-weight:800;line-height:1;margin-bottom:3px;}
+.kv.good{color:var(--green);}.kv.bad{color:var(--red);}.kv.warn{color:var(--amber);}.kv.neut{color:var(--text);}
+.kt{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.kd{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;}
+.dg{background:var(--green-d);color:var(--green);}.db{background:var(--red-d);color:var(--red);}
+.da{background:var(--amber-d);color:var(--amber);}.dn{background:var(--bg3);color:var(--muted);}
+
+/* POST CARD */
+.post{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;}
+.pname{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:2px;}
+.pval{font-size:28px;font-weight:900;line-height:1;}
+.pval.good{color:var(--green);}.pval.bad{color:var(--red);}.pval.warn{color:var(--amber);}.pval.neut{color:var(--text);}
+.ptgt{font-size:11px;color:var(--muted);margin-top:2px;}
+.ph-stats{display:flex;gap:6px;flex-wrap:wrap;}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px 10px;text-align:center;min-width:52px;}
+.sv{font-size:17px;font-weight:800;}
+.sl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:1px;}
+.pb{padding:12px 14px;flex:1;}
+.plbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:7px;}
+
+/* AREA CHIPS */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.chip{flex:1;min-width:70px;border-radius:5px;padding:7px 10px;text-align:center;border:1px solid transparent;}
+.chip-ub{background:rgba(27,110,181,.13);border-color:rgba(27,110,181,.3);}
+.chip-up{background:rgba(56,161,105,.13);border-color:rgba(56,161,105,.3);}
+.chip-ho{background:rgba(224,123,57,.13);border-color:rgba(224,123,57,.3);}
+.chip-bs{background:rgba(155,89,182,.13);border-color:rgba(155,89,182,.3);}
+.chip .cn{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+.chip-ub .cn{color:var(--ub);}.chip-up .cn{color:var(--up);}
+.chip-ho .cn{color:var(--ho);}.chip-bs .cn{color:var(--bs);}
+.chip .cv{font-size:18px;font-weight:800;}
+.chip-ub .cv{color:var(--ub);}.chip-up .cv{color:var(--up);}
+.chip-ho .cv{color:var(--ho);}.chip-bs .cv{color:var(--bs);}
+.chip .cs{font-size:9px;color:var(--muted);margin-top:1px;}
+
+/* DEFECT TAGS */
+.dtags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;}
+.dt{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;}
+.dt-n{font-size:12px;font-weight:800;}
+.dt-d{color:var(--muted);font-size:10px;}
+.dt.bad .dt-n{color:var(--red);}.dt.warn .dt-n{color:var(--amber);}.dt.good .dt-n{color:var(--green);}
+
+/* TABLE */
+.tw{overflow-x:auto;}
+table.t{width:100%;border-collapse:collapse;font-size:11px;}
+table.t th{background:var(--bg3);color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:6px 9px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+table.t td{padding:7px 9px;border-bottom:1px solid rgba(48,54,61,.5);vertical-align:middle;}
+table.t tr:last-child td{border-bottom:none;}
+table.t tr:hover td{background:rgba(255,255,255,.025);}
+.mono{font-family:monospace;color:var(--blue-b);font-size:10.5px;}
+.tc-r{color:var(--red);font-weight:700;}.tc-a{color:var(--amber);font-weight:700;}
+.tc-g{color:var(--green);font-weight:700;}.tc-m{color:var(--muted);}
+
+/* PILL */
+.p{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;}
+.p-of{background:var(--red-d);color:var(--red);}
+.p-ug{background:var(--amber-d);color:var(--amber);}
+.p-ok{background:var(--green-d);color:var(--green);}
+.p-w{background:var(--amber-d);color:var(--amber);}
+.p-s{background:var(--red-d);color:var(--red);}
+.p-fx{background:var(--green-d);color:var(--green);}
+.p-cm{background:rgba(88,166,255,.15);color:var(--blue-b);}
+.p-pd{background:var(--purple-d);color:var(--purple);}
+.p-au{background:rgba(57,197,187,.15);color:var(--teal);}
+.p-mn{background:var(--bg3);color:var(--muted);}
+.p-pl{background:rgba(88,166,255,.15);color:var(--blue-b);}
+.rep{display:inline-block;width:18px;height:18px;border-radius:50%;font-size:9px;font-weight:800;text-align:center;line-height:18px;}
+.ry{background:var(--red-d);color:var(--red);}.rn{background:var(--bg3);color:var(--muted);}
+
+/* CALLOUT */
+.callout{border-radius:5px;padding:8px 11px;font-size:11px;margin-top:9px;line-height:1.5;}
+.co-r{background:var(--red-d);border:1px solid rgba(248,81,73,.2);color:var(--red);}
+.co-a{background:var(--amber-d);border:1px solid rgba(210,153,34,.2);color:var(--amber);}
+.co-g{background:var(--green-d);border:1px solid rgba(63,185,80,.2);color:var(--green);}
+.callout .owner{display:block;margin-top:3px;color:var(--muted);}
+
+/* SAFETY */
+.sban{background:linear-gradient(135deg,#6b0f0f,#3a0000);border:1px solid rgba(248,81,73,.35);border-radius:var(--r);padding:13px 18px;display:flex;align-items:flex-start;gap:14px;margin-bottom:var(--gap);}
+.si{font-size:26px;flex-shrink:0;margin-top:2px;}
+.sb h3{font-size:14px;font-weight:800;color:var(--red);margin-bottom:4px;}
+.sb p{font-size:12px;color:#ccc;line-height:1.6;}.sb p strong{color:#fff;}
+.sm{margin-left:auto;text-align:right;font-size:11px;color:var(--muted);flex-shrink:0;line-height:1.7;}
+
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+.ctit{font-size:11px;font-weight:700;color:var(--blue-b);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.bg-r{background:var(--red-d);color:var(--red);}.bg-g{background:var(--green-d);color:var(--green);}
+.bg-a{background:var(--amber-d);color:var(--amber);}.bg-b{background:rgba(27,110,181,.25);color:var(--blue-b);}
+.bg-p{background:var(--purple-d);color:var(--purple);}.bg-m{background:var(--bg3);color:var(--muted);}
+
+/* BAR */
+.br{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.bl{font-size:11px;color:var(--muted);width:72px;flex-shrink:0;font-weight:600;}
+.bt{flex:1;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;}
+.bf{height:100%;border-radius:4px;}
+.bv{font-size:12px;font-weight:700;width:40px;text-align:right;flex-shrink:0;}
+
+/* MET ROW */
+.mr{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(48,54,61,.5);}
+.mr:last-child{border-bottom:none;}
+.mrl{font-size:12px;color:var(--muted);}
+.mrv{font-size:13px;font-weight:700;}
+.mrv.good{color:var(--green);}.mrv.bad{color:var(--red);}.mrv.warn{color:var(--amber);}
+
+/* WO */
+.wo{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(48,54,61,.5);}
+.wo:last-child{border-bottom:none;}
+.wn{background:rgba(27,110,181,.2);color:var(--blue-b);font-size:10px;font-weight:800;padding:3px 7px;border-radius:3px;white-space:nowrap;border:1px solid rgba(88,166,255,.2);}
+.wd{font-size:12px;flex:1;}
+.ww{font-size:11px;color:var(--muted);white-space:nowrap;}
+.ws{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;}
+.wso{background:rgba(27,110,181,.15);color:var(--blue-b);}
+.wsp{background:var(--amber-d);color:var(--amber);}
+.wsd{background:var(--green-d);color:var(--green);}
+.wsx{background:var(--red-d);color:var(--red);}
+
+/* DT AREA */
+.dta-g{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+.dta{border-radius:6px;padding:10px 12px;border:1px solid transparent;}
+.dta-ub{background:rgba(27,110,181,.12);border-color:rgba(27,110,181,.25);}
+.dta-up{background:rgba(56,161,105,.12);border-color:rgba(56,161,105,.25);}
+.dta-ho{background:rgba(224,123,57,.12);border-color:rgba(224,123,57,.25);}
+.dta-bs{background:rgba(155,89,182,.12);border-color:rgba(155,89,182,.25);}
+.dta-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+.dta-ub .dta-l{color:var(--ub);}.dta-up .dta-l{color:var(--up);}
+.dta-ho .dta-l{color:var(--ho);}.dta-bs .dta-l{color:var(--bs);}
+.dta-tot{font-size:22px;font-weight:800;margin-bottom:3px;}
+.dta-ub .dta-tot{color:var(--ub);}.dta-up .dta-tot{color:var(--up);}
+.dta-ho .dta-tot{color:var(--ho);}.dta-bs .dta-tot{color:var(--bs);}
+.dta-sp{font-size:10px;color:var(--muted);}
+.dta-sp strong{color:var(--text);}
+
+/* SCRAP HERO */
+.sch{background:var(--green-d);border:1px solid rgba(63,185,80,.3);border-radius:var(--r);text-align:center;padding:18px;margin-bottom:var(--gap);}
+.sch .big{font-size:50px;font-weight:900;color:var(--green);line-height:1;}
+.sch .sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.sch .ok{font-size:11px;color:var(--green);font-weight:700;margin-top:5px;}
+
+.row-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;opacity:.8;}
+
+.footer{text-align:center;font-size:11px;color:var(--muted);padding:16px;border-top:1px solid var(--border);}
+
+@media(max-width:1400px){.g3{grid-template-columns:1fr 1fr;}.g6{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:900px){.g6,.g5,.g4,.g3,.g2{grid-template-columns:1fr 1fr;}.chips{flex-wrap:wrap;}.dta-g{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.g6,.g5,.g4,.g3,.g2,.dta-g{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="h-l">
+    <div class="volvo">VOLVO</div>
+    <div class="h-tit"><h1>Morning Meeting Dashboard</h1><p>Body Shop (RA) &middot; WK12 D4 &middot; Daily Production Review</p></div>
+  </div>
+  <div class="h-r">
+    <span class="ptag">&#9889; PREVIEW</span>
+    <div class="h-meta"><strong id="dt">&#8212;</strong><span>Shift 1 &middot; 06:00</span></div>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="ni on" onclick="g('safety')"><span class="nd" style="background:var(--red)"></span>Safety</div>
+  <div class="ni" onclick="g('ksum')"><span class="nd" style="background:var(--blue-b)"></span>KPI Summary</div>
+  <div class="ni" onclick="g('ashop')"><span class="nd" style="background:var(--blue-b)"></span>A Shop</div>
+  <div class="ni" onclick="g('bshop')"><span class="nd" style="background:var(--purple)"></span>B Shop</div>
+  <div class="ni" onclick="g('cshop')"><span class="nd" style="background:var(--green)"></span>C Shop</div>
+  <div class="ni" onclick="g('opr')"><span class="nd" style="background:var(--amber)"></span>BOK / BOL OPR</div>
+  <div class="ni" onclick="g('pq')"><span class="nd" style="background:var(--orange)"></span>Part Quality</div>
+  <div class="ni" onclick="g('bof')"><span class="nd" style="background:var(--purple)"></span>Bodies OOF</div>
+  <div class="ni" onclick="g('scrap')"><span class="nd" style="background:var(--green)"></span>Scrap</div>
+</nav>
+
+<main class="wrap">
+
+<!-- ═══ SAFETY ═══ -->
+<div id="safety" class="anc">
+  <div class="sh">&#129342; Safety</div>
+  <div class="sban">
+    <div class="si">&#9888;&#65039;</div>
+    <div class="sb">
+      <h3 id="safety-title">SAFETY ALERT &mdash; Hand Cut / Puncture Risk</h3>
+      <p id="safety-detail">Potential for TM to cut/puncture hand during quality check.<br><strong>TM must follow eyes with hands.</strong> Look before rubbing across surface. Gloves mandatory at all stations.</p>
+    </div>
+    <div class="sm" id="safety-meta">Casey Murakami<br>H&amp;S Lead<br>WK12 D4</div>
+  </div>
+  <div class="g4 mb">
+    <div class="kpi cg"><div class="kl">Days Since Last Incident</div><div class="kv good">47</div><div class="kt">Body Shop RA</div></div>
+    <div class="kpi cr"><div class="kl">Open Safety Alerts</div><div class="kv bad">1</div><div class="kt">Hand cut/puncture</div><div class="kd db">&#9650; Action Required</div></div>
+    <div class="kpi cb"><div class="kl">Near Misses (WTD)</div><div class="kv neut">0</div><div class="kt">Week to date</div><div class="kd dg">&#10003; Clear</div></div>
+    <div class="kpi cg"><div class="kl">Safety Actions Closed</div><div class="kv good">3/3</div><div class="kt">All WK12 complete</div><div class="kd dg">&#10003; 100%</div></div>
+  </div>
+</div>
+
+<!-- ═══ KPI SUMMARY ═══ -->
+<div id="ksum" class="anc">
+  <div class="sh" id="ksum-sh">&#128202; KPI Summary</div>
+  <div class="row-lbl" style="color:var(--blue-b)">A Shop</div>
+  <div class="g5 mb" id="ksum-ashop"><!-- populated by renderKPISummary() --></div>
+  <div class="row-lbl" style="color:var(--purple)">B Shop (WD6)</div>
+  <div class="g2 mb" id="ksum-bshop" style="grid-template-columns:repeat(2,1fr);max-width:600px;"><!-- populated --></div>
+  <div class="row-lbl" style="color:var(--green)">C Shop</div>
+  <div class="g3 mb" id="ksum-cshop" style="max-width:900px;"><!-- populated --></div>
+  <div class="row-lbl" style="color:var(--green)">Scrap</div>
+  <div class="g2 mb" style="grid-template-columns:repeat(2,1fr);max-width:400px;">
+    <div class="kpi cg"><div class="kl">Scrap / Car</div><div class="kv good">$0</div><div class="kt">T&#8804;budget</div><div class="kd dg">&#10003; On Budget</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     A  S H O P
+═══════════════════════════════════════════ -->
+<div id="ashop" class="anc">
+  <div class="sh">&#127981; A Shop</div>
+
+  <!-- A Shop banner -->
+  <div id="banner-ashop" class="shop-banner sb-ashop mb">
+    <div class="shop-name">&#11044; A Shop &mdash; WK12 D3</div>
+    <div class="shop-kpis">
+      <div class="shop-kpi"><div class="skv bad">87.4%</div><div class="skl">FTT</div></div>
+      <div class="shop-kpi"><div class="skv bad">2.8</div><div class="skl">DPV</div></div>
+      <div class="shop-kpi"><div class="skv warn">2.3</div><div class="skl">W&amp;G DPV</div></div>
+      <div class="shop-kpi"><div class="skv warn">96.2%</div><div class="skl">BOK OPR</div></div>
+      <div class="shop-kpi"><div class="skv warn">97.4%</div><div class="skl">BOL OPR</div></div>
+    </div>
+    <div class="shop-status"><span style="background:var(--red-d);color:var(--red);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">&#9888; 3 KPIs Below Target</span></div>
+  </div>
+
+  <!-- 3 posts side by side -->
+  <div class="g3 mb">
+
+    <!-- A-SHOP FTT -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">A-Shop FTT</div>
+          <div class="pval bad" id="pv-ashop-ftt">98.6%</div>
+          <div class="ptgt" id="pt-ashop-ftt">Target ≥98.0%</div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv neut" style="color:var(--text)">77</div><div class="sl">EOL</div></div>
+          <div class="stat"><div class="sv" style="color:var(--green)">70</div><div class="sl">OK</div></div>
+          <div class="stat"><div class="sv" style="color:var(--red)">7</div><div class="sl">Repair</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="dtags">
+          <div class="dt bad"><span class="dt-n">6</span><span class="dt-d">OVER FLUSH &mdash; FL2.0</span></div>
+          <div class="dt warn"><span class="dt-n">1</span><span class="dt-d">UNDER GAP &mdash; FL2.0</span></div>
+          <div class="dt bad"><span class="dt-n">007</span><span class="dt-d">Primary point</span></div>
+        </div>
+        <div class="plbl" style="color:var(--blue-b)">536 Items (EX90)</div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Link Time</th><th>Close Stn</th><th>Close Time</th><th>Extra Info</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004730</td><td class="mono">4815959</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 3:13 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">007 &minus;1.7mm</td></tr>
+              <tr><td class="mono">6004732</td><td class="mono">4815961</td><td><span class="p p-ug">UNDER GAP</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 12:46 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-a">009 gap &lt;2.5mm</td></tr>
+              <tr><td class="mono">6004749</td><td class="mono">4815978</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/18 6:34 PM</td><td>RPR_B</td><td class="tc-g">3/19 2:50 PM</td><td class="tc-r">sd007 &minus;2.2mm</td></tr>
+              <tr><td class="mono">6004788</td><td class="mono">4816017</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 1:55 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">007 &minus;2.2mm</td></tr>
+              <tr><td class="mono">6004803</td><td class="mono">4816032</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 2:59 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">007 &minus;2.2mm</td></tr>
+              <tr><td class="mono">6004873</td><td class="mono">4816101</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 3:19 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">51 flush 1.6m over</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="plbl" style="color:var(--orange)">519 Items (PSTR)</div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Link Time</th><th>Close Stn</th><th>Close Time</th><th>Extra Info</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004650</td><td class="mono">4815877</td><td><span class="p p-of">OVER FLUSH</span></td><td>PSTR</td><td>FL2.0</td><td class="tc-m">3/19 12:12 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">43 flush 1.4m over</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-r">&#9888; Root: Point 007 flush &minus;1.7 to &minus;2.2mm. All 6 on FL2.0. Station-level corrective action required today.<span class="owner">Owner: Quality / Tooling &mdash; FL2.0</span></div>
+      </div>
+    </div>
+
+    <!-- A-SHOP DPV -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">A-Shop DPV</div>
+          <div class="pval good" id="pv-ashop-dpv">0.00</div>
+          <div class="ptgt" id="pt-ashop-dpv">Target ≤0.10</div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv" style="color:var(--ub)">1.2</div><div class="sl" style="color:var(--ub)">Underbody</div></div>
+          <div class="stat"><div class="sv" style="color:var(--up)">0.8</div><div class="sl" style="color:var(--up)">Upperbody</div></div>
+          <div class="stat"><div class="sv" style="color:var(--ho)">0.5</div><div class="sl" style="color:var(--ho)">Hang-On</div></div>
+          <div class="stat"><div class="sv" style="color:var(--bs)">0.3</div><div class="sl" style="color:var(--bs)">Body Sides</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="chips mb">
+          <div class="chip chip-ub"><div class="cn">Underbody</div><div class="cv">1.2</div><div class="cs">Bent parts &mdash; largest</div></div>
+          <div class="chip chip-up"><div class="cn">Upperbody</div><div class="cv">0.8</div><div class="cs">Flush &mdash; FL2.0</div></div>
+          <div class="chip chip-ho"><div class="cn">Hang-On</div><div class="cv">0.5</div><div class="cs">Hood / door align</div></div>
+          <div class="chip chip-bs"><div class="cn">Body Sides</div><div class="cv">0.3</div><div class="cs">Below sub-target</div></div>
+        </div>
+        <div class="dtags mb">
+          <div class="dt bad"><span class="dt-n">3</span><span class="dt-d">Bent parts (UB)</span></div>
+          <div class="dt bad"><span class="dt-n">2</span><span class="dt-d">Rust contamination</span></div>
+          <div class="dt warn"><span class="dt-n">4</span><span class="dt-d">Over Flush (UP)</span></div>
+          <div class="dt warn"><span class="dt-n">2</span><span class="dt-d">Hood align (HO)</span></div>
+        </div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Area</th><th>Station</th><th>Description</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004730</td><td class="mono">4815959</td><td><span class="p p-of">OVER FLUSH</span></td><td style="color:var(--up)">Upperbody</td><td>FL2.0</td><td>007 &minus;1.7mm</td><td class="tc-a">Open</td></tr>
+              <tr><td class="mono">6004788</td><td class="mono">4816017</td><td><span class="p p-of">OVER FLUSH</span></td><td style="color:var(--up)">Upperbody</td><td>FL2.0</td><td>007 &minus;2.2mm</td><td class="tc-a">Open</td></tr>
+              <tr><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td><span class="p p-w">RUST</span></td><td style="color:var(--ub)">Underbody</td><td>RH BS</td><td>B-Pillar rust &mdash; Iroquois (22 pcs)</td><td class="tc-a">Sorting</td></tr>
+              <tr><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td><span class="p p-s">BENT</span></td><td style="color:var(--ub)">Underbody</td><td>RWH</td><td>LH Side-Member &mdash; Herzogenb</td><td class="tc-r">Scrapped</td></tr>
+              <tr><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td><span class="p p-s">BENT</span></td><td style="color:var(--ub)">Underbody</td><td>232-060</td><td>Reinf Side Member &mdash; Chengdu</td><td class="tc-r">Scrapped</td></tr>
+              <tr><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td><span class="p p-w">DENT</span></td><td style="color:var(--ho)">Hang-On</td><td>Horse Shoe</td><td>Hood dent &mdash; Body 4815824</td><td class="tc-a">Open</td></tr>
+              <tr><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td><span class="p p-w">HINGE</span></td><td style="color:var(--ho)">Hang-On</td><td>Horse Shoe</td><td>E-coat Hood Hinge &mdash; 4816312</td><td class="tc-r">Overdue</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-a">&#9888; 3 repeater supplier issues (Iroquois, Herzogenb, Chengdu). VIRA escalation required.<span class="owner">Owner: IMQ Tyler / Logistics Joe</span></div>
+      </div>
+    </div>
+
+    <!-- A-SHOP W&G DPV -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">A-Shop W&amp;G DPV</div>
+          <div class="pval bad" id="pv-wg-dpv">1.81</div>
+          <div class="ptgt" id="pt-wg-dpv">Target ≤1.20</div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv" style="color:var(--ub)">1.1</div><div class="sl" style="color:var(--ub)">Underbody</div></div>
+          <div class="stat"><div class="sv" style="color:var(--up)">0.7</div><div class="sl" style="color:var(--up)">Upperbody</div></div>
+          <div class="stat"><div class="sv" style="color:var(--ho)">0.5</div><div class="sl" style="color:var(--ho)">Hang-On</div></div>
+          <div class="stat"><div class="sv" style="color:var(--green)">0.0</div><div class="sl" style="color:var(--bs)">Body Sides</div></div>
+          <div class="stat"><div class="sv" style="color:var(--red)">7</div><div class="sl">Open WOs</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="chips mb">
+          <div class="chip chip-ub"><div class="cn">Underbody</div><div class="cv">1.1</div><div class="cs">St.232 tooling</div></div>
+          <div class="chip chip-up"><div class="cn">Upperbody</div><div class="cv">0.7</div><div class="cs">FL2.0 flush</div></div>
+          <div class="chip chip-ho"><div class="cn">Hang-On</div><div class="cv">0.5</div><div class="cs">Hood hinge WO</div></div>
+          <div class="chip chip-bs"><div class="cn">Body Sides</div><div class="cv">0.0</div><div class="cs">&#10003; Clear</div></div>
+        </div>
+        <div class="dtags mb">
+          <div class="dt bad"><span class="dt-n">2</span><span class="dt-d">Weld gap &mdash; St.232 (UB)</span></div>
+          <div class="dt warn"><span class="dt-n">1</span><span class="dt-d">A-Pillar &mdash; CMM (UP)</span></div>
+          <div class="dt warn"><span class="dt-n">1</span><span class="dt-d">Hood Hinge (HO)</span></div>
+          <div class="dt warn"><span class="dt-n">1</span><span class="dt-d">Flush var FL2.0 (UP)</span></div>
+        </div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Area</th><th>Station</th><th>WO #</th><th>Description</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">4815860</td><td class="mono">&mdash;</td><td><span class="p p-of">WELD GAP</span></td><td style="color:var(--ub)">Underbody</td><td>St.232</td><td>WO-4817</td><td>Bent Reinf &mdash; RH FWH</td><td class="tc-a">In Prog</td></tr>
+              <tr><td class="mono">4816122</td><td class="mono">&mdash;</td><td><span class="p p-of">WELD GAP</span></td><td style="color:var(--ub)">Underbody</td><td>St.232</td><td>WO-4819</td><td>L2 Threshold verify</td><td class="tc-a">Open</td></tr>
+              <tr><td class="mono">4815860</td><td class="mono">&mdash;</td><td><span class="p p-ug">A-PILLAR</span></td><td style="color:var(--up)">Upperbody</td><td>CMM</td><td>WO-4821</td><td>A-Pillar misalign post-CMM</td><td class="tc-a">In Prog</td></tr>
+              <tr><td class="mono">6004749</td><td class="mono">4815978</td><td><span class="p p-ug">FLUSH VAR</span></td><td style="color:var(--up)">Upperbody</td><td>FL2.0</td><td>&mdash;</td><td>sd007 &minus;2.2mm</td><td class="tc-g">Closed RPR_B</td></tr>
+              <tr><td class="mono">4816312</td><td class="mono">&mdash;</td><td><span class="p p-w">HOOD HINGE</span></td><td style="color:var(--ho)">Hang-On</td><td>Horse Shoe</td><td>WO-4815</td><td>E-coat hinge needed</td><td class="tc-r">Overdue</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-a">&#9888; WO-4815 overdue (Hood Hinge). Needs immediate attention &mdash; blocking BOK OPR recovery.<span class="owner">Owner: Cory McCallum</span></div>
+      </div>
+    </div>
+
+  </div><!-- end g3 A Shop -->
+</div>
+
+<!-- ═══════════════════════════════════════════
+     B  S H O P
+═══════════════════════════════════════════ -->
+<div id="bshop" class="anc">
+  <div class="sh">&#127981; B Shop</div>
+
+  <div id="banner-bshop" class="shop-banner sb-bshop mb">
+    <div class="shop-name">&#11044; B Shop &mdash; WK12 D3</div>
+    <div class="shop-kpis">
+      <div class="shop-kpi"><div class="skv warn">89.1%</div><div class="skl">Paint FTT</div></div>
+      <div class="shop-kpi"><div class="skv warn">2.2</div><div class="skl">Paint DPV</div></div>
+    </div>
+    <div class="shop-status"><span style="background:var(--amber-d);color:var(--amber);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">&#9888; 2 KPIs Near Miss</span></div>
+  </div>
+
+  <div class="g2 mb">
+
+    <!-- PAINT FTT -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">Paint Shop FTT (WD6)</div>
+          <div class="pval warn" id="pv-wd6-ftt">98.8%</div>
+          <div class="ptgt" id="pt-wd6-ftt">Target 100.0%</div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv neut" style="color:var(--text)">64</div><div class="sl">EOL</div></div>
+          <div class="stat"><div class="sv" style="color:var(--green)">57</div><div class="sl">OK</div></div>
+          <div class="stat"><div class="sv" style="color:var(--red)">7</div><div class="sl">Repair</div></div>
+          <div class="stat"><div class="sv warn">2.2</div><div class="sl">DPV</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="dtags mb">
+          <div class="dt bad"><span class="dt-n">3</span><span class="dt-d">Surface contamination (rust carry)</span></div>
+          <div class="dt warn"><span class="dt-n">2</span><span class="dt-d">Hood dent re-entry</span></div>
+          <div class="dt warn"><span class="dt-n">2</span><span class="dt-d">Adhesion failure</span></div>
+        </div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Root Cause</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004730</td><td class="mono">4815959</td><td><span class="p p-of">SURFACE</span></td><td>EX90</td><td>PSt.02</td><td>Rust carry &mdash; B-Pillar (Iroquois)</td><td class="tc-a">Re-prep</td></tr>
+              <tr><td class="mono">6004788</td><td class="mono">4816017</td><td><span class="p p-of">SURFACE</span></td><td>EX90</td><td>PSt.02</td><td>Rust carry &mdash; Iroquois part</td><td class="tc-a">Re-prep</td></tr>
+              <tr><td class="mono">4815824</td><td class="mono">&mdash;</td><td><span class="p p-w">DENT</span></td><td>519</td><td>PSt.01</td><td>Hood dent &mdash; re-entered paint</td><td class="tc-a">Repair</td></tr>
+              <tr><td class="mono">6004803</td><td class="mono">4816032</td><td><span class="p p-w">ADHESION</span></td><td>EX90</td><td>PSt.04</td><td>Surface contam adhesion fail</td><td class="tc-a">Rework</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-a">Root: B-Pillar rust (Iroquois) carrying to paint. Resolves when 22-pc supplier sort complete.<span class="owner">Owner: Paint Lead / VIRA monitoring</span></div>
+      </div>
+    </div>
+
+    <!-- PAINT DPV -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">Paint Shop DPV (WD6)</div>
+          <div class="pval good" id="pv-wd6-dpv">0.05</div>
+          <div class="ptgt" id="pt-wd6-dpv">Target ≤0.12</div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv" style="color:var(--ub)">0.9</div><div class="sl" style="color:var(--ub)">Underbody</div></div>
+          <div class="stat"><div class="sv" style="color:var(--up)">0.7</div><div class="sl" style="color:var(--up)">Upperbody</div></div>
+          <div class="stat"><div class="sv" style="color:var(--ho)">0.4</div><div class="sl" style="color:var(--ho)">Hang-On</div></div>
+          <div class="stat"><div class="sv" style="color:var(--green)">0.2</div><div class="sl" style="color:var(--bs)">Body Sides</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="chips mb">
+          <div class="chip chip-ub"><div class="cn">Underbody</div><div class="cv">0.9</div><div class="cs">Rust contamination</div></div>
+          <div class="chip chip-up"><div class="cn">Upperbody</div><div class="cv">0.7</div><div class="cs">Carry-through FL2.0</div></div>
+          <div class="chip chip-ho"><div class="cn">Hang-On</div><div class="cv">0.4</div><div class="cs">Hood dent re-entry</div></div>
+          <div class="chip chip-bs"><div class="cn">Body Sides</div><div class="cv">0.2</div><div class="cs">&#10003; Within target</div></div>
+        </div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Area</th><th>Station</th><th>Description</th><th>Root Cause</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004730</td><td class="mono">4815959</td><td><span class="p p-of">CONTAM</span></td><td style="color:var(--ub)">Underbody</td><td>PSt.02</td><td>Surface contamination</td><td>Iroquois rust carry</td></tr>
+              <tr><td class="mono">6004788</td><td class="mono">4816017</td><td><span class="p p-of">CONTAM</span></td><td style="color:var(--ub)">Underbody</td><td>PSt.02</td><td>Surface contamination</td><td>Iroquois rust carry</td></tr>
+              <tr><td class="mono">6004730</td><td class="mono">4815959</td><td><span class="p p-of">FLUSH</span></td><td style="color:var(--up)">Upperbody</td><td>PSt.03</td><td>FL2.0 carry-through</td><td>007 flush &minus;1.7mm</td></tr>
+              <tr><td class="mono">4815824</td><td class="mono">&mdash;</td><td><span class="p p-w">DENT</span></td><td style="color:var(--ho)">Hang-On</td><td>PSt.01</td><td>Hood dent</td><td>Re-entry from OOF</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-a">&#9888; Primary driver is Underbody rust carry-through from A-Shop. Both Underbody &amp; Upperbody will improve when A-Shop issues resolved.<span class="owner">Owner: Paint Quality Lead</span></div>
+      </div>
+    </div>
+
+  </div><!-- end g2 B Shop -->
+</div>
+
+<!-- ═══════════════════════════════════════════
+     C  S H O P
+═══════════════════════════════════════════ -->
+<div id="cshop" class="anc">
+  <div class="sh">&#127981; C Shop</div>
+
+  <div id="banner-cshop" class="shop-banner sb-cshop mb">
+    <div class="shop-name">&#11044; C Shop &mdash; WK12 D3</div>
+    <div class="shop-kpis">
+      <div class="shop-kpi"><div class="skv bad">86.8%</div><div class="skl">CAL FTT</div></div>
+      <div class="shop-kpi"><div class="skv good">91.3%</div><div class="skl">Final 1 FTT</div></div>
+      <div class="shop-kpi"><div class="skv good">90.9%</div><div class="skl">Final 2 FTT</div></div>
+    </div>
+    <div class="shop-status"><span style="background:var(--red-d);color:var(--red);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">&#9888; CAL Below Target</span><span style="background:var(--green-d);color:var(--green);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;margin-left:6px;">&#10003; Final 1 &amp; 2 On Target</span></div>
+  </div>
+
+  <div class="g3 mb">
+
+    <!-- CAL FTT -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname" id="pv-cal-ftt-lbl">CAL FTT</div>
+          <div class="pval warn" id="pv-cal-ftt">97.6%</div>
+          <div class="ptgt" id="pt-cal-ftt">Target 100.0%</div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv neut" style="color:var(--text)">61</div><div class="sl">EOL</div></div>
+          <div class="stat"><div class="sv" style="color:var(--green)">53</div><div class="sl">OK</div></div>
+          <div class="stat"><div class="sv" style="color:var(--red)">8</div><div class="sl">Repair</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="dtags mb">
+          <div class="dt bad"><span class="dt-n">5</span><span class="dt-d">A-Shop carry-through flush</span></div>
+          <div class="dt bad"><span class="dt-n">2</span><span class="dt-d">Geo deviation &mdash; St.232</span></div>
+          <div class="dt warn"><span class="dt-n">1</span><span class="dt-d">Weld spatter</span></div>
+        </div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>From Area</th><th>Station</th><th>Extra Info</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004730</td><td class="mono">4815959</td><td><span class="p p-of">CARRY</span></td><td>EX90</td><td style="color:var(--blue-b)">A-Shop UP</td><td>CAL-St.03</td><td class="tc-r">007 flush &minus;1.7mm</td><td class="tc-a">Rework</td></tr>
+              <tr><td class="mono">6004788</td><td class="mono">4816017</td><td><span class="p p-of">CARRY</span></td><td>EX90</td><td style="color:var(--blue-b)">A-Shop UP</td><td>CAL-St.03</td><td class="tc-r">007 flush &minus;2.2mm</td><td class="tc-a">Rework</td></tr>
+              <tr><td class="mono">6004803</td><td class="mono">4816032</td><td><span class="p p-of">CARRY</span></td><td>EX90</td><td style="color:var(--blue-b)">A-Shop UP</td><td>CAL-St.03</td><td class="tc-r">007 flush &minus;2.2mm</td><td class="tc-a">Rework</td></tr>
+              <tr><td class="mono">4815860</td><td class="mono">&mdash;</td><td><span class="p p-ug">GEO DEV</span></td><td>536</td><td style="color:var(--blue-b)">A-Shop UB</td><td>CAL-St.01</td><td class="tc-a">A-Pillar geo deviation</td><td class="tc-a">CMM check</td></tr>
+              <tr><td class="mono">6004873</td><td class="mono">4816101</td><td><span class="p p-of">CARRY</span></td><td>EX90</td><td style="color:var(--blue-b)">A-Shop UP</td><td>CAL-St.03</td><td class="tc-r">51 flush 1.6m over</td><td class="tc-a">Rework</td></tr>
+              <tr><td class="mono">6004732</td><td class="mono">4815961</td><td><span class="p p-ug">CARRY-GAP</span></td><td>EX90</td><td style="color:var(--blue-b)">A-Shop UP</td><td>CAL-St.03</td><td class="tc-a">009 gap carry-through</td><td class="tc-a">Rework</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-r">&#9888; 5 of 8 CAL failures are A-Shop carry-through from FL2.0. <strong>Fix A-Shop FL2.0 = CAL recovers.</strong><span class="owner">Owner: CAL Supervisor &mdash; linked to A-Shop corrective action</span></div>
+      </div>
+    </div>
+
+    <!-- FINAL 1 FTT -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">Final 1 FTT</div>
+          <div class="pval good">91.3%</div>
+          <div class="ptgt">Target &#8805;90% &nbsp;<span class="kd dg">&#9650; +1.3pp &#10003;</span></div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv neut" style="color:var(--text)">69</div><div class="sl">EOL</div></div>
+          <div class="stat"><div class="sv" style="color:var(--green)">63</div><div class="sl">OK</div></div>
+          <div class="stat"><div class="sv" style="color:var(--amber)">6</div><div class="sl">Repair</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="dtags mb">
+          <div class="dt warn"><span class="dt-n">4</span><span class="dt-d">Minor cosmetic at Final check</span></div>
+          <div class="dt warn"><span class="dt-n">2</span><span class="dt-d">Gap / flush re-verify</span></div>
+          <div class="dt good"><span class="dt-n">&#10003;</span><span class="dt-d">Target met</span></div>
+        </div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Extra Info</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004811</td><td class="mono">4816040</td><td><span class="p p-ug">COSMETIC</span></td><td>EX90</td><td>F1-EOL</td><td class="tc-a">Minor panel mark at Final check</td></tr>
+              <tr><td class="mono">6004822</td><td class="mono">4816051</td><td><span class="p p-ug">FLUSH VER</span></td><td>EX90</td><td>F1-EOL</td><td class="tc-a">Flush measurement re-verify</td></tr>
+              <tr><td class="mono">6004835</td><td class="mono">4816064</td><td><span class="p p-ug">COSMETIC</span></td><td>PSTR</td><td>F1-EOL</td><td class="tc-a">Surface micro-mark</td></tr>
+              <tr><td class="mono">6004847</td><td class="mono">4816076</td><td><span class="p p-ug">COSMETIC</span></td><td>EX90</td><td>F1-EOL</td><td class="tc-a">Minor dent at handle area</td></tr>
+              <tr><td class="mono">6004858</td><td class="mono">4816087</td><td><span class="p p-ug">GAP VER</span></td><td>EX90</td><td>F1-EOL</td><td class="tc-a">Gap measurement re-verify</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-g">&#10003; Final 1 above target. Monitor &mdash; if A-Shop flush carries to Final 1, escalate.</div>
+      </div>
+    </div>
+
+    <!-- FINAL 2 FTT -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">Final 2 FTT</div>
+          <div class="pval good">90.9%</div>
+          <div class="ptgt">Target &#8805;90% &nbsp;<span class="kd dg">&#9650; +0.9pp &#10003;</span></div>
+        </div>
+        <div class="ph-stats">
+          <div class="stat"><div class="sv neut" style="color:var(--text)">77</div><div class="sl">FTT EOL</div></div>
+          <div class="stat"><div class="sv" style="color:var(--green)">70</div><div class="sl">Body OK</div></div>
+          <div class="stat"><div class="sv" style="color:var(--amber)">7</div><div class="sl">Sent Repair</div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="dtags mb">
+          <div class="dt bad"><span class="dt-n">5</span><span class="dt-d">Over flush carry-through</span></div>
+          <div class="dt warn"><span class="dt-n">1</span><span class="dt-d">Under gap (FL2.0)</span></div>
+          <div class="dt warn"><span class="dt-n">1</span><span class="dt-d">Flush closed at RPR_B</span></div>
+        </div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Link Time</th><th>Close Stn</th><th>Close Time</th><th>Extra Info</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">6004730</td><td class="mono">4815959</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 3:13 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">007 &minus;1.7mm carry</td></tr>
+              <tr><td class="mono">6004732</td><td class="mono">4815961</td><td><span class="p p-ug">UNDER GAP</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 12:46 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-a">009 gap carry</td></tr>
+              <tr><td class="mono">6004749</td><td class="mono">4815978</td><td><span class="p p-ok">CLOSED</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/18 6:34 PM</td><td>RPR_B</td><td class="tc-g">3/19 2:50 PM</td><td class="tc-g">sd007 &minus;2.2mm &#10003; closed</td></tr>
+              <tr><td class="mono">6004788</td><td class="mono">4816017</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 1:55 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">007 &minus;2.2mm carry</td></tr>
+              <tr><td class="mono">6004803</td><td class="mono">4816032</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 2:59 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">007 &minus;2.2mm carry</td></tr>
+              <tr><td class="mono">6004873</td><td class="mono">4816101</td><td><span class="p p-of">OVER FLUSH</span></td><td>EX90</td><td>FL2.0</td><td class="tc-m">3/19 3:19 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">51 flush 1.6m carry</td></tr>
+              <tr><td class="mono">6004650</td><td class="mono">4815877</td><td><span class="p p-of">OVER FLUSH</span></td><td>PSTR</td><td>FL2.0</td><td class="tc-m">3/19 12:12 PM</td><td class="tc-m">&mdash;</td><td class="tc-m">&mdash;</td><td class="tc-r">43 flush 1.4m carry</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout co-a">&#9888; All 7 Final 2 repair items are FL2.0 carry-through from A-Shop. 1 closed at RPR_B. Fix A-Shop FL2.0 = Final 2 items reduce.<span class="owner">Owner: Final 2 Supervisor / A-Shop Quality</span></div>
+      </div>
+    </div>
+
+  </div><!-- end g3 C Shop -->
+</div>
+
+<!-- ═══ BOK / BOL OPR ═══ -->
+<div id="opr" class="anc">
+  <div class="sh">&#9201;&#65039; HOP Downtime &amp; OPR</div>
+
+  <!-- ── Full-width HOP DT 4-area cards only ── -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:var(--gap);">
+    <div id="dt-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <!-- populated by applyMMData() -->
+    </div>
+    <div id="dt-area-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);">
+      <!-- populated by applyMMData() -->
+    </div>
+  </div>
+
+  <!-- ── BOK OPR + BOL OPR side by side ── -->
+  <div class="g2 mb">
+
+    <!-- BOK OPR -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">A-Shop BOK OPR</div>
+          <div class="pval warn">96.2%</div>
+          <div class="ptgt">Target &#8805;98% &nbsp;<span class="kd db">&#9660; 1.8pp</span></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="plbl">&#128308; Critical Lines &mdash; Top 10 HOP Stops</div>
+        <div id="bok-stops-table" style="margin-bottom:12px;"><!-- populated by renderBOKStops() --></div>
+        <div id="bok-dt-callout" class="callout co-a">Loading downtime data&hellip;</div>
+      </div>
+    </div>
+
+    <!-- BOL OPR -->
+    <div class="post">
+      <div class="ph">
+        <div>
+          <div class="pname">A-Shop BOL OPR</div>
+          <div class="pval warn">97.4%</div>
+          <div class="ptgt">Target &#8805;99% &nbsp;<span class="kd db">&#9660; 1.6pp</span></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="plbl">Underbody &amp; Upperbody &mdash; Line Stops</div>
+        <div id="bol-stops-table" style="margin-bottom:12px;"><!-- populated by renderBOLStops() --></div>
+        <div id="bol-dt-callout" class="callout co-a">Loading downtime data&hellip;</div>
+      </div>
+    </div>
+
+  </div><!-- end g2 -->
+</div>
+
+<!-- ═══ PART QUALITY ═══ -->
+<div id="pq" class="anc">
+  <div class="sh">&#128297; Part Quality Issues &mdash; WK12 D4</div>
+  <div class="g4 mb">
+    <div class="kpi cr"><div class="kl">Active Issues</div><div class="kv bad">4</div><div class="kt">Open in VIRA</div></div>
+    <div class="kpi cr"><div class="kl">Repeater Issues</div><div class="kv bad">3</div><div class="kt">Recurring suppliers</div></div>
+    <div class="kpi ca"><div class="kl">Waiting Rework</div><div class="kv warn">22</div><div class="kt">Iroquois &mdash; B-Pillar</div></div>
+    <div class="kpi cr"><div class="kl">Parts Scrapped</div><div class="kv bad">2</div><div class="kt">Both warranty &#10003;</div></div>
+  </div>
+  <div class="card mb">
+    <div class="ctit">Part Quality Issues Detail <span class="badge bg-r">4 Open</span></div>
+    <div class="tw">
+      <table class="t">
+        <thead><tr><th>Prod Area</th><th>Model</th><th>Part Description</th><th>Supplier</th><th>Part #</th><th>Qty</th><th>Status</th><th>Repeater</th><th>Sort</th><th>Problem</th><th>VIRA / Handshake</th></tr></thead>
+        <tbody id="pq-rows">
+          <tr><td><strong>RH BS</strong></td><td>EX90</td><td>B-Pillar Reinforcement Bracket</td><td>Iroquois Assembly Systems</td><td class="mono">32353265</td><td class="tc-a"><strong>22</strong></td><td><span class="p p-w">&#9203; Waiting Rework</span></td><td><span class="rep ry">R</span></td><td>Sort</td><td>Rust on parts</td><td>IMQ (Tyler) &middot; Joe</td></tr>
+          <tr><td><strong>RWH</strong></td><td>EX90</td><td>LH Side-Member</td><td>Herzogenb</td><td class="mono">32262975</td><td class="tc-r"><strong>1</strong></td><td><span class="p p-s">&#128465; Scrap</span></td><td><span class="rep ry">R</span></td><td>Sort</td><td>Bent on line</td><td>IMQ &mdash; Tyler</td></tr>
+          <tr><td><strong>285 LH Door SA</strong></td><td>EX90</td><td>Inner Plate Assy</td><td>Magna</td><td class="mono">32420790</td><td><strong>3</strong></td><td><span class="p p-fx">&#10003; Repaired</span></td><td><span class="rep ry">R</span></td><td>Yes</td><td>Bent</td><td>Tim / IMQ</td></tr>
+          <tr><td><strong>232-060 FWH (RH)</strong></td><td>723N</td><td>Reinf Side Member Front RH</td><td>Chengdu Jiarun</td><td class="mono">32277690</td><td class="tc-r"><strong>1</strong></td><td><span class="p p-s">&#128465; Scrap</span></td><td><span class="rep rn">&ndash;</span></td><td>Yes</td><td>Bent</td><td>Tyler / IMQ</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BODIES OUT OF FLOW ═══ -->
+<div id="bof" class="anc">
+  <div class="sh">&#128679; Bodies Out of Flow</div>
+  <div class="g5 mb">
+    <div class="kpi cp"><div class="kl">Total Staged</div><div class="kv bad">5</div><div class="kt">Removed from line</div><div class="kd db">&#9650;+1 since yesterday</div></div>
+    <div class="kpi cp"><div class="kl">536 / EX90</div><div class="kv warn">3</div><div class="kt">Complete bodies</div></div>
+    <div class="kpi cp"><div class="kl">PS3</div><div class="kv warn">1</div><div class="kt">Awaiting CMM</div></div>
+    <div class="kpi cp"><div class="kl">519 / EX90</div><div class="kv warn">1</div><div class="kt">Hood repair</div></div>
+    <div class="kpi ca"><div class="kl">Oldest Staged</div><div class="kv bad">WK10 D5</div><div class="kt">4815860 &mdash; CMM</div></div>
+  </div>
+  <div class="card mb">
+    <div class="ctit">Bodies Out of Flow &mdash; Full Tracker <span class="badge bg-p">5 Active</span></div>
+    <div class="tw">
+      <table class="t">
+        <thead><tr><th>Mode</th><th>Body/RFID</th><th>Type</th><th>Body Type</th><th>Location</th><th>Status</th><th>Reason</th><th>Date Removed</th><th>Expected Repair</th><th>Dummy Order</th><th>Champion</th></tr></thead>
+        <tbody id="bof-rows">
+          <tr><td><span class="p p-au">AUTO</span></td><td class="mono">4815860</td><td>536</td><td>Complete</td><td>CMM</td><td><span class="p p-cm">&#128309; Baking</span></td><td>A-Pillar misaligned</td><td class="tc-r">WK10 D5</td><td class="tc-m">TBD</td><td><span class="rep" style="background:var(--green-d);color:var(--green)">Y</span></td><td>B. Allen</td></tr>
+          <tr><td><span class="p p-mn">MAN</span></td><td class="mono">4816122</td><td>536</td><td>Complete</td><td>WD 7</td><td><span class="p p-pd">&#128995; Awaiting Sup.</span></td><td>L2 Threshold</td><td class="tc-a">WK11 D4</td><td>WK11 D4</td><td><span class="rep" style="background:var(--green-d);color:var(--green)">Y</span></td><td>Cory McCallum</td></tr>
+          <tr><td><span class="p p-mn">MAN</span></td><td class="mono">4816479</td><td>PS3</td><td>Complete</td><td>GEO</td><td><span class="p p-cm">&#128309; CMM</span></td><td>Measurements needed</td><td>WK12 D4</td><td>WK12 D5</td><td><span class="rep rn">&ndash;</span></td><td>Paul Freeman</td></tr>
+          <tr><td><span class="p p-mn">MAN</span></td><td class="mono">4816312</td><td>536</td><td>Complete</td><td>Horse Shoe</td><td><span class="p p-w">&#128993; Hood Hinge</span></td><td>E-coat RH Hood Hinge</td><td>WK12 D2</td><td class="tc-r">WK12 D4 &#9888;</td><td><span class="rep rn">&ndash;</span></td><td>Cory McCallum</td></tr>
+          <tr><td><span class="p p-mn">MAN</span></td><td class="mono">4815824</td><td>519</td><td>Complete</td><td>Horse Shoe</td><td><span class="p p-s">&#128308; Hood Dent</span></td><td>Hood repair needed</td><td>WK12 D3</td><td>WK12 D5</td><td><span class="rep rn">&ndash;</span></td><td>Cory McCallum</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCRAP ═══ -->
+<div id="scrap" class="anc">
+  <div class="sh">&#9851;&#65039; Scrap</div>
+  <div class="sch">
+    <div class="big" id="scrap-val">$0</div>
+    <div class="sub" id="scrap-sub">Total Scrap Cost &mdash; WK12 D3 (Yesterday)</div>
+    <div class="ok" id="scrap-note">&#10003; Both scrapped parts covered by supplier warranty &mdash; zero cost to Volvo Cars</div>
+  </div>
+  <div class="g4 mb">
+    <div class="kpi cg"><div class="kl">Scrap Cost Yesterday</div><div class="kv good">$0</div><div class="kt">Target &#8804;budget</div><div class="kd dg">&#10003;</div></div>
+    <div class="kpi ca"><div class="kl">Scrap Units</div><div class="kv warn">2</div><div class="kt">Both Underbody</div></div>
+    <div class="kpi cg"><div class="kl">Scrap per Car</div><div class="kv good">$0.00</div><div class="kt">Target &#8804;budget/car</div><div class="kd dg">&#10003;</div></div>
+    <div class="kpi cg"><div class="kl">MTD Scrap</div><div class="kv good">$0</div><div class="kt">Full budget intact</div><div class="kd dg">&#10003;</div></div>
+  </div>
+  <div class="card mb">
+    <div class="ctit">Scrapped Parts Detail</div>
+    <div class="tw">
+      <table class="t">
+        <thead><tr><th>Part</th><th>Prod Area</th><th>Body Area</th><th>Model</th><th>Supplier</th><th>Reason</th><th>Scrap Cost</th><th>Recovery</th></tr></thead>
+        <tbody>
+          <tr><td>LH Side-Member</td><td>RWH</td><td style="color:var(--ub)">Underbody</td><td>EX90</td><td>Herzogenb</td><td>Bent on line</td><td class="tc-g">$0</td><td>Supplier warranty</td></tr>
+          <tr><td>Reinf Side Member Front RH</td><td>232-060 FWH</td><td style="color:var(--ub)">Underbody</td><td>723N</td><td>Chengdu Jiarun</td><td>Bent</td><td class="tc-g">$0</td><td>Supplier warranty</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</main>
+<div class="footer">Morning Meeting Dashboard &middot; Body Shop (RA) &middot; Volvo Cars &nbsp;&middot;&nbsp; &#9889; Preview &mdash; A-Shop FTT &amp; Final 2 FTT items use actual WK12 D3 data &middot; Other values are sample placeholders</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   MM_DATA — patched daily by update_morning_meeting.py
+   Sources:
+     downtime → OneDrive Andon Downtime Sheet (HOP + DT Excel)
+     kpis     → Snowflake VCCH (TODO: auto-connect) — values from live system
+     ppt      → OneDrive 2026 RTM / A Shop 26WxxDx.pptx (tables + text)
+   ═══════════════════════════════════════════════════════════════════════ */
+const MM_DATA = {
+  date: "2026-03-20",
+  wk: "WK12",
+  day: 4,
+  /* ── KPI VALUES (real data WK12 D4) ── */
+  kpis: {
+    bok_opr:    { val: 91.8, eol: null, ok: null, repair: null },
+    bol_opr:    { val: 79.1, eol: null, ok: null, repair: null },
+    ashop_ftt:  { val: 98.6, eol: 73,   ok: 72,  repair: 1    },
+    ashop_dpv:  { val: 0.00, bodies: 73, defects: 0            },
+    wg_dpv:     { val: 1.81, bodies: 78, defects: 141          },
+    wd6_ftt:    { val: 98.8, eol: 83,   ok: 82,  repair: 1    },
+    wd6_dpv:    { val: 0.05, bodies: 83, defects: 4            },
+    cal_ftt:    { val: 97.6, eol: 84,   ok: 82,  repair: 2    },
+    final1_ftt: { val: 100.0,eol: null, ok: null,repair: null  },
+    final2_ftt: { val: 90.9, eol: 77,   ok: 70,  repair: 7    },
+    scrap_car:  { val: 0.07 }
+  },
+  /* ── DOWNTIME ── */
+  downtime: {
+    total_min: 491, planned_min: 60, unplanned_min: 431, availability: 79.5,
+    areas: {
+      underbody: { total: 301, planned: 20, unplanned: 281, events: [
+        {station:"FS-231",    dur:127, cause:"Conveyor fault",       planned:false},
+        {station:"MARR-138",  dur:96,  cause:"Body carrier jam",     planned:false},
+        {station:"FWHR-233",  dur:58,  cause:"Clamp failure",        planned:false},
+        {station:"RWHLH-235", dur:56,  cause:"Robot fault LH",       planned:false},
+        {station:"RWHRH-237", dur:42,  cause:"Part feed jam RH",     planned:false},
+        {station:"RFC-236",   dur:10,  cause:"Tooling fault",        planned:false},
+        {station:"FWHLH-232", dur:8,   cause:"Fixture check",        planned:false},
+        {station:"PM-UB",     dur:20,  cause:"Scheduled maintenance",planned:true}
+      ]},
+      upperbody: { total: 0,   planned: 0,  unplanned: 0, events: [] },
+      hangon:    { total: 87,  planned: 20, unplanned: 67, events: [
+        {station:"287-Tailgate", dur:57, cause:"Hood hinge stop",        planned:false},
+        {station:"LH-DOOR-285",  dur:22, cause:"Door alignment check",   planned:false},
+        {station:"PM-HO",        dur:20, cause:"Scheduled maintenance",  planned:true}
+      ]},
+      bodysides: { total: 0,   planned: 0,  unplanned: 0, events: [] }
+    },
+    hop_stops: [
+      {line:"FS-231",      area:"Underbody", dur_min:127, cause:"Conveyor fault",     planned:false},
+      {line:"MARR-138",    area:"Underbody", dur_min:96,  cause:"Body carrier jam",   planned:false},
+      {line:"FWHR-233",    area:"Underbody", dur_min:58,  cause:"Clamp failure",      planned:false},
+      {line:"287 Tailgate",area:"Hang-On",   dur_min:57,  cause:"Hood hinge stop",    planned:false},
+      {line:"RWHLH-235",   area:"Underbody", dur_min:56,  cause:"Robot fault LH",     planned:false},
+      {line:"RWHRH-237",   area:"Underbody", dur_min:42,  cause:"Part feed jam RH",   planned:false},
+      {line:"LH DOOR-285", area:"Hang-On",   dur_min:22,  cause:"Door alignment",     planned:false},
+      {line:"259",         area:"Other",     dur_min:15,  cause:"Line stop",          planned:false},
+      {line:"RFC-236",     area:"Underbody", dur_min:10,  cause:"Tooling fault",      planned:false},
+      {line:"FWHLH-232",   area:"Underbody", dur_min:8,   cause:"Fixture check",      planned:false}
+    ],
+    ub_stops: [
+      {line:"FS-231",    dur_min:127, cause:"Conveyor fault",    planned:false},
+      {line:"MARR-138",  dur_min:96,  cause:"Body carrier jam",  planned:false},
+      {line:"FWHR-233",  dur_min:58,  cause:"Clamp failure",     planned:false},
+      {line:"RWHLH-235", dur_min:56,  cause:"Robot fault LH",    planned:false},
+      {line:"RWHRH-237", dur_min:42,  cause:"Part feed jam RH",  planned:false},
+      {line:"RFC-236",   dur_min:10,  cause:"Tooling fault",     planned:false},
+      {line:"FWHLH-232", dur_min:8,   cause:"Fixture check",     planned:false}
+    ],
+    up_stops: []
+  },
+  /* ── PPT DATA ── */
+  ppt: {
+    safety: {
+      title: "SAFETY ALERT — Hand Cut / Puncture Risk",
+      detail: "Potential for TM to cut/puncture hand during quality check. TM must follow eyes with hands. Look before rubbing across surface. Gloves mandatory.",
+      meta: "Casey Murakami | H&S Lead | WK12 D4"
+    },
+    part_quality: [
+      {area:"RH BS",           model:"EX90",  part:"B-Pillar Reinforcement Bracket", supplier:"Iroquois Assembly Systems", partno:"32353265", qty:"22", status:"Waiting Rework", repeater:"Yes", sort:"Sort", problem:"Rust found on parts",       handshake:"IMQ (Tyler) · Joe"},
+      {area:"RWH",             model:"EX90",  part:"LH Side-Member",                  supplier:"Herzogenb",                partno:"32262975", qty:"1",  status:"Scrap",          repeater:"Yes", sort:"Sort", problem:"Bent on line",               handshake:"IMQ — Tyler"},
+      {area:"285 LH Door SA",  model:"EX90",  part:"Inner Plate Assy",                supplier:"Magna",                    partno:"32420790", qty:"3",  status:"Repaired",       repeater:"Yes", sort:"Yes",  problem:"Bent",                        handshake:"Tim/IMQ"},
+      {area:"232-060 FWH(RH)", model:"723N",  part:"Reinf Side Member Front RH",      supplier:"Chengdu Jiarun",           partno:"32277690", qty:"1",  status:"Scrap",          repeater:"No",  sort:"Yes",  problem:"Bent",                        handshake:"Tyler/IMQ"}
+    ],
+    /* W&G DPV items from live system (WK12 D4) */
+    wg_items_536: [
+      {body:"6005252", rfid:"4816482", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Right Rear Door Frame",    extra:"",                  count:1},
+      {body:"6005334", rfid:"4816564", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Right Rear Door Frame",    extra:"",                  count:1},
+      {body:"6005335", rfid:"4816565", desc:"ARC WELD NOK (A-SHOP)",              model:"EX90", station:"07W&G", location:"C-Pillar Left Side",       extra:"Side View",         count:1},
+      {body:"6005335", rfid:"4816565", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Right Rear Door Frame",    extra:"",                  count:1},
+      {body:"6005336", rfid:"4816566", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Right Front Door Frame",   extra:"",                  count:1},
+      {body:"6005336", rfid:"4816566", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Right Rear Door Frame",    extra:"",                  count:1},
+      {body:"6005336", rfid:"4816566", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Right Front Door Frame",   extra:"",                  count:1},
+      {body:"6005337", rfid:"4816567", desc:"ARC WELD NOK (A-SHOP)",              model:"EX90", station:"07W&G", location:"Left Front Door Frame",    extra:"",                  count:1},
+      {body:"6005337", rfid:"4816567", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Right Front Door Frame",   extra:"",                  count:1},
+      {body:"6005338", rfid:"4816568", desc:"ARC WELD NOK (A-SHOP)",              model:"EX90", station:"07W&G", location:"C-Pillar Left Side",       extra:"Side View",         count:1}
+    ],
+    wg_items_519: [
+      {body:"6005286", rfid:"4816479", desc:"ARC WELD NOK (A-SHOP)",              model:"PSTR", station:"07W&G", location:"Left Plenum",             extra:"",  count:1},
+      {body:"6005286", rfid:"4816479", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"PSTR", station:"07W&G", location:"Right Rear Door Frame",   extra:"",  count:1}
+    ],
+    /* A-Shop FTT items */
+    ashop_ftt_536: [
+      {body:"6005348", rfid:"4816578", desc:"BRAZE WELD NOK (A-SHOP)", model:"EX90", link_stn:"02FSP", link_time:"3/19/2026 11:17:58 AM", close_stn:"01HVR", close_time:"3/19/2026 11:34:16 AM", location:"Tail Gate Exterior Panel", extra:""}
+    ],
+    ashop_ftt_519: [],
+    /* WD6 FTT items */
+    wd6_ftt_536: [
+      {body:"6005308", rfid:"4816538", desc:"SUPPLIER RE-WORK NOK (A-SHOP)", model:"EX90", link_stn:"WD06", link_time:"3/19/2026 12:22:04 PM", close_stn:"", close_time:"", location:"V536 LS CLASS 1 FENDER", extra:""}
+    ],
+    wd6_ftt_519: [],
+    /* WD6 DPV items */
+    wd6_dpv_536: [
+      {body:"6005308", rfid:"4816538", count:1, desc:"SUPPLIER RE-WORK NOK (A-SHOP)",   model:"EX90", station:"WD06", location:"V536 LS CLASS 1 FENDER",         extra:""},
+      {body:"6005316", rfid:"4816546", count:1, desc:"SANDED THROUGH E-COAT (A-SHOP)",  model:"EX90", station:"WD06", location:"V536 L2 CLASS 1 EXTERIOR DOOR",   extra:""},
+      {body:"6005316", rfid:"4816546", count:1, desc:"SANDED THROUGH E-COAT (A-SHOP)",  model:"EX90", station:"WD06", location:"V536 L2 CLASS 2&3 EXTERIOR DOOR", extra:"black adhesive"},
+      {body:"6005352", rfid:"4816582", count:1, desc:"SANDED THROUGH E-COAT (A-SHOP)",  model:"EX90", station:"WD06", location:"V536 LS QUARTER PANEL",           extra:"sand thru / dent / primer needed"}
+    ],
+    wd6_dpv_519: [],
+    /* CAL FTT items */
+    cal_ftt_536: [],
+    cal_ftt_519: [
+      {body:"6003997", rfid:"4815214", desc:"R FENDER FLUSH TO A PILLAR", model:"PSTR", link_stn:"EXCAL", link_time:"3/19/2026 1:57:38 PM",  close_stn:"", close_time:"", location:"", extra:""},
+      {body:"6004576", rfid:"4815800", desc:"A-SHOP -UNDER GAP",          model:"PSTR", link_stn:"FL2.0", link_time:"3/17/2026 1:00:21 PM",  close_stn:"", close_time:"", location:"", extra:"004 gap is under 3 mm"}
+    ],
+    /* Final 2 FTT items */
+    final2_ftt_536: [
+      {body:"6004730", rfid:"4815959", desc:"A-SHOP -OVER FLUSH",  model:"EX90",  link_stn:"FL2.0", link_time:"3/19/2026 3:13:05 PM",  close_stn:"",      close_time:"",               location:"", extra:"007 OVER FLUSH -1.7MM"},
+      {body:"6004732", rfid:"4815961", desc:"A-SHOP -UNDER GAP",   model:"EX90",  link_stn:"FL2.0", link_time:"3/19/2026 12:46:54 PM", close_stn:"",      close_time:"",               location:"", extra:"009 gap is under 2.5mm"},
+      {body:"6004749", rfid:"4815978", desc:"A-SHOP -OVER FLUSH",  model:"EX90",  link_stn:"FL2.0", link_time:"3/18/2026 6:34:30 PM",  close_stn:"RPR_B", close_time:"3/19 2:50 PM",   location:"", extra:"sd007 flush -2.2mm"},
+      {body:"6004788", rfid:"4816017", desc:"A-SHOP -OVER FLUSH",  model:"EX90",  link_stn:"FL2.0", link_time:"3/19/2026 1:55:50 PM",  close_stn:"",      close_time:"",               location:"", extra:"007 OVER FLUSH -2.2MM"},
+      {body:"6004803", rfid:"4816032", desc:"A-SHOP -OVER FLUSH",  model:"EX90",  link_stn:"FL2.0", link_time:"3/19/2026 2:59:07 PM",  close_stn:"",      close_time:"",               location:"", extra:"007 OVER FLUSH -2.2MM"},
+      {body:"6004873", rfid:"4816101", desc:"A-SHOP -OVER FLUSH",  model:"EX90",  link_stn:"FL2.0", link_time:"3/19/2026 3:19:22 PM",  close_stn:"",      close_time:"",               location:"", extra:"51 flush 1.6m over"}
+    ],
+    final2_ftt_519: [
+      {body:"6004650", rfid:"4815877", desc:"A-SHOP -OVER FLUSH",  model:"PSTR",  link_stn:"FL2.0", link_time:"3/19/2026 12:12:17 PM", close_stn:"",      close_time:"",               location:"", extra:"43 flush 1.4m over"}
+    ],
+    bodies_oof: [
+      {mode:"Automation", rfid:"4815860", type:"536", bodytype:"Complete", location:"CMM",        status:"Baking",              reason:"A-Pillar misaligned",           removed:"WK10 D5", expected:"TBD",     dummy:"Yes", champion:"B. Allen"},
+      {mode:"Manual",     rfid:"4816122", type:"536", bodytype:"Complete", location:"WD 7",       status:"Awaiting Supervisor", reason:"L2 Threshold",                  removed:"WK11 D4", expected:"WK11 D4", dummy:"Yes", champion:"Cory McCallum"},
+      {mode:"Manual",     rfid:"4816479", type:"PS3", bodytype:"Complete", location:"GEO",        status:"CMM",                 reason:"Measurements needed",           removed:"WK12 D4", expected:"WK12 D5", dummy:"No",  champion:"Paul Freeman"},
+      {mode:"Manual",     rfid:"4816312", type:"536", bodytype:"Complete", location:"Horse Shoe", status:"RH Hood Hinge",       reason:"E-coated RH Hood Hinge needed", removed:"WK12 D2", expected:"WK12 D4", dummy:"No",  champion:"Cory McCallum"},
+      {mode:"Manual",     rfid:"4815824", type:"519", bodytype:"Complete", location:"Horse Shoe", status:"Hood Dent",           reason:"Hood repair needed",            removed:"WK12 D3", expected:"WK12 D5", dummy:"No",  champion:"Cory McCallum"}
+    ],
+    scrap: "$0",
+    scrap_note: "Both scrapped parts covered by supplier warranty — zero cost to Volvo Cars"
+  }
+};
+
+/* ─── Area display config ─── */
+const AREA_CFG = {
+  underbody: { label:'Underbody', cssClass:'dta-ub', color:'var(--ub)', planRgba:'rgba(27,110,181,.45)' },
+  upperbody: { label:'Upperbody', cssClass:'dta-up', color:'var(--up)', planRgba:'rgba(56,161,105,.45)' },
+  hangon:    { label:'Hang-On',   cssClass:'dta-ho', color:'var(--ho)', planRgba:'rgba(224,123,57,.45)'  },
+  bodysides: { label:'Body Sides',cssClass:'dta-bs', color:'var(--bs)', planRgba:'rgba(155,89,182,.45)'  },
+};
+const AREA_ORDER     = ['underbody','upperbody','hangon','bodysides'];
+const AREA_ORDER_BOL = ['underbody','upperbody'];
+
+/* ─── CORRECT TARGETS ─── */
+const TARGETS = {
+  bok_opr:    { tgt: 98.7,  dir:'ge', lbl:'≥98.7%', unit:'%'  },
+  bol_opr:    { tgt: 95.0,  dir:'ge', lbl:'≥95.0%', unit:'%'  },
+  ashop_ftt:  { tgt: 98.0,  dir:'ge', lbl:'≥98.0%', unit:'%'  },
+  ashop_dpv:  { tgt: 0.10,  dir:'le', lbl:'≤0.10',  unit:''   },
+  wg_dpv:     { tgt: 1.20,  dir:'le', lbl:'≤1.20',  unit:''   },
+  wd6_ftt:    { tgt: 100.0, dir:'ge', lbl:'100.0%',  unit:'%'  },
+  wd6_dpv:    { tgt: 0.12,  dir:'le', lbl:'≤0.12',  unit:''   },
+  cal_ftt:    { tgt: 100.0, dir:'ge', lbl:'100.0%',  unit:'%'  },
+  final1_ftt: { tgt: 100.0, dir:'ge', lbl:'100.0%',  unit:'%'  },
+  final2_ftt: { tgt: 100.0, dir:'ge', lbl:'100.0%',  unit:'%'  },
+  scrap_car:  { tgt: 2.90,  dir:'le', lbl:'≤$2.90',  unit:'$'  },
+};
+
+/* ─── Color helpers ─── */
+function kpiColor(key, val){
+  // null / undefined = no data = green (no issues)
+  if(val === null || val === undefined) return 'good';
+  const t = TARGETS[key];
+  if(!t) return 'neut';
+  const ok = t.dir==='ge' ? val >= t.tgt : val <= t.tgt;
+  const close = t.dir==='ge' ? (val >= t.tgt*0.97) : (val <= t.tgt*1.15);
+  return ok ? 'good' : close ? 'warn' : 'bad';
+}
+function kpiDelta(key, val){
+  if(val === null || val === undefined) return `<span class="kd dg">&#10003; No issues</span>`;
+  const t = TARGETS[key];
+  if(!t) return '';
+  const diff = Math.abs(val - t.tgt).toFixed(t.tgt < 5 ? 2 : 1);
+  const ok   = t.dir==='ge' ? val >= t.tgt : val <= t.tgt;
+  const arrow = t.dir==='ge' ? (ok ? '&#9650;' : '&#9660;') : (ok ? '&#9660;' : '&#9650;');
+  return ok
+    ? `<span class="kd dg">${arrow} ${diff} vs target &#10003;</span>`
+    : `<span class="kd db">${arrow} ${diff} vs target</span>`;
+}
+function kpiValDisplay(key, val){
+  if(val === null || val === undefined) return '&#10003;';
+  const t = TARGETS[key];
+  return t && t.unit==='%' ? val.toFixed(1)+'%' : val;
+}
+function unColor(min){ return min >= 10 ? 'var(--red)' : min >= 5 ? 'var(--amber)' : 'var(--green)'; }
+
+/* ═══ DOWNTIME RENDERERS ═══ */
+
+function renderDTHeader(){
+  const dt = MM_DATA.downtime;
+  const T = 15, over = dt.unplanned_min - T;
+  const badge = over > 0
+    ? `<span style="background:var(--red-d);color:var(--red);font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;">${dt.total_min} min total — ${dt.unplanned_min} min unplanned &#9650; ${over} min over target</span>`
+    : `<span style="background:var(--green-d);color:var(--green);font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;">${dt.total_min} min total — ${dt.unplanned_min} min unplanned &#10003;</span>`;
+  document.getElementById('dt-header').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);">HOP Downtime — All Areas — ${MM_DATA.wk} D${MM_DATA.day}</span>
+      ${badge}
+      <span style="background:var(--amber-d);color:var(--amber);font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;">Availability ${dt.availability}%</span>
+    </div>
+    <span style="font-size:10px;color:var(--muted);">&#128190; Andon Downtime Sheet (OneDrive)</span>`;
+}
+
+function renderAreaCards(){
+  let html = '';
+  for(const key of AREA_ORDER){
+    const a = MM_DATA.downtime.areas[key];
+    const cfg = AREA_CFG[key];
+    const unplanned = a.events.filter(e=>!e.planned).slice(0,10);
+    const evtRows = unplanned.map(e=>`
+      <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+        <span style="font-size:10px;color:${cfg.color};font-weight:700;flex-shrink:0;margin-right:6px;">${e.station}</span>
+        <span style="font-size:10px;color:var(--muted);flex:1;">${e.cause.substring(0,42)}</span>
+        <span style="font-size:10px;font-weight:700;color:${unColor(e.dur)};margin-left:6px;flex-shrink:0;">${e.dur}m</span>
+      </div>`).join('');
+    html += `<div class="dta ${cfg.cssClass}">
+      <div class="dta-l">${cfg.label}</div>
+      <div class="dta-tot">${a.total} min</div>
+      <div class="dta-sp" style="margin-bottom:8px;">Planned: <strong>${a.planned} min</strong> &nbsp;|&nbsp; Unplanned: <strong style="color:${unColor(a.unplanned)}">${a.unplanned} min</strong></div>
+      ${unplanned.length > 0
+        ? `<div style="border-top:1px solid rgba(255,255,255,.08);padding-top:6px;">${evtRows}</div>`
+        : `<div style="font-size:10px;color:var(--green);margin-top:4px;">&#10003; No unplanned stops</div>`}
+    </div>`;
+  }
+  document.getElementById('dt-area-cards').innerHTML = html;
+}
+
+/* ═══ KPI SUMMARY RENDERER ═══ */
+function kpiCard(key, label, cssClass, extraSub){
+  const k = MM_DATA.kpis[key];
+  const val = k ? (k.val !== undefined ? k.val : null) : null;
+  const t   = TARGETS[key];
+  const col = kpiColor(key, val);
+  const noData = val === null || val === undefined;
+  const dispVal = noData ? '&#10003;' : kpiValDisplay(key, val);
+  const dispTgt = t ? t.lbl : '';
+  const delta   = kpiDelta(key, val);
+  const sub = k && k.eol ? `EOL: ${k.eol} | OK: ${k.ok} | Rep: ${k.repair}` :
+              k && k.bodies ? `Bodies: ${k.bodies} | Def: ${k.defects}` : (extraSub||'');
+  return `<div class="kpi ${cssClass}">
+    <div class="kl">${label}</div>
+    <div class="kv ${col}">${dispVal}</div>
+    <div class="kt">Target ${dispTgt}</div>
+    ${sub ? `<div class="kt">${sub}</div>` : ''}
+    ${delta}
+  </div>`;
+}
+
+function renderKPISummary(){
+  const sh = document.getElementById('ksum-sh');
+  if(sh) sh.textContent = `📊 KPI Summary — ${MM_DATA.wk} D${MM_DATA.day}`;
+
+  const ashop = document.getElementById('ksum-ashop');
+  if(ashop) ashop.innerHTML =
+    kpiCard('bok_opr',   'BOK OPR',    'ca') +
+    kpiCard('bol_opr',   'BOL OPR',    'ca') +
+    kpiCard('ashop_ftt', 'A-Shop FTT', 'cb') +
+    kpiCard('ashop_dpv', 'A-Shop DPV', 'cb') +
+    kpiCard('wg_dpv',    'W&amp;G DPV','cb');
+
+  const bshop = document.getElementById('ksum-bshop');
+  if(bshop) bshop.innerHTML =
+    kpiCard('wd6_ftt', 'WD6 FTT (Paint FTT)', 'cp') +
+    kpiCard('wd6_dpv', 'WD6 DPV (Paint DPV)', 'cp');
+
+  const cshop = document.getElementById('ksum-cshop');
+  if(cshop) cshop.innerHTML =
+    kpiCard('cal_ftt',    'CAL FTT',    'cg') +
+    kpiCard('final1_ftt', 'Final 1 FTT','cg', 'No slide in PPT = No issues') +
+    kpiCard('final2_ftt', 'Final 2 FTT','cg');
+}
+
+function renderBarRows(containerId, areaKeys){
+  const maxT = Math.max(...areaKeys.map(k=>MM_DATA.downtime.areas[k].total), 1);
+  let html = '';
+  areaKeys.forEach((key,i)=>{
+    const a = MM_DATA.downtime.areas[key];
+    const cfg = AREA_CFG[key];
+    const pPct = a.total > 0 ? (a.planned/a.total*100).toFixed(1) : 0;
+    const barW = (a.total/maxT*100).toFixed(1);
+    const uc = unColor(a.unplanned);
+    const border = i < areaKeys.length-1 ? 'border-bottom:1px solid rgba(48,54,61,.5);' : '';
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;${border}">
+      <span style="font-size:12px;font-weight:700;color:${cfg.color};width:90px;flex-shrink:0;">${cfg.label}</span>
+      <div style="flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin:0 12px;">
+        <div style="height:100%;width:${barW}%;border-radius:4px;background:linear-gradient(90deg,${cfg.planRgba} 0%,${cfg.planRgba} ${pPct}%,${uc} ${pPct}%,${uc} 100%);"></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;color:${cfg.color};width:44px;text-align:right;flex-shrink:0;">${a.total} min</span>
+      <span style="font-size:10px;color:var(--muted);margin-left:10px;white-space:nowrap;">${a.planned} planned &nbsp;|&nbsp; <span style="color:${uc};font-weight:700;">${a.unplanned} unplanned</span></span>
+    </div>`;
+  });
+  document.getElementById(containerId).innerHTML = html;
+}
+
+function renderCallouts(){
+  const dt = MM_DATA.downtime;
+  const T = 15;
+  const el1 = document.getElementById('bok-dt-callout');
+  if(el1) el1.innerHTML = `&#9888; Total ${dt.total_min} min HOP DT (${dt.unplanned_min} min unplanned — target &le;${T} min). Unplanned stops reduce available production time and bodies delivered OK.<span class="owner">&#128190; Andon Downtime Sheet (OneDrive)</span>`;
+  const ub = dt.areas.underbody, up = dt.areas.upperbody;
+  const el2 = document.getElementById('bol-dt-callout');
+  if(el2) el2.innerHTML = `&#9888; Underbody <strong>${ub.unplanned} min unplanned</strong> (St.232) is the primary BOL driver. Upperbody ${up.unplanned} min unplanned (St.285) is secondary.<span class="owner">&#128190; Andon Downtime Sheet (OneDrive)</span>`;
+}
+
+/* ═══ PPT DATA RENDERERS ═══ */
+
+function renderSafety(){
+  const s = MM_DATA.ppt && MM_DATA.ppt.safety;
+  if(!s) return;
+  const t = document.getElementById('safety-title');
+  const d = document.getElementById('safety-detail');
+  const m = document.getElementById('safety-meta');
+  if(t && s.title)  t.textContent = s.title;
+  if(d && s.detail) d.innerHTML   = s.detail.replace(/\bTM must follow eyes with hands\b/, '<strong>TM must follow eyes with hands</strong>');
+  if(m && s.meta)   m.innerHTML   = s.meta.replace(/\|/g,'<br>');
+}
+
+function statusPill(st){
+  const s = (st||'').toLowerCase();
+  if(s.includes('scrap'))   return `<span class="p p-s">&#128465; Scrap</span>`;
+  if(s.includes('repair'))  return `<span class="p p-fx">&#10003; Repaired</span>`;
+  if(s.includes('wait') || s.includes('rework')) return `<span class="p p-w">&#9203; Waiting Rework</span>`;
+  return `<span class="p p-w">${st}</span>`;
+}
+
+function repDot(r){
+  const yes = (r||'').toLowerCase()==='yes'||r==='Yes'||r===true;
+  return yes ? `<span class="rep ry">R</span>` : `<span class="rep rn">&ndash;</span>`;
+}
+
+function renderPQTable(){
+  const rows = MM_DATA.ppt && MM_DATA.ppt.part_quality;
+  if(!rows || !rows.length) return;
+  const el = document.getElementById('pq-rows');
+  if(!el) return;
+  el.innerHTML = rows.map(r=>`<tr>
+    <td><strong>${r.area||''}</strong></td>
+    <td>${r.model||''}</td>
+    <td>${r.part||''}</td>
+    <td>${r.supplier||''}</td>
+    <td class="mono">${r.partno||''}</td>
+    <td class="${Number(r.qty)>=10?'tc-a':'tc-r'}"><strong>${r.qty||''}</strong></td>
+    <td>${statusPill(r.status)}</td>
+    <td>${repDot(r.repeater)}</td>
+    <td>${r.sort||''}</td>
+    <td>${r.problem||''}</td>
+    <td>${r.handshake||''}</td>
+  </tr>`).join('');
+}
+
+function modePill(m){ return (m||'').toLowerCase().includes('auto') ? `<span class="p p-au">AUTO</span>` : `<span class="p p-mn">MAN</span>`; }
+
+function bofStatusPill(st){
+  const s=(st||'').toLowerCase();
+  if(s.includes('bak'))    return `<span class="p p-cm">&#128309; Baking</span>`;
+  if(s.includes('cmm'))    return `<span class="p p-cm">&#128309; CMM</span>`;
+  if(s.includes('await') || s.includes('sup')) return `<span class="p p-pd">&#128995; Awaiting Sup.</span>`;
+  if(s.includes('hinge'))  return `<span class="p p-w">&#128993; ${st}</span>`;
+  if(s.includes('dent'))   return `<span class="p p-s">&#128308; ${st}</span>`;
+  return `<span class="p p-w">${st}</span>`;
+}
+
+function renderBOFTable(){
+  const rows = MM_DATA.ppt && MM_DATA.ppt.bodies_oof;
+  if(!rows || !rows.length) return;
+  const el = document.getElementById('bof-rows');
+  if(!el) return;
+  const today = MM_DATA.wk + ' D' + MM_DATA.day;
+  el.innerHTML = rows.map(r=>{
+    const overdue = r.expected && r.expected !== 'TBD' && r.expected < today;
+    const remCls  = r.removed && r.removed < 'WK11' ? 'tc-r' : r.removed && r.removed < today ? 'tc-a' : '';
+    const expCls  = overdue ? 'tc-r' : '';
+    const dummy   = (r.dummy||'').toLowerCase()==='yes' ? `<span class="rep" style="background:var(--green-d);color:var(--green)">Y</span>` : `<span class="rep rn">&ndash;</span>`;
+    return `<tr>
+      <td>${modePill(r.mode)}</td>
+      <td class="mono">${r.rfid||''}</td>
+      <td>${r.type||''}</td>
+      <td>${r.bodytype||''}</td>
+      <td>${r.location||''}</td>
+      <td>${bofStatusPill(r.status)}</td>
+      <td>${r.reason||''}</td>
+      <td class="${remCls}">${r.removed||''}</td>
+      <td class="${expCls}">${r.expected||''}${overdue?' &#9888;':''}</td>
+      <td>${dummy}</td>
+      <td>${r.champion||''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderScrap(){
+  const p = MM_DATA.ppt;
+  if(!p) return;
+  const val  = document.getElementById('scrap-val');
+  const sub  = document.getElementById('scrap-sub');
+  const note = document.getElementById('scrap-note');
+  if(val)  val.textContent  = p.scrap || '$0';
+  if(sub)  sub.textContent  = `Total Scrap Cost — ${MM_DATA.wk} D${MM_DATA.day} (Yesterday)`;
+  if(note) note.textContent = p.scrap_note || '✓ On budget';
+}
+
+/* ═══ SHOP BANNER RENDERER ═══ */
+function renderShopBanners(){
+  const k = MM_DATA.kpis;
+  const fmtV = (key, v) => {
+    if(v===null||v===undefined) return '✓';
+    const t = TARGETS[key];
+    return t && t.unit==='%' ? v.toFixed(1)+'%' : (t && t.unit==='$' ? '$'+v.toFixed(2) : v);
+  };
+  function skv(key, v, lbl){
+    const c = kpiColor(key, v);
+    return `<div class="shop-kpi"><div class="skv ${c}">${fmtV(key, v)}</div><div class="skl">${lbl}</div></div>`;
+  }
+  const ba = document.getElementById('banner-ashop');
+  if(ba){
+    const kpis = ba.querySelector('.shop-kpis');
+    if(kpis) kpis.innerHTML =
+      skv('ashop_ftt', k.ashop_ftt?.val, 'FTT') +
+      skv('ashop_dpv', k.ashop_dpv?.val, 'DPV') +
+      skv('wg_dpv',    k.wg_dpv?.val,    'W&G DPV') +
+      skv('bok_opr',   k.bok_opr?.val,   'BOK OPR') +
+      skv('bol_opr',   k.bol_opr?.val,   'BOL OPR');
+    const sn = ba.querySelector('.shop-name');
+    if(sn) sn.textContent = `⬤ A Shop — ${MM_DATA.wk} D${MM_DATA.day}`;
+  }
+  const bb = document.getElementById('banner-bshop');
+  if(bb){
+    const kpis = bb.querySelector('.shop-kpis');
+    if(kpis) kpis.innerHTML =
+      skv('wd6_ftt', k.wd6_ftt?.val, 'Paint FTT') +
+      skv('wd6_dpv', k.wd6_dpv?.val, 'Paint DPV');
+    const sn = bb.querySelector('.shop-name');
+    if(sn) sn.textContent = `⬤ B Shop — ${MM_DATA.wk} D${MM_DATA.day}`;
+  }
+  const bc = document.getElementById('banner-cshop');
+  if(bc){
+    const kpis = bc.querySelector('.shop-kpis');
+    if(kpis) kpis.innerHTML =
+      skv('cal_ftt',   k.cal_ftt?.val,   'CAL FTT') +
+      skv('final1_ftt',k.final1_ftt?.val,'Final 1 FTT') +
+      skv('final2_ftt',k.final2_ftt?.val,'Final 2 FTT');
+    const sn = bc.querySelector('.shop-name');
+    if(sn) sn.textContent = `⬤ C Shop — ${MM_DATA.wk} D${MM_DATA.day}`;
+  }
+}
+
+/* ═══ BOK CRITICAL LINES STOP TABLE ═══ */
+function renderBOKStops(){
+  const stops = MM_DATA.downtime.hop_stops || [];
+  const el = document.getElementById('bok-stops-table');
+  if(!el) return;
+  if(stops.length === 0){
+    el.innerHTML = `<div style="color:var(--green);font-size:11px;padding:8px 0;">✓ No HOP stops recorded</div>`;
+    return;
+  }
+  const maxDur = stops[0].dur_min;
+  let html = `<table class="t" style="width:100%;"><thead><tr><th>Line</th><th>Area</th><th style="min-width:120px;">Duration</th><th>Duration</th><th>Cause</th></tr></thead><tbody>`;
+  for(const s of stops){
+    const barW = (s.dur_min / maxDur * 100).toFixed(1);
+    const col = s.area==='Underbody' ? 'var(--ub)' : s.area==='Hang-On' ? 'var(--ho)' : s.area==='Upperbody' ? 'var(--up)' : 'var(--muted)';
+    const durFmt = s.dur_min >= 60 ? (s.dur_min/60).toFixed(1)+'h' : s.dur_min+'m';
+    const typeCol = s.planned ? 'var(--blue-b)' : 'var(--red)';
+    html += `<tr>
+      <td style="font-family:monospace;color:var(--blue-b);font-weight:700;">${s.line}</td>
+      <td style="color:${col};font-size:11px;font-weight:700;">${s.area}</td>
+      <td style="padding-right:8px;"><div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;width:100%;"><div style="height:100%;width:${barW}%;background:${typeCol};border-radius:3px;"></div></div></td>
+      <td style="font-weight:700;color:${typeCol};white-space:nowrap;">${durFmt}</td>
+      <td style="font-size:11px;color:var(--muted);">${s.cause}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+/* ═══ BOL UNDERBODY + UPPERBODY STOP TABLE ═══ */
+function renderBOLStops(){
+  const ubStops = MM_DATA.downtime.ub_stops || [];
+  const upStops = MM_DATA.downtime.up_stops || [];
+  const el = document.getElementById('bol-stops-table');
+  if(!el) return;
+
+  function sectionHtml(label, color, stops, totalMin){
+    if(stops.length === 0) return `
+      <div style="background:var(--green-d);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;font-weight:700;color:${color};">${label}</span>
+        <span style="font-size:11px;color:var(--green);">✓ 0 min unplanned — No stops</span>
+      </div>`;
+    const maxDur = Math.max(...stops.map(s=>s.dur_min), 1);
+    let html = `<div style="margin-bottom:8px;">
+      <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">${label} — ${totalMin} min unplanned</div>
+      <table class="t" style="width:100%;"><thead><tr><th>Line</th><th style="min-width:100px;">Duration</th><th>Duration</th><th>Cause</th></tr></thead><tbody>`;
+    for(const s of stops){
+      const barW = (s.dur_min / maxDur * 100).toFixed(1);
+      const durFmt = s.dur_min >= 60 ? (s.dur_min/60).toFixed(1)+'h' : s.dur_min+'m';
+      html += `<tr>
+        <td style="font-family:monospace;color:var(--blue-b);font-weight:700;">${s.line}</td>
+        <td><div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${barW}%;background:var(--red);border-radius:3px;"></div></div></td>
+        <td style="font-weight:700;color:var(--red);white-space:nowrap;">${durFmt}</td>
+        <td style="font-size:11px;color:var(--muted);">${s.cause}</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  const ubTotal = MM_DATA.downtime.areas.underbody.unplanned;
+  const upTotal = MM_DATA.downtime.areas.upperbody.unplanned;
+  el.innerHTML = sectionHtml('Underbody', 'var(--ub)', ubStops, ubTotal) +
+                  sectionHtml('Upperbody', 'var(--up)', upStops, upTotal);
+}
+
+/* ═══ POST HEADER UPDATER ═══ */
+function updatePostHeaders(){
+  const k = MM_DATA.kpis;
+  const updates = [
+    ['pv-ashop-ftt', 'pt-ashop-ftt', 'ashop_ftt', k.ashop_ftt?.val],
+    ['pv-ashop-dpv', 'pt-ashop-dpv', 'ashop_dpv', k.ashop_dpv?.val],
+    ['pv-wg-dpv',    'pt-wg-dpv',    'wg_dpv',    k.wg_dpv?.val],
+    ['pv-wd6-ftt',   'pt-wd6-ftt',   'wd6_ftt',   k.wd6_ftt?.val],
+    ['pv-wd6-dpv',   'pt-wd6-dpv',   'wd6_dpv',   k.wd6_dpv?.val],
+    ['pv-cal-ftt',   'pt-cal-ftt',   'cal_ftt',   k.cal_ftt?.val],
+  ];
+  for(const [vid, tid, key, val] of updates){
+    const vEl = document.getElementById(vid);
+    const tEl = document.getElementById(tid);
+    if(!vEl) continue;
+    const col = kpiColor(key, val);
+    vEl.className = `pval ${col}`;
+    vEl.innerHTML = val===null||val===undefined ? '✓' : kpiValDisplay(key, val);
+    if(tEl){
+      const t = TARGETS[key];
+      tEl.innerHTML = `Target ${t?.lbl||''} &nbsp;${kpiDelta(key, val)}`;
+    }
+  }
+}
+
+/* ═══ MASTER APPLY ═══ */
+function applyMMData(){
+  try {
+    renderKPISummary();
+    renderShopBanners();
+    updatePostHeaders();
+    renderDTHeader();
+    renderAreaCards();
+    renderBOKStops();
+    renderBOLStops();
+    renderCallouts();
+    renderSafety();
+    renderPQTable();
+    renderBOFTable();
+    renderScrap();
+  } catch(e){ console.warn('applyMMData error:', e); }
+}
+
+/* ─── Init ─── */
+document.getElementById('dt').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+document.querySelectorAll('.ni').forEach(el=>{el.addEventListener('click',()=>{document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));el.classList.add('on');});});
+function g(id){document.getElementById(id).scrollIntoView({behavior:'smooth'});}
+document.addEventListener('DOMContentLoaded', applyMMData);
+</script>
+</body>
+</html>
