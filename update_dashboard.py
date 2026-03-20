@@ -444,6 +444,7 @@ def update():
             cmds = [
                 ['git', '-C', repo, 'add', 'body_shop_intelligence.html'],
                 ['git', '-C', repo, 'commit', '-m', f'Auto-update {today} 17:00'],
+                ['git', '-C', repo, 'pull', '--rebase', 'origin', 'main'],
                 ['git', '-C', repo, 'push', 'origin', 'main'],
             ]
             for cmd in cmds:
