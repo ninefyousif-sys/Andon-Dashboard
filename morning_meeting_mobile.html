@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Morning Meeting · Body Shop</title>
+<style>
+:root{
+  --bg:#07090f;--s1:#0f1520;--s2:#141d2b;--s3:#1a2435;
+  --b1:#1c2d40;--b2:#243650;
+  --text:#c8d8e8;--dim:#5a7590;--bright:#e8f4ff;
+  --blue:#0075be;--blue-b:#78c8f8;
+  --green:#159a58;--green-l:#25c878;
+  --amber:#c89010;--amber-l:#f0b828;
+  --red:#cc2838;--red-l:#f04858;
+  --orange:#d07018;--orange-l:#f08028;
+  --purple:#7c4daa;--purple-l:#b07aff;
+  --teal:#00999e;--teal-l:#30c0c5;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:var(--s1);border-bottom:1px solid var(--b1);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.hdr-brand{display:flex;align-items:center;gap:10px}
+.vlogo{background:var(--blue);color:#fff;font-weight:900;font-size:10px;padding:4px 8px;letter-spacing:1px;border-radius:2px}
+.hdr-title{font-size:13px;font-weight:700;color:var(--bright)}
+.hdr-sub{font-size:11px;color:var(--dim)}
+.clk{font-family:var(--font-mono);font-size:13px;color:var(--teal-l)}
+
+/* ── DAY PICKER ── */
+.day-bar{background:var(--s2);border-bottom:1px solid var(--b1);padding:8px 14px;display:flex;align-items:center;gap:8px}
+.day-lbl{font-size:10px;color:var(--dim);white-space:nowrap}
+.day-select{background:var(--s3);border:1px solid var(--b2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px;flex:1;outline:none}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--b1);border-bottom:2px solid var(--b2)}
+.kpi-card{background:var(--s2);padding:11px 13px}
+.kpi-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:3px}
+.kpi-val{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:1}
+.kpi-val.g{color:var(--green-l)}.kpi-val.r{color:var(--red-l)}.kpi-val.a{color:var(--amber-l)}.kpi-val.b{color:var(--blue-b)}.kpi-val.d{color:var(--dim)}
+.kpi-sub{font-size:9px;color:var(--dim);margin-top:3px}
+.kpi-bar{height:3px;background:var(--b2);border-radius:2px;margin-top:5px}
+.kpi-fill{height:3px;border-radius:2px}
+
+/* ── SECTION ── */
+.sec{border-bottom:1px solid var(--b1)}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:var(--s1);user-select:none;-webkit-user-select:none}
+.sec-hdr:active{background:var(--s2)}
+.sec-title{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.sec-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sec-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px}
+.sec-badge.bad{background:rgba(204,40,56,.2);color:var(--red-l)}
+.sec-badge.ok{background:rgba(21,154,88,.2);color:var(--green-l)}
+.sec-badge.warn{background:rgba(200,144,16,.2);color:var(--amber-l)}
+.sec-chev{font-size:11px;color:var(--dim);transition:transform .2s}
+.sec-chev.open{transform:rotate(180deg)}
+.sec-body{padding:12px 14px;display:none}
+.sec-body.open{display:block}
+
+/* ── SAFETY ── */
+.safety-card{background:var(--s2);border:1px solid var(--b2);border-left:3px solid var(--red-l);border-radius:6px;padding:10px 12px;margin-bottom:10px}
+.safety-title{font-size:12px;font-weight:700;color:var(--red-l);margin-bottom:5px}
+.safety-detail{font-size:11px;color:var(--text);line-height:1.5}
+.safety-meta{font-size:9px;color:var(--dim);margin-top:6px}
+.safe-cross{display:flex;align-items:center;gap:10px;background:rgba(21,154,88,.1);border:1px solid rgba(37,200,120,.2);border-radius:6px;padding:10px 14px}
+.cross-icon{font-size:28px;color:var(--green-l)}
+.cross-days{font-family:var(--font-mono);font-size:28px;font-weight:900;color:var(--green-l)}
+.cross-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+
+/* ── DOWNTIME TILES ── */
+.dt-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.dt-tile{background:var(--s2);border:1px solid var(--b2);border-radius:5px;padding:8px 6px;text-align:center}
+.dt-val{font-family:var(--font-mono);font-size:18px;font-weight:700}
+.dt-lbl{font-size:8px;color:var(--dim);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+
+/* ── STOP ROWS ── */
+.stop-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--b1)}
+.stop-row:last-child{border:none}
+.stop-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stop-name{flex:1;font-size:11px;font-weight:600;color:var(--text)}
+.stop-cause{font-size:10px;color:var(--dim);flex:2}
+.stop-dur{font-family:var(--font-mono);font-size:11px;font-weight:700;min-width:36px;text-align:right}
+
+/* ── KPI ROW ITEMS ── */
+.shop-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.skpi{background:var(--s2);border:1px solid var(--b2);border-radius:5px;padding:8px 10px;text-align:center}
+.skpi-val{font-family:var(--font-mono);font-size:20px;font-weight:700}
+.skpi-lbl{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.skpi-tgt{font-size:8px;margin-top:2px}
+
+/* ── DEFECT ITEMS ── */
+.defect-item{background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:8px 10px;margin-bottom:6px}
+.defect-body{font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:3px}
+.defect-desc{font-size:11px;font-weight:600;color:var(--text);margin-bottom:3px}
+.defect-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.tag{font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px}
+.tag-of{background:rgba(204,40,56,.2);color:var(--red-l)}
+.tag-ug{background:rgba(200,144,16,.2);color:var(--amber-l)}
+.tag-w{background:rgba(0,117,190,.2);color:var(--blue-b)}
+.tag-ok{background:rgba(21,154,88,.2);color:var(--green-l)}
+
+/* ── PART QUALITY CARDS ── */
+.pq-card{background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:8px 10px;margin-bottom:6px}
+.pq-part{font-size:11px;font-weight:700;color:var(--bright);margin-bottom:3px}
+.pq-row{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}
+.pq-row span{color:var(--text)}
+.pq-prob{font-size:10px;color:var(--amber-l);margin-top:4px;font-style:italic}
+
+/* ── BOF CARDS ── */
+.bof-card{background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px}
+.bof-rfid{font-family:var(--font-mono);font-size:10px;color:var(--blue-b);min-width:64px}
+.bof-info{flex:1}
+.bof-reason{font-size:11px;font-weight:600;color:var(--text)}
+.bof-meta{font-size:9px;color:var(--dim);margin-top:2px}
+.bof-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;align-self:flex-start;margin-left:auto;white-space:nowrap}
+.bof-status.pending{background:rgba(200,144,16,.2);color:var(--amber-l)}
+.bof-status.done{background:rgba(21,154,88,.2);color:var(--green-l)}
+.bof-status.active{background:rgba(0,117,190,.2);color:var(--blue-b)}
+
+/* ── SCRAP HERO ── */
+.scrap-hero{text-align:center;padding:16px;background:var(--s2);border:1px solid rgba(37,200,120,.2);border-radius:6px}
+.scrap-big{font-family:var(--font-mono);font-size:48px;font-weight:900;color:var(--green-l);line-height:1}
+.scrap-lbl{font-size:10px;color:var(--dim);margin-top:4px;text-transform:uppercase;letter-spacing:.6px}
+.scrap-note{font-size:10px;color:var(--dim);margin-top:8px;font-style:italic;line-height:1.4}
+
+/* ── EMPTY STATE ── */
+.empty-ok{background:rgba(21,154,88,.08);border:1px solid rgba(37,200,120,.2);border-radius:5px;padding:8px 12px;font-size:11px;color:var(--green-l);text-align:center}
+
+/* ── FOOTER ── */
+.footer{text-align:center;padding:14px;font-size:10px;color:var(--dim);border-top:1px solid var(--b1)}
+.btn-desktop{display:block;width:100%;background:var(--s2);border:1px solid var(--b2);color:var(--dim);padding:10px;border-radius:6px;text-align:center;font-size:12px;text-decoration:none;margin-top:10px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-brand">
+    <div class="vlogo">VOLVO</div>
+    <div>
+      <div class="hdr-title">Morning Meeting</div>
+      <div class="hdr-sub" id="m-day-label">Body Shop (RA)</div>
+    </div>
+  </div>
+  <div class="clk" id="m-clk">--:--</div>
+</div>
+
+<!-- DAY PICKER -->
+<div class="day-bar">
+  <span class="day-lbl">View Day:</span>
+  <select class="day-select" id="m-day-picker" onchange="mSwitchDay(this.value)">
+    <option value="">— Today —</option>
+  </select>
+</div>
+
+<!-- KPI GRID -->
+<div class="kpi-grid" id="m-kpi-grid">
+  <div class="kpi-card"><div class="kpi-lbl">A-Shop FTT</div><div class="kpi-val d" id="mk-ashop-ftt">—</div><div class="kpi-sub" id="mks-ashop-ftt">Target ≥98.0%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-ashop-ftt" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">A-Shop DPV</div><div class="kpi-val d" id="mk-ashop-dpv">—</div><div class="kpi-sub" id="mks-ashop-dpv">Target ≤0.10</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-ashop-dpv" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">W&amp;G DPV</div><div class="kpi-val d" id="mk-wg-dpv">—</div><div class="kpi-sub" id="mks-wg-dpv">Target ≤1.20</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-wg-dpv" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">WD6 FTT</div><div class="kpi-val d" id="mk-wd6-ftt">—</div><div class="kpi-sub" id="mks-wd6-ftt">Target 100%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-wd6-ftt" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">WD6 DPV</div><div class="kpi-val d" id="mk-wd6-dpv">—</div><div class="kpi-sub" id="mks-wd6-dpv">Target ≤0.12</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-wd6-dpv" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">CAL FTT</div><div class="kpi-val d" id="mk-cal-ftt">—</div><div class="kpi-sub" id="mks-cal-ftt">Target 100%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-cal-ftt" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">Final 1 FTT</div><div class="kpi-val d" id="mk-final1-ftt">—</div><div class="kpi-sub" id="mks-final1-ftt">Target 100%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-final1-ftt" style="width:0%"></div></div></div>
+  <div class="kpi-card"><div class="kpi-lbl">Final 2 FTT</div><div class="kpi-val d" id="mk-final2-ftt">—</div><div class="kpi-sub" id="mks-final2-ftt">Target 100%</div><div class="kpi-bar"><div class="kpi-fill" id="mkb-final2-ftt" style="width:0%"></div></div></div>
+</div>
+
+<!-- SAFETY -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--red-l)"></div>Safety</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge bad" id="m-safety-badge">1 Alert</span>
+      <span class="sec-chev open">▼</span>
+    </div>
+  </div>
+  <div class="sec-body open" id="sec-safety">
+    <div class="safe-cross">
+      <div class="cross-icon">✚</div>
+      <div>
+        <div class="cross-days" id="m-days-safe">47</div>
+        <div class="cross-lbl">Days Without Incident</div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="safety-card" id="m-safety-card">
+        <div class="safety-title" id="m-safety-title">Loading…</div>
+        <div class="safety-detail" id="m-safety-detail">—</div>
+        <div class="safety-meta" id="m-safety-meta">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DOWNTIME -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--orange-l)"></div>Downtime</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge bad" id="m-dt-badge">—</span>
+      <span class="sec-chev open">▼</span>
+    </div>
+  </div>
+  <div class="sec-body open" id="sec-dt">
+    <div class="dt-tiles" id="m-dt-tiles">
+      <div class="dt-tile"><div class="dt-val d" id="m-dt-total">—</div><div class="dt-lbl">Total min</div></div>
+      <div class="dt-tile"><div class="dt-val" style="color:var(--red-l)" id="m-dt-unplan">—</div><div class="dt-lbl">Unplanned</div></div>
+      <div class="dt-tile"><div class="dt-val" style="color:var(--amber-l)" id="m-dt-plan">—</div><div class="dt-lbl">Planned</div></div>
+      <div class="dt-tile"><div class="dt-val" id="m-dt-avail">—</div><div class="dt-lbl">Avail %</div></div>
+    </div>
+    <div style="font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Top Line Stops</div>
+    <div id="m-stops"></div>
+  </div>
+</div>
+
+<!-- A SHOP -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--blue-b)"></div>A Shop</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge" id="m-ashop-badge">—</span>
+      <span class="sec-chev">▼</span>
+    </div>
+  </div>
+  <div class="sec-body" id="sec-ashop">
+    <div class="shop-kpi-row">
+      <div class="skpi"><div class="skpi-val d" id="msk-ashop-ftt">—</div><div class="skpi-lbl">FTT</div><div class="skpi-tgt" id="mskt-ashop-ftt" style="color:var(--dim)">≥98%</div></div>
+      <div class="skpi"><div class="skpi-val d" id="msk-ashop-dpv">—</div><div class="skpi-lbl">DPV</div><div class="skpi-tgt" id="mskt-ashop-dpv" style="color:var(--dim)">≤0.10</div></div>
+      <div class="skpi"><div class="skpi-val d" id="msk-wg-dpv">—</div><div class="skpi-lbl">W&amp;G DPV</div><div class="skpi-tgt" id="mskt-wg-dpv" style="color:var(--dim)">≤1.20</div></div>
+    </div>
+    <div style="font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">FTT Repair Items</div>
+    <div id="m-ashop-ftt-items"></div>
+    <div style="font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin:10px 0 6px">W&amp;G DPV Items (Top 5)</div>
+    <div id="m-wg-items"></div>
+  </div>
+</div>
+
+<!-- B SHOP (WD6) -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--purple-l)"></div>B Shop (WD6)</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge" id="m-bshop-badge">—</span>
+      <span class="sec-chev">▼</span>
+    </div>
+  </div>
+  <div class="sec-body" id="sec-bshop">
+    <div class="shop-kpi-row" style="grid-template-columns:1fr 1fr">
+      <div class="skpi"><div class="skpi-val d" id="msk-wd6-ftt">—</div><div class="skpi-lbl">WD6 FTT</div><div class="skpi-tgt" id="mskt-wd6-ftt" style="color:var(--dim)">100%</div></div>
+      <div class="skpi"><div class="skpi-val d" id="msk-wd6-dpv">—</div><div class="skpi-lbl">WD6 DPV</div><div class="skpi-tgt" id="mskt-wd6-dpv" style="color:var(--dim)">≤0.12</div></div>
+    </div>
+    <div style="font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">WD6 Repair Items</div>
+    <div id="m-wd6-items"></div>
+  </div>
+</div>
+
+<!-- C SHOP -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--green-l)"></div>C Shop</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge" id="m-cshop-badge">—</span>
+      <span class="sec-chev">▼</span>
+    </div>
+  </div>
+  <div class="sec-body" id="sec-cshop">
+    <div class="shop-kpi-row">
+      <div class="skpi"><div class="skpi-val d" id="msk-cal-ftt">—</div><div class="skpi-lbl">CAL FTT</div><div class="skpi-tgt" id="mskt-cal-ftt" style="color:var(--dim)">100%</div></div>
+      <div class="skpi"><div class="skpi-val d" id="msk-final1-ftt">—</div><div class="skpi-lbl">Final 1</div><div class="skpi-tgt" id="mskt-final1-ftt" style="color:var(--dim)">100%</div></div>
+      <div class="skpi"><div class="skpi-val d" id="msk-final2-ftt">—</div><div class="skpi-lbl">Final 2</div><div class="skpi-tgt" id="mskt-final2-ftt" style="color:var(--dim)">100%</div></div>
+    </div>
+    <div style="font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">CAL FTT Items</div>
+    <div id="m-cal-items"></div>
+    <div style="font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin:10px 0 6px">Final 2 FTT Items</div>
+    <div id="m-final2-items"></div>
+  </div>
+</div>
+
+<!-- PART QUALITY -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--orange-l)"></div>Part Quality</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge" id="m-pq-badge">—</span>
+      <span class="sec-chev">▼</span>
+    </div>
+  </div>
+  <div class="sec-body" id="sec-pq">
+    <div id="m-pq-cards"></div>
+  </div>
+</div>
+
+<!-- BODIES OOF -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--purple-l)"></div>Bodies OOF</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge" id="m-bof-badge">—</span>
+      <span class="sec-chev">▼</span>
+    </div>
+  </div>
+  <div class="sec-body" id="sec-bof">
+    <div id="m-bof-cards"></div>
+  </div>
+</div>
+
+<!-- SCRAP -->
+<div class="sec">
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <div class="sec-title"><div class="sec-dot" style="background:var(--green-l)"></div>Scrap</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sec-badge ok" id="m-scrap-badge">$0</span>
+      <span class="sec-chev">▼</span>
+    </div>
+  </div>
+  <div class="sec-body" id="sec-scrap">
+    <div class="scrap-hero">
+      <div class="scrap-big" id="m-scrap-val">$0</div>
+      <div class="scrap-lbl">Scrap Cost Yesterday</div>
+      <div class="scrap-note" id="m-scrap-note">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Morning Meeting · Body Shop (RA) · Volvo Cars
+  <a href="morning_meeting_dashboard.html" class="btn-desktop">🖥 Open Full Desktop Dashboard</a>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   MM_DATA — patched daily by update_morning_meeting.py
+   Sources:
+     downtime → OneDrive Andon Downtime Sheet (HOP + DT Excel)
+     kpis     → Snowflake VCCH (TODO: auto-connect) — values from live system
+     ppt      → OneDrive 2026 RTM / A Shop 26WxxDx.pptx (tables + text)
+   ═══════════════════════════════════════════════════════════════════════ */
+const MM_DATA = {
+  date: "2026-03-20",
+  wk: "WK12",
+  day: 4,
+  /* ── KPI VALUES (real data WK12 D4) ── */
+  kpis: {
+    bok_opr:    { val: 91.8, eol: null, ok: null, repair: null },
+    bol_opr:    { val: 79.1, eol: null, ok: null, repair: null },
+    ashop_ftt:  { val: 98.6, eol: 73,   ok: 72,  repair: 1    },
+    ashop_dpv:  { val: 0.00, bodies: 73, defects: 0            },
+    wg_dpv:     { val: 1.81, bodies: 78, defects: 141          },
+    wd6_ftt:    { val: 98.8, eol: 83,   ok: 82,  repair: 1    },
+    wd6_dpv:    { val: 0.05, bodies: 83, defects: 4            },
+    cal_ftt:    { val: 97.6, eol: 84,   ok: 82,  repair: 2    },
+    final1_ftt: { val: 100.0, eol: 48, ok: 48, repair: 0 },
+    final2_ftt: { val: 90.9, eol: 77,   ok: 70,  repair: 7    },
+    scrap_car:  { val: 0.07 }
+  },
+  /* ── DOWNTIME ── */
+  downtime: {
+    total_min: 491, planned_min: 60, unplanned_min: 431, availability: 79.5,
+    areas: {
+      underbody: { total: 301, planned: 20, unplanned: 281, events: [
+        {station:"FS-231",    dur:127, cause:"Conveyor fault",       planned:false},
+        {station:"MARR-138",  dur:96,  cause:"Body carrier jam",     planned:false},
+        {station:"FWHR-233",  dur:58,  cause:"Clamp failure",        planned:false},
+        {station:"RWHLH-235", dur:56,  cause:"Robot fault LH",       planned:false},
+        {station:"RWHRH-237", dur:42,  cause:"Part feed jam RH",     planned:false},
+        {station:"RFC-236",   dur:10,  cause:"Tooling fault",        planned:false},
+        {station:"FWHLH-232", dur:8,   cause:"Fixture check",        planned:false},
+        {station:"PM-UB",     dur:20,  cause:"Scheduled maintenance",planned:true}
+      ]},
+      upperbody: { total: 0,   planned: 0,  unplanned: 0, events: [] },
+      hangon:    { total: 87,  planned: 20, unplanned: 67, events: [
+        {station:"287-Tailgate", dur:57, cause:"Hood hinge stop",        planned:false},
+        {station:"LH-DOOR-285",  dur:22, cause:"Door alignment check",   planned:false},
+        {station:"PM-HO",        dur:20, cause:"Scheduled maintenance",  planned:true}
+      ]},
+      bodysides: { total: 0,   planned: 0,  unplanned: 0, events: [] }
+    },
+    hop_stops: [
+      {line:"FS-231",      area:"Underbody", dur_min:127, cause:"Conveyor fault",     planned:false},
+      {line:"MARR-138",    area:"Underbody", dur_min:96,  cause:"Body carrier jam",   planned:false},
+      {line:"FWHR-233",    area:"Underbody", dur_min:58,  cause:"Clamp failure",      planned:false},
+      {line:"287 Tailgate",area:"Hang-On",   dur_min:57,  cause:"Hood hinge stop",    planned:false},
+      {line:"RWHLH-235",   area:"Underbody", dur_min:56,  cause:"Robot fault LH",     planned:false},
+      {line:"RWHRH-237",   area:"Underbody", dur_min:42,  cause:"Part feed jam RH",   planned:false},
+      {line:"LH DOOR-285", area:"Hang-On",   dur_min:22,  cause:"Door alignment",     planned:false},
+      {line:"259",         area:"Other",     dur_min:15,  cause:"Line stop",          planned:false},
+      {line:"RFC-236",     area:"Underbody", dur_min:10,  cause:"Tooling fault",      planned:false},
+      {line:"FWHLH-232",   area:"Underbody", dur_min:8,   cause:"Fixture check",      planned:false}
+    ],
+    ub_stops: [
+      {line:"FS-231",    dur_min:127, cause:"Conveyor fault",    planned:false},
+      {line:"MARR-138",  dur_min:96,  cause:"Body carrier jam",  planned:false},
+      {line:"FWHR-233",  dur_min:58,  cause:"Clamp failure",     planned:false},
+      {line:"RWHLH-235", dur_min:56,  cause:"Robot fault LH",    planned:false},
+      {line:"RWHRH-237", dur_min:42,  cause:"Part feed jam RH",  planned:false},
+      {line:"RFC-236",   dur_min:10,  cause:"Tooling fault",     planned:false},
+      {line:"FWHLH-232", dur_min:8,   cause:"Fixture check",     planned:false}
+    ],
+    up_stops: []
+  },
+  /* ── PPT DATA ── */
+  ppt: {
+    safety: {
+      title: "SAFETY ALERT — Hand Cut / Puncture Risk",
+      detail: "Potential for TM to cut/puncture hand during quality check. TM must follow eyes with hands. Look before rubbing across surface. Gloves mandatory.",
+      meta: "Casey Murakami | H&S Lead | WK12 D4"
+    },
+    part_quality: [
+      {area:"RH BS",           model:"EX90",  part:"B-Pillar Reinforcement Bracket", supplier:"Iroquois Assembly Systems", partno:"32353265", qty:"22", status:"Waiting Rework", repeater:"Yes", sort:"Sort", problem:"Rust found on parts",       handshake:"IMQ (Tyler) · Joe"},
+      {area:"RWH",             model:"EX90",  part:"LH Side-Member",                  supplier:"Herzogenb",                partno:"32262975", qty:"1",  status:"Scrap",          repeater:"Yes", sort:"Sort", problem:"Bent on line",               handshake:"IMQ — Tyler"},
+      {area:"285 LH Door SA",  model:"EX90",  part:"Inner Plate Assy",                supplier:"Magna",                    partno:"32420790", qty:"3",  status:"Repaired",       repeater:"Yes", sort:"Yes",  problem:"Bent",                        handshake:"Tim/IMQ"},
+      {area:"232-060 FWH(RH)", model:"723N",  part:"Reinf Side Member Front RH",      supplier:"Chengdu Jiarun",           partno:"32277690", qty:"1",  status:"Scrap",          repeater:"No",  sort:"Yes",  problem:"Bent",                        handshake:"Tyler/IMQ"}
+    ],
+    wg_items_536: [
+      {body:"6005377", rfid:"4816607", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Roof Rail Left Side",    extra:"", count:1},
+      {body:"6005369", rfid:"4816599", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Rear Door Frame",   extra:"", count:1},
+      {body:"6005379", rfid:"4816609", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Rear Door Frame",   extra:"", count:1},
+      {body:"6005382", rfid:"4816612", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Rear Door Frame",   extra:"", count:1},
+      {body:"6005384", rfid:"4816614", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Front Door Frame",  extra:"", count:1},
+      {body:"6005390", rfid:"4816620", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Front Door Frame",  extra:"", count:1},
+      {body:"6005395", rfid:"4816625", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Rear Door Frame",   extra:"", count:1},
+      {body:"6005410", rfid:"4816640", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Front Door Frame",  extra:"", count:1},
+      {body:"6005414", rfid:"4816644", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Rear Door Frame",   extra:"", count:1},
+      {body:"6005427", rfid:"4816657", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"EX90", station:"07W&G", location:"Left Plenum",            extra:"", count:1}
+    ],
+    wg_items_519: [
+      {body:"6005286", rfid:"4816479", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"PSTR", station:"07W&G", location:"Right Rear Door Frame",  extra:"", count:1},
+      {body:"6005401", rfid:"4816597", desc:"HEAVY WELD EXPULSION/SLAG (A-SHOP)", model:"PSTR", station:"07W&G", location:"Left Plenum",            extra:"", count:1}
+    ],
+    ashop_ftt_536: [
+      {body:"6005348", rfid:"4816578", desc:"BRAZE WELD NOK (A-SHOP)", model:"EX90", link_stn:"02FSP", link_time:"3/19/2026 11:17:58 AM", close_stn:"01HVR", close_time:"3/19/2026 11:34:16 AM", location:"Tail Gate Exterior Panel", extra:""}
+    ],
+    ashop_ftt_519: [],
+    wd6_ftt_536: [
+      {body:"6005308", rfid:"4816538", desc:"SUPPLIER RE-WORK NOK (A-SHOP)", model:"EX90", link_stn:"WD06", link_time:"3/19/2026 12:22:04 PM", close_stn:"", close_time:"", location:"V536 LS CLASS 1 FENDER", extra:""}
+    ],
+    wd6_ftt_519: [],
+    wd6_dpv_536: [
+      {body:"6005308", rfid:"4816538", count:1, desc:"SUPPLIER RE-WORK NOK (A-SHOP)",   model:"EX90", station:"WD06", location:"V536 LS CLASS 1 FENDER",         extra:""},
+      {body:"6005316", rfid:"4816546", count:1, desc:"SANDED THROUGH E-COAT (A-SHOP)",  model:"EX90", station:"WD06", location:"V536 L2 CLASS 1 EXTERIOR DOOR",   extra:""},
+      {body:"6005316", rfid:"4816546", count:1, desc:"SANDED THROUGH E-COAT (A-SHOP)",  model:"EX90", station:"WD06", location:"V536 L2 CLASS 2&3 EXTERIOR DOOR", extra:"black adhesive"},
+      {body:"6005352", rfid:"4816582", count:1, desc:"SANDED THROUGH E-COAT (A-SHOP)",  model:"EX90", station:"WD06", location:"V536 LS QUARTER PANEL",           extra:"sand thru / dent / primer needed"}
+    ],
+    wd6_dpv_519: [],
+    cal_ftt_536: [],
+    cal_ftt_519: [
+      {body:"6003997", rfid:"4815214", desc:"R FENDER FLUSH TO A PILLAR", model:"PSTR", link_stn:"EXCAL", link_time:"3/19/2026 1:57:38 PM",  close_stn:"RPR_B", close_time:"3/20/2026 3:08:29 PM", location:"", extra:""},
+      {body:"6004523", rfid:"4815663", desc:"R FENDER FLUSH TO A PILLAR", model:"PSTR", link_stn:"CAL_3", link_time:"3/19/2026 3:18:52 PM",  close_stn:"RPR_B", close_time:"3/19/2026 4:26:26 PM",  location:"", extra:""}
+    ],
+    final2_ftt_536: [
+      {body:"6004730", rfid:"4815959", desc:"A-SHOP -OVER FLUSH",  model:"EX90", link_stn:"FL2.0", link_time:"3/19/2026 3:13:05 PM",  close_stn:"RPR_B", close_time:"3/20/2026 11:48:58 AM", location:"LHS HOOD TO FENDER",    extra:"007 OVER FLUSH -1.7MM"},
+      {body:"6004732", rfid:"4815961", desc:"A-SHOP -UNDER GAP",   model:"EX90", link_stn:"FL2.0", link_time:"3/19/2026 12:46:54 PM", close_stn:"",      close_time:"",                     location:"LHS LR DOOR TO LF DOOR", extra:"009 gap is under 2.5 mm"},
+      {body:"6004788", rfid:"4816017", desc:"A-SHOP -OVER FLUSH",  model:"EX90", link_stn:"FL2.0", link_time:"3/19/2026 1:55:50 PM",  close_stn:"",      close_time:"",                     location:"LHS HOOD TO FENDER",    extra:"007 OVER FLUSH -2.2MM"},
+      {body:"6004803", rfid:"4816032", desc:"A-SHOP -OVER FLUSH",  model:"EX90", link_stn:"FL2.0", link_time:"3/19/2026 2:59:07 PM",  close_stn:"RPR_B", close_time:"3/20/2026 11:21:21 AM", location:"RHS HOOD TO FENDER",    extra:"007 OVER FLUSH -2.2MM"},
+      {body:"6004873", rfid:"4816101", desc:"A-SHOP -OVER FLUSH",  model:"EX90", link_stn:"FL2.0", link_time:"3/19/2026 3:19:22 PM",  close_stn:"RPR_B", close_time:"3/20/2026 11:20:42 AM", location:"LEFT HAND FR051",       extra:"51 flush is 1.6 m"},
+      {body:"6004749", rfid:"4815978", desc:"A-SHOP -OVER FLUSH",  model:"EX90", link_stn:"FL2.0", link_time:"3/18/2026 6:34:30 PM",  close_stn:"RPR_B", close_time:"3/19/2026 2:50:12 PM",  location:"LHS HOOD TO FENDER",    extra:"sd007 flush -2.2mm"}
+    ],
+    final2_ftt_519: [
+      {body:"6004650", rfid:"4815877", desc:"A-SHOP -OVER FLUSH",  model:"PSTR", link_stn:"FL2.0", link_time:"3/19/2026 12:12:17 PM", close_stn:"",      close_time:"",                     location:"RHS FR GRS",            extra:"43 flush is 1.4 mm"}
+    ],
+    bodies_oof: [
+      {mode:"Automation", rfid:"4815860", type:"536", bodytype:"Complete", location:"CMM",        status:"Baking",              reason:"A-Pillar misaligned",           removed:"WK10 D5", expected:"TBD",     dummy:"Yes", champion:"B. Allen"},
+      {mode:"Manual",     rfid:"4816122", type:"536", bodytype:"Complete", location:"WD 7",       status:"Awaiting Supervisor", reason:"L2 Threshold",                  removed:"WK11 D4", expected:"WK11 D4", dummy:"Yes", champion:"Cory McCallum"},
+      {mode:"Manual",     rfid:"4816479", type:"PS3", bodytype:"Complete", location:"GEO",        status:"CMM",                 reason:"Measurements needed",           removed:"WK12 D4", expected:"WK12 D5", dummy:"No",  champion:"Paul Freeman"},
+      {mode:"Manual",     rfid:"4816312", type:"536", bodytype:"Complete", location:"Horse Shoe", status:"RH Hood Hinge",       reason:"E-coated RH Hood Hinge needed", removed:"WK12 D2", expected:"WK12 D4", dummy:"No",  champion:"Cory McCallum"},
+      {mode:"Manual",     rfid:"4815824", type:"519", bodytype:"Complete", location:"Horse Shoe", status:"Hood Dent",           reason:"Hood repair needed",            removed:"WK12 D3", expected:"WK12 D5", dummy:"No",  champion:"Cory McCallum"}
+    ],
+    scrap: "$0",
+    scrap_note: "Both scrapped parts covered by supplier warranty — zero cost to Volvo Cars"
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MM_HISTORY — patched daily by update_morning_meeting.py
+   Maps "YYYY-MM-DD" → full MM_DATA snapshot for that day (last 10 days)
+   ═══════════════════════════════════════════════════════════════════════ */
+const MM_HISTORY = {};
+
+/* ─── TARGETS ─── */
+const TARGETS = {
+  ashop_ftt:  { tgt:98.0,  dir:'ge', unit:'%'  },
+  ashop_dpv:  { tgt:0.10,  dir:'le', unit:''   },
+  wg_dpv:     { tgt:1.20,  dir:'le', unit:''   },
+  wd6_ftt:    { tgt:100.0, dir:'ge', unit:'%'  },
+  wd6_dpv:    { tgt:0.12,  dir:'le', unit:''   },
+  cal_ftt:    { tgt:100.0, dir:'ge', unit:'%'  },
+  final1_ftt: { tgt:100.0, dir:'ge', unit:'%'  },
+  final2_ftt: { tgt:100.0, dir:'ge', unit:'%'  },
+};
+
+function kpiOk(key, val){
+  if(val===null||val===undefined) return null;
+  const t=TARGETS[key]; if(!t) return null;
+  return t.dir==='ge' ? val>=t.tgt : val<=t.tgt;
+}
+function kpiCls(key, val){
+  const ok=kpiOk(key,val);
+  if(ok===null) return 'd';
+  const t=TARGETS[key];
+  if(t.dir==='ge'){
+    const gap=t.tgt-val;
+    if(ok) return 'g';
+    return gap>5 ? 'r' : 'a';
+  } else {
+    if(ok) return 'g';
+    return val>t.tgt*1.5 ? 'r' : 'a';
+  }
+}
+function fmtKpi(key, val){
+  if(val===null||val===undefined) return '—';
+  const t=TARGETS[key];
+  if(!t) return String(val);
+  return t.unit==='%' ? val.toFixed(1)+'%' : val.toFixed(2);
+}
+function barPct(key, val){
+  if(val===null||val===undefined) return 0;
+  const t=TARGETS[key]; if(!t) return 0;
+  if(t.dir==='ge') return Math.min(100, (val/t.tgt)*100);
+  return Math.max(0, Math.min(100, (1-(val-t.tgt)/t.tgt)*100));
+}
+function barColor(key, val){
+  const c=kpiCls(key,val);
+  return c==='g'?'var(--green-l)':c==='a'?'var(--amber-l)':'var(--red-l)';
+}
+
+/* ─── COLLAPSIBLE ─── */
+function toggleSec(hdr){
+  const body=hdr.nextElementSibling;
+  const chev=hdr.querySelector('.sec-chev');
+  const open=body.classList.toggle('open');
+  if(chev) chev.classList.toggle('open',open);
+}
+
+/* ─── DEFECT PILL ─── */
+function defectTag(desc){
+  const d=(desc||'').toUpperCase();
+  if(d.includes('OVER FLUSH')||d.includes('FLUSH')) return '<span class="tag tag-of">FLUSH</span>';
+  if(d.includes('UNDER GAP')||d.includes('GAP'))    return '<span class="tag tag-ug">GAP</span>';
+  if(d.includes('BRAZE')||d.includes('NOK'))        return '<span class="tag tag-of">WELD NOK</span>';
+  if(d.includes('SUPPLIER'))                         return '<span class="tag tag-w">SUPPLIER</span>';
+  if(d.includes('SANDED')||d.includes('E-COAT'))    return '<span class="tag tag-w">E-COAT</span>';
+  if(d.includes('EXPULSION')||d.includes('SLAG'))   return '<span class="tag tag-of">EXPULSION</span>';
+  return '<span class="tag tag-ug">DEFECT</span>';
+}
+
+/* ─── FTT ITEMS ─── */
+function renderFTTItems(elId, items536, items519){
+  const el=document.getElementById(elId); if(!el) return;
+  const all=[...(items536||[]),...(items519||[])];
+  if(!all.length){
+    el.innerHTML='<div class="empty-ok">✓ No repair items — target met</div>';
+    return;
+  }
+  el.innerHTML=all.map(r=>`
+    <div class="defect-item">
+      <div class="defect-body">Body ${r.body||'—'} · RFID ${r.rfid||'—'} · ${r.model||''}</div>
+      <div class="defect-desc">${r.desc||'—'}</div>
+      <div class="defect-tags">${defectTag(r.desc)}${r.location?`<span class="tag tag-w">${r.location}</span>`:''}</div>
+    </div>`).join('');
+}
+
+/* ─── DPV ITEMS ─── */
+function renderDPVItems(elId, items, max){
+  const el=document.getElementById(elId); if(!el) return;
+  const all=[...(items||[])].slice(0, max||5);
+  if(!all.length){
+    el.innerHTML='<div class="empty-ok">✓ No defect items</div>';
+    return;
+  }
+  el.innerHTML=all.map(r=>`
+    <div class="defect-item">
+      <div class="defect-body">Body ${r.body||'—'} · ${r.model||''} · ${r.station||''}</div>
+      <div class="defect-desc">${r.desc||'—'}</div>
+      <div class="defect-tags">${defectTag(r.desc)}${r.location?`<span class="tag tag-w">${r.location}</span>`:''}</div>
+    </div>`).join('');
+}
+
+/* ─── RENDER KPI GRID ─── */
+function renderKPIs(){
+  const kpis=[
+    'ashop_ftt','ashop_dpv','wg_dpv','wd6_ftt',
+    'wd6_dpv','cal_ftt','final1_ftt','final2_ftt'
+  ];
+  kpis.forEach(key=>{
+    const val=MM_DATA.kpis[key]?.val;
+    const id=key.replace(/_/g,'-');
+    const vEl=document.getElementById('mk-'+id);
+    const bEl=document.getElementById('mkb-'+id);
+    if(vEl){ vEl.textContent=fmtKpi(key,val); vEl.className='kpi-val '+kpiCls(key,val); }
+    if(bEl){ bEl.style.width=barPct(key,val)+'%'; bEl.style.background=barColor(key,val); }
+  });
+}
+
+/* ─── RENDER SAFETY ─── */
+function renderSafety(){
+  const s=MM_DATA.ppt?.safety;
+  if(!s) return;
+  const t=document.getElementById('m-safety-title');
+  const d=document.getElementById('m-safety-detail');
+  const m=document.getElementById('m-safety-meta');
+  const b=document.getElementById('m-safety-badge');
+  if(t) t.textContent=s.title||'No alert';
+  if(d) d.textContent=s.detail||'—';
+  if(m) m.textContent=s.meta||'—';
+  if(b){ b.textContent=s.title?'1 Alert':'Clear'; b.className='sec-badge '+(s.title?'bad':'ok'); }
+}
+
+/* ─── RENDER DOWNTIME ─── */
+function renderDowntime(){
+  const dt=MM_DATA.downtime;
+  const avEl=document.getElementById('m-dt-avail');
+  const totEl=document.getElementById('m-dt-total');
+  const unEl=document.getElementById('m-dt-unplan');
+  const plEl=document.getElementById('m-dt-plan');
+  const bdEl=document.getElementById('m-dt-badge');
+  if(totEl) totEl.textContent=dt.total_min||0;
+  if(unEl)  unEl.textContent=dt.unplanned_min||0;
+  if(plEl)  plEl.textContent=dt.planned_min||0;
+  if(avEl){
+    const avail=dt.availability;
+    avEl.textContent=(avail!=null?avail.toFixed(1)+'%':'—');
+    avEl.className='dt-val '+(avail>=90?'g':avail>=80?'a':'r').replace('g','').replace('a','').replace('r','');
+    avEl.style.color=avail>=90?'var(--green-l)':avail>=80?'var(--amber-l)':'var(--red-l)';
+  }
+  if(bdEl) bdEl.textContent=(dt.unplanned_min||0)+' min unplanned';
+
+  // Top stops
+  const stops=(dt.hop_stops||[]).filter(s=>!s.planned).sort((a,b)=>b.dur_min-a.dur_min).slice(0,6);
+  const el=document.getElementById('m-stops');
+  if(el){
+    el.innerHTML=stops.length ? stops.map(s=>`
+      <div class="stop-row">
+        <div class="stop-dot" style="background:${s.area==='Underbody'?'var(--blue-b)':s.area==='Hang-On'?'var(--orange-l)':'var(--teal-l)'}"></div>
+        <div class="stop-name">${s.line}</div>
+        <div class="stop-cause">${s.cause}</div>
+        <div class="stop-dur" style="color:${s.dur_min>=60?'var(--red-l)':s.dur_min>=30?'var(--amber-l)':'var(--green-l)'}">${s.dur_min}m</div>
+      </div>`).join('')
+      : '<div class="empty-ok">✓ No unplanned stops</div>';
+  }
+}
+
+/* ─── RENDER A SHOP ─── */
+function renderAShop(){
+  const k=MM_DATA.kpis;
+  const p=MM_DATA.ppt||{};
+  ['ashop_ftt','ashop_dpv','wg_dpv'].forEach(key=>{
+    const val=k[key]?.val;
+    const id=key.replace(/_/g,'-');
+    const v=document.getElementById('msk-'+id);
+    if(v){ v.textContent=fmtKpi(key,val); v.className='skpi-val '+kpiCls(key,val); }
+  });
+  // Badge
+  const issues=['ashop_ftt','ashop_dpv','wg_dpv'].filter(key=>kpiOk(key,k[key]?.val)===false).length;
+  const b=document.getElementById('m-ashop-badge');
+  if(b){ b.textContent=issues?issues+' Below Target':'On Target'; b.className='sec-badge '+(issues?'bad':'ok'); }
+  // FTT items
+  renderFTTItems('m-ashop-ftt-items', p.ashop_ftt_536, p.ashop_ftt_519);
+  // W&G items
+  renderDPVItems('m-wg-items', [...(p.wg_items_536||[]),...(p.wg_items_519||[])], 5);
+}
+
+/* ─── RENDER B SHOP ─── */
+function renderBShop(){
+  const k=MM_DATA.kpis;
+  const p=MM_DATA.ppt||{};
+  ['wd6_ftt','wd6_dpv'].forEach(key=>{
+    const val=k[key]?.val;
+    const id=key.replace(/_/g,'-');
+    const v=document.getElementById('msk-'+id);
+    if(v){ v.textContent=fmtKpi(key,val); v.className='skpi-val '+kpiCls(key,val); }
+  });
+  const issues=['wd6_ftt','wd6_dpv'].filter(key=>kpiOk(key,k[key]?.val)===false).length;
+  const b=document.getElementById('m-bshop-badge');
+  if(b){ b.textContent=issues?issues+' Below Target':'On Target'; b.className='sec-badge '+(issues?'bad':'ok'); }
+  renderFTTItems('m-wd6-items', [...(p.wd6_ftt_536||[]),...(p.wd6_ftt_519||[])], []);
+}
+
+/* ─── RENDER C SHOP ─── */
+function renderCShop(){
+  const k=MM_DATA.kpis;
+  const p=MM_DATA.ppt||{};
+  ['cal_ftt','final1_ftt','final2_ftt'].forEach(key=>{
+    const val=k[key]?.val;
+    const id=key.replace(/_/g,'-');
+    const v=document.getElementById('msk-'+id);
+    if(v){ v.textContent=fmtKpi(key,val); v.className='skpi-val '+kpiCls(key,val); }
+  });
+  const issues=['cal_ftt','final1_ftt','final2_ftt'].filter(key=>kpiOk(key,k[key]?.val)===false).length;
+  const b=document.getElementById('m-cshop-badge');
+  if(b){ b.textContent=issues?issues+' Below Target':'On Target'; b.className='sec-badge '+(issues?'bad':'ok'); }
+  renderFTTItems('m-cal-items', p.cal_ftt_536, p.cal_ftt_519);
+  renderFTTItems('m-final2-items', p.final2_ftt_536, p.final2_ftt_519);
+}
+
+/* ─── RENDER PART QUALITY ─── */
+function renderPQ(){
+  const rows=MM_DATA.ppt?.part_quality||[];
+  const el=document.getElementById('m-pq-cards');
+  const b=document.getElementById('m-pq-badge');
+  if(b){ b.textContent=rows.length+' Item'+(rows.length!==1?'s':''); b.className='sec-badge '+(rows.length?'warn':'ok'); }
+  if(!el) return;
+  if(!rows.length){ el.innerHTML='<div class="empty-ok">✓ No part quality issues</div>'; return; }
+  el.innerHTML=rows.map(r=>`
+    <div class="pq-card">
+      <div class="pq-part">${r.part||'—'}</div>
+      <div class="pq-row"><span>${r.supplier||'—'}</span> · ${r.area||''} · ${r.model||''}</div>
+      <div class="pq-row">Qty: <span>${r.qty||'—'}</span> &nbsp;|&nbsp; Status: <span>${r.status||'—'}</span> &nbsp;|&nbsp; Repeater: <span>${r.repeater||'—'}</span></div>
+      <div class="pq-prob">${r.problem||''}</div>
+    </div>`).join('');
+}
+
+/* ─── RENDER BODIES OOF ─── */
+function renderBOF(){
+  const rows=MM_DATA.ppt?.bodies_oof||[];
+  const el=document.getElementById('m-bof-cards');
+  const b=document.getElementById('m-bof-badge');
+  if(b){ b.textContent=rows.length+' Body'+(rows.length!==1?'s':''); b.className='sec-badge '+(rows.length?'warn':'ok'); }
+  if(!el) return;
+  if(!rows.length){ el.innerHTML='<div class="empty-ok">✓ No bodies OOF</div>'; return; }
+  el.innerHTML=rows.map(r=>{
+    const statusCls=r.status?.toLowerCase().includes('repaired')||r.status?.toLowerCase().includes('back')?'done':r.status?.toLowerCase().includes('await')||r.status?.toLowerCase().includes('waiting')?'pending':'active';
+    return `<div class="bof-card">
+      <div class="bof-rfid">${r.rfid||'—'}</div>
+      <div class="bof-info">
+        <div class="bof-reason">${r.reason||'—'}</div>
+        <div class="bof-meta">${r.location||''} · ${r.type||''} · Champion: ${r.champion||'—'}</div>
+        <div class="bof-meta">Removed: ${r.removed||'—'} · Expected back: ${r.expected||'—'}</div>
+      </div>
+      <span class="bof-status ${statusCls}">${r.status||'—'}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ─── RENDER SCRAP ─── */
+function renderScrap(){
+  const p=MM_DATA.ppt;
+  const val=p?.scrap||'—';
+  const note=p?.scrap_note||'';
+  const vEl=document.getElementById('m-scrap-val');
+  const nEl=document.getElementById('m-scrap-note');
+  const bEl=document.getElementById('m-scrap-badge');
+  if(vEl){ vEl.textContent=val; vEl.style.color=val==='$0'?'var(--green-l)':'var(--red-l)'; }
+  if(nEl) nEl.textContent=note;
+  if(bEl){ bEl.textContent=val; bEl.className='sec-badge '+(val==='$0'?'ok':'bad'); }
+}
+
+/* ─── HEADER LABEL ─── */
+function updateHeader(){
+  const lbl=document.getElementById('m-day-label');
+  if(lbl) lbl.textContent=`Body Shop (RA) · ${MM_DATA.wk} D${MM_DATA.day}`;
+}
+
+/* ─── MASTER RENDER ─── */
+function applyMMData(){
+  updateHeader();
+  renderKPIs();
+  renderSafety();
+  renderDowntime();
+  renderAShop();
+  renderBShop();
+  renderCShop();
+  renderPQ();
+  renderBOF();
+  renderScrap();
+}
+
+/* ─── DAY PICKER (History) ─── */
+let _todayData=null;
+
+function initDayPicker(){
+  const sel=document.getElementById('m-day-picker'); if(!sel) return;
+  _todayData={date:MM_DATA.date,wk:MM_DATA.wk,day:MM_DATA.day,kpis:MM_DATA.kpis,downtime:MM_DATA.downtime,ppt:MM_DATA.ppt};
+  const today=MM_DATA.date;
+  Object.keys(MM_HISTORY).sort().reverse().forEach(d=>{
+    if(d===today) return;
+    const opt=document.createElement('option');
+    opt.value=d;
+    const dt=new Date(d+'T12:00:00');
+    opt.textContent=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+` (${MM_HISTORY[d]?.wk||''} D${MM_HISTORY[d]?.day||''})`;
+    sel.appendChild(opt);
+  });
+}
+
+function mSwitchDay(date){
+  if(!date){
+    if(_todayData){ Object.assign(MM_DATA,_todayData); applyMMData(); } return;
+  }
+  const d=MM_HISTORY[date]; if(!d) return;
+  MM_DATA.date=d.date; MM_DATA.wk=d.wk; MM_DATA.day=d.day;
+  MM_DATA.kpis=d.kpis; MM_DATA.downtime=d.downtime; MM_DATA.ppt=d.ppt;
+  applyMMData();
+}
+
+/* ─── CLOCK ─── */
+function tick(){
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,'0');
+  const mm=String(now.getMinutes()).padStart(2,'0');
+  const el=document.getElementById('m-clk');
+  if(el) el.textContent=hh+':'+mm;
+}
+setInterval(tick,30000); tick();
+
+/* ─── INIT ─── */
+document.addEventListener('DOMContentLoaded',()=>{ applyMMData(); initDayPicker(); });
+</script>
+</body>
+</html>
