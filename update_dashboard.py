@@ -5,7 +5,21 @@ Run at 17:00 Mon-Fri via Windows Task Scheduler
 Reads HOP + DT Excel files, updates HTML DAYS_DATA, pushes to GitHub
 """
 
-import openpyxl, warnings, datetime, json, re, shutil, subprocess, sys, os
+import sys, os
+
+# ── Ensure user site-packages are on sys.path (Task Scheduler may not load them) ──
+# Python stores user packages at AppData\Roaming\Python\Python3xx\site-packages
+import sysconfig as _sc
+_user_site = _sc.get_path('purelib', vars={'userbase': os.environ.get('APPDATA','')+'\\Python'})
+if _user_site and os.path.exists(_user_site) and _user_site not in sys.path:
+    sys.path.insert(0, _user_site)
+# Also try the known Python314 user path directly
+for _py_ver in ['Python314', 'Python313', 'Python312']:
+    _p = os.path.join(os.environ.get('APPDATA',''), 'Python', _py_ver, 'site-packages')
+    if os.path.exists(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import openpyxl, warnings, datetime, json, re, shutil, subprocess
 warnings.filterwarnings('ignore')
 
 # ── Optional Snowflake import (skipped gracefully if not installed) ─────────────
