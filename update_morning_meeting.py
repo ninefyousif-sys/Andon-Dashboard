@@ -64,11 +64,13 @@ OPR_COL_BOK = OPR_BOK_MEASURE
 OPR_COL_BOL = OPR_BOL_MEASURE
 
 # ── SCRAP (Power BI) ────────────────────────────────────────────────────────────
-# Set after running --discover-tables on the Scrap/Car Power BI report
-# The measure appears as "Scrap / Car" ($X.XX) in the Body Shop KPI dashboard
-SCRAP_TABLE        = ''    # e.g. 'Scrap Card' or 'OPR BOK Card' — run --discover-tables
-SCRAP_MEASURE      = ''    # e.g. 'Scrap/Car' or 'Scrap Cost per Car'
-SCRAP_DATE_TABLE   = ''    # usually same as OPR_DATE_TABLE — leave blank to auto-detect
+# Shows as "Scrap / Car" ($X.XX) in the Body Shop KPI dashboard.
+# Leave blank — query_scrap() auto-discovers the measure across all common names.
+# After first successful run, the log will print a HINT with the exact names to
+# set here so future runs skip the auto-discovery loop.
+SCRAP_TABLE        = ''    # e.g. 'Scrap Card'   — auto-discovered if blank
+SCRAP_MEASURE      = ''    # e.g. 'Scrap/Car'    — auto-discovered if blank
+SCRAP_DATE_TABLE   = ''    # leave blank to reuse OPR_DATE_TABLE automatically
 
 # ── TARGETS ────────────────────────────────────────────────────────────────────
 TARGETS = {
@@ -574,60 +576,93 @@ def query_opr(ports, report_date):
 def query_scrap(ports, report_date):
     """Query Scrap/Car ($) from Power BI Desktop.
 
-    Returns {'scrap_car': float|None} or None if not configured / not available.
-    Configure SCRAP_TABLE and SCRAP_MEASURE after running --discover-tables.
+    Auto-discovers the scrap table/measure if SCRAP_TABLE / SCRAP_MEASURE are
+    not set — tries all common Volvo Body Shop naming patterns automatically.
+    Returns {'scrap_car': float|None} or None if not found.
     """
-    if not SCRAP_TABLE or not SCRAP_MEASURE:
-        log("  Scrap/Car: SCRAP_TABLE / SCRAP_MEASURE not configured — run --discover-tables")
-        return None
-
     yr, mo, dy = report_date.year, report_date.month, report_date.day
+
+    # Build candidate (table, measure) pairs
+    # If user has configured explicit values, use those first
+    if SCRAP_TABLE and SCRAP_MEASURE:
+        candidates = [(SCRAP_TABLE, SCRAP_MEASURE)]
+    else:
+        # Auto-discover: try all common Volvo/Body Shop scrap measure patterns
+        candidates = [
+            # Most likely: same card format as OPR
+            ('Scrap Card',          'Scrap/Car'),
+            ('Scrap Card',          'Scrap Cost/Car'),
+            ('Scrap Card',          'Scrap Cost per Car'),
+            ('Scrap Card',          'Scrap BOK Card'),
+            ('Scrap BOK Card',      'Scrap BOK Card'),
+            ('Scrap BOK Card',      'Scrap/Car'),
+            ('BOK Scrap Card',      'BOK Scrap Card'),
+            # Possibly in the same table as OPR
+            (OPR_TABLE,             'Scrap/Car'),
+            (OPR_TABLE,             'Scrap Cost/Car'),
+            (OPR_TABLE,             'Scrap Cost per Car'),
+            # Generic names
+            ('Scrap',               'Scrap/Car'),
+            ('Scrap',               'Scrap Cost per Car'),
+            ('Scrap per Car',       'Scrap per Car'),
+            ('Scrap Cost',          'Scrap Cost per Car'),
+            ('Body Shop Scrap',     'Scrap/Car'),
+            ('BOK KPI',             'Scrap/Car'),
+        ]
+        # Remove duplicates while preserving order
+        seen = set(); candidates = [c for c in candidates if not (c in seen or seen.add(c))]
+
     date_tables = [SCRAP_DATE_TABLE] if SCRAP_DATE_TABLE else [
         OPR_DATE_TABLE, 'Date Table', 'Date', 'Calendar', 'DimDate', 'Dates', 'DateTable'
     ]
-    date_tables = [d for d in date_tables if d]  # remove empty strings
+    date_tables = [d for d in date_tables if d]
+
+    def _parse_val(r):
+        val = r.get('scrap_car') or r.get('[scrap_car]')
+        if val is None: return None
+        try:
+            return round(float(val), 4)
+        except (TypeError, ValueError):
+            return None
 
     for port in ports:
-        for dt in date_tables:
-            dax = (
-                f"EVALUATE CALCULATETABLE("
-                f"ROW(\"scrap_car\", '{SCRAP_TABLE}'[{SCRAP_MEASURE}]),"
-                f"'{dt}'[Date] = DATE({yr},{mo},{dy}))"
-            )
-            try:
-                rows = run_dax(port, dax)
-                if rows:
-                    r = rows[0]
-                    val = r.get('scrap_car') or r.get('[scrap_car]')
-                    if val is not None:
-                        try:
-                            fval = round(float(val), 4)
-                            log(f"  Scrap/Car (date table='{dt}'): ${fval}")
+        for tbl, msr in candidates:
+            # Try with date filter first
+            for dt in date_tables:
+                dax = (
+                    f"EVALUATE CALCULATETABLE("
+                    f"ROW(\"scrap_car\", '{tbl}'[{msr}]),"
+                    f"'{dt}'[Date] = DATE({yr},{mo},{dy}))"
+                )
+                try:
+                    rows = run_dax(port, dax)
+                    if rows:
+                        fval = _parse_val(rows[0])
+                        if fval is not None:
+                            log(f"  Scrap/Car '{tbl}'[{msr}] (dt='{dt}'): ${fval}")
+                            # If this was auto-discovered, log the config hint
+                            if not (SCRAP_TABLE and SCRAP_MEASURE):
+                                log(f"  HINT: set SCRAP_TABLE='{tbl}' SCRAP_MEASURE='{msr}' to skip auto-discovery")
                             return {'scrap_car': fval}
-                        except (TypeError, ValueError):
-                            pass
-            except Exception as e:
-                err_str = str(e)
-                if 'cannot be found' in err_str or 'not found' in err_str.lower():
-                    continue
-                log(f"  Scrap query error (port {port}, dt='{dt}'): {e}")
+                except Exception as e:
+                    err = str(e)
+                    if any(kw in err for kw in ('cannot be found','not found','does not exist')):
+                        break  # wrong table, skip all date tables for this combo
+                    # Other error: continue to next date table
 
-        # Last-resort: no date filter
-        dax_nf = f"EVALUATE ROW(\"scrap_car\", '{SCRAP_TABLE}'[{SCRAP_MEASURE}])"
-        try:
-            rows = run_dax(port, dax_nf)
-            if rows:
-                r = rows[0]
-                val = r.get('scrap_car') or r.get('[scrap_car]')
-                if val is not None:
-                    try:
-                        fval = round(float(val), 4)
-                        log(f"  Scrap/Car (no date filter — overall): ${fval}")
+            # No-date-filter fallback for this table/measure
+            dax_nf = f"EVALUATE ROW(\"scrap_car\", '{tbl}'[{msr}])"
+            try:
+                rows = run_dax(port, dax_nf)
+                if rows:
+                    fval = _parse_val(rows[0])
+                    if fval is not None:
+                        log(f"  Scrap/Car '{tbl}'[{msr}] (no date filter): ${fval}")
+                        if not (SCRAP_TABLE and SCRAP_MEASURE):
+                            log(f"  HINT: set SCRAP_TABLE='{tbl}' SCRAP_MEASURE='{msr}' to skip auto-discovery")
                         return {'scrap_car': fval}
-                    except (TypeError, ValueError):
-                        pass
-        except Exception as e:
-            log(f"  Scrap no-filter error on port {port}: {e}")
+            except Exception:
+                pass
 
     return None
 
