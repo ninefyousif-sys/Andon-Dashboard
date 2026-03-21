@@ -911,5 +911,167 @@ def update():
     return success
 
 
+def patch_history_only(day_dict, report_date, target_file=None):
+    """Add a day_dict to MM_HISTORY without touching MM_DATA.
+    Used for backfilling past days."""
+    HISTORY_MAX = 10
+    target = target_file or DASH
+    with open(target, 'r', encoding='utf-8') as f: html = f.read()
+
+    hist_match = re.search(r'const MM_HISTORY = \{.*?\};', html, flags=re.DOTALL)
+    if hist_match:
+        try:
+            body = re.sub(r'^const MM_HISTORY = ', '', hist_match.group(0)).rstrip(';')
+            history = json.loads(body)
+        except Exception:
+            history = {}
+    else:
+        history = {}
+
+    history[str(report_date)] = day_dict
+    sorted_dates = sorted(history.keys())
+    if len(sorted_dates) > HISTORY_MAX:
+        for old in sorted_dates[:-HISTORY_MAX]:
+            del history[old]
+
+    new_history_js = 'const MM_HISTORY = ' + json.dumps(history, default=str, ensure_ascii=False) + ';'
+
+    if hist_match:
+        new_html = html[:hist_match.start()] + new_history_js + html[hist_match.end():]
+    else:
+        new_html = html.replace(
+            '/* ─── Area display config ─── */',
+            new_history_js + '\n\n/* ─── Area display config ─── */'
+        )
+
+    with open(target, 'w', encoding='utf-8') as f: f.write(new_html)
+    log(f"History-only patch: {target}  (now {len(history)} days)")
+    return True
+
+
+def backfill(target_date):
+    """Backfill MM_HISTORY for a specific past date using Power BI + OneDrive.
+    Does NOT change MM_DATA. Pushes to GitHub when all dates are done."""
+    wk_str, day_int = date_to_wk_day(target_date)
+    if wk_str is None:
+        log(f"Skipping {target_date} — not a working day")
+        return False
+
+    log(f"=== Backfill history: {target_date}  ({wk_str} D{day_int}) ===")
+
+    # 1. Power BI (same as daily update)
+    pbi = query_powerbi(target_date)
+    if pbi:
+        kpis      = build_kpis_from_pbi(pbi)
+        ppt_items = build_ppt_items_from_pbi(pbi)
+        log("  Power BI data loaded")
+        for k, v in kpis.items():
+            if isinstance(v, dict) and v.get('val') is not None:
+                log(f"    {k}: {v['val']}")
+    else:
+        log("  WARNING: Power BI not available — KPIs will be null for this day")
+        kpis      = {k: {'val': None} for k in TARGETS}
+        ppt_items = {}
+
+    # 2. Downtime (same as daily update)
+    tmp_hop = os.path.join(WORK, '_mm_hop.xlsm')
+    tmp_dt  = os.path.join(WORK, '_mm_dt.xlsm')
+    for src, dst, name in [(HOP_SRC, tmp_hop, 'HOP'), (DT_SRC, tmp_dt, 'DT')]:
+        if os.path.exists(src):
+            shutil.copy2(src, dst)
+            log(f"  Copied {name}")
+        else:
+            log(f"  WARNING: {name} not found: {src}")
+
+    hop_ws = dt_ws = None
+    try:
+        wb = openpyxl.load_workbook(tmp_hop, data_only=True, read_only=True)
+        hop_ws = wb['New(DT LOG)']
+    except Exception as e: log(f"  HOP error: {e}")
+    try:
+        wb = openpyxl.load_workbook(tmp_dt, data_only=True, read_only=True)
+        dt_ws = wb['New(DT LOG)']
+    except Exception as e: log(f"  DT error: {e}")
+
+    areas     = read_area_dt(hop_ws, dt_ws, wk_str, day_int)
+    hop_stops = build_hop_stops(hop_ws, dt_ws, wk_str, day_int)
+
+    # 3. PPT (same as daily update)
+    ppt_path = find_ppt(wk_str, day_int)
+    if ppt_path:
+        log(f"  Found PPT: {ppt_path}")
+        ppt_tables = parse_ppt_tables(read_ppt_markdown(ppt_path))
+    else:
+        ppt_tables = {'safety': {'title': '', 'detail': '', 'meta': ''},
+                      'part_quality': [], 'bodies_oof': [],
+                      'scrap': '$0', 'scrap_note': 'PPT not found for this day'}
+
+    # 4. Build day_dict and patch ONLY history (MM_DATA unchanged)
+    _, day_dict = build_mm_data(areas, hop_stops, kpis, ppt_items, ppt_tables,
+                                target_date, wk_str, day_int)
+
+    patch_history_only(day_dict, target_date, DASH)
+    patch_history_only(day_dict, target_date, DASH_MOBILE)
+
+    for tmp in [tmp_hop, tmp_dt]:
+        try: os.remove(tmp)
+        except: pass
+
+    log(f"=== Backfill complete: {target_date} ===\n")
+    return True
+
+
 if __name__ == '__main__':
-    sys.exit(0 if update() else 1)
+    import argparse
+    parser = argparse.ArgumentParser(description='A-Shop Morning Meeting Dashboard updater')
+    parser.add_argument(
+        '--date', metavar='YYYY-MM-DD',
+        help='Backfill MM_HISTORY for a specific past date without changing MM_DATA'
+    )
+    parser.add_argument(
+        '--backfill-week', action='store_true',
+        help='Backfill all working days of the current WK12 (Mon–Thu) into MM_HISTORY'
+    )
+    args = parser.parse_args()
+
+    if args.date:
+        target = datetime.date.fromisoformat(args.date)
+        ok = backfill(target)
+        # Push to GitHub after backfill
+        if ok and GITHUB_ENABLED:
+            try:
+                subprocess.run(['git', '-C', GITHUB_REPO, 'add',
+                                'morning_meeting_dashboard.html',
+                                'morning_meeting_mobile.html'], check=True)
+                subprocess.run(['git', '-C', GITHUB_REPO, 'commit', '-m',
+                                f'backfill-history-{args.date}'], check=True)
+                subprocess.run(['git', '-C', GITHUB_REPO, 'push', 'origin', 'main'], check=True)
+                log("GitHub push OK")
+            except Exception as e:
+                log(f"Git push error: {e}")
+        sys.exit(0 if ok else 1)
+
+    elif args.backfill_week:
+        today  = datetime.date.today()
+        mon    = today - datetime.timedelta(days=today.weekday())   # Monday of current week
+        days   = [mon + datetime.timedelta(days=i) for i in range(5)
+                  if (mon + datetime.timedelta(days=i)) < today]    # Mon–yesterday
+        log(f"Backfilling {len(days)} day(s): {[str(d) for d in days]}")
+        for d in days:
+            backfill(d)
+        # Single GitHub push after all days
+        if GITHUB_ENABLED:
+            try:
+                subprocess.run(['git', '-C', GITHUB_REPO, 'add',
+                                'morning_meeting_dashboard.html',
+                                'morning_meeting_mobile.html'], check=True)
+                subprocess.run(['git', '-C', GITHUB_REPO, 'commit', '-m',
+                                f'backfill-history-week-{mon}'], check=True)
+                subprocess.run(['git', '-C', GITHUB_REPO, 'push', 'origin', 'main'], check=True)
+                log("GitHub push OK")
+            except Exception as e:
+                log(f"Git push error: {e}")
+        sys.exit(0)
+
+    else:
+        sys.exit(0 if update() else 1)
