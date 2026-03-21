@@ -10,15 +10,27 @@
 cd /d "C:\Users\NYOUSIF\Desktop\AShop_Dashboard"
 
 echo.
-echo === Step 1: Installing pyadomd into project venv ===
+echo === Step 1a: Installing pythonnet 2.5.2 (pre-built wheel, no compiler needed) ===
 echo.
-venv\Scripts\pip install pyadomd
+venv\Scripts\pip install "pythonnet==2.5.2"
 if %errorlevel% neq 0 (
-    echo ERROR: pip install failed. Check your internet connection.
+    echo ERROR: pythonnet install failed.
     pause
     exit /b 1
 )
-echo pyadomd installed OK.
+
+echo.
+echo === Step 1b: Installing pyadomd (no-deps, uses the pythonnet above) ===
+echo.
+venv\Scripts\pip install pyadomd --no-deps
+if %errorlevel% neq 0 (
+    echo ERROR: pyadomd install failed.
+    pause
+    exit /b 1
+)
+
+echo.
+echo === pyadomd + pythonnet installed OK ===
 
 echo.
 echo === Step 2: Running WK12 backfill ===
