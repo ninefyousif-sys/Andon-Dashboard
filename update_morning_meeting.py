@@ -949,30 +949,34 @@ def build_ppt_items_from_pbi(pbi):
     cal_536, cal_519   = split_by_model(cal_defects)
     fn2_536, fn2_519   = split_by_model(fn_defects)
 
+    def _s(v, default=''):
+        """Convert to string and strip newlines/carriage-returns (they break inline JS)."""
+        return str(v if v is not None else default).replace('\r', '').replace('\n', ' ').strip()
+
     def to_ftt_item(r):
         return {
-            'body':       str(r.get('body','—')),
-            'rfid':       str(r.get('rfid','—')),
-            'desc':       str(r.get('desc','')),
-            'model':      str(r.get('model','')),
-            'link_stn':   str(r.get('link_stn','')),
-            'link_time':  str(r.get('link_time','')),
-            'close_stn':  str(r.get('close_stn','')),
-            'close_time': str(r.get('close_time','')),
-            'location':   str(r.get('location','')),
-            'extra':      str(r.get('extra','') or ''),
+            'body':       _s(r.get('body'), '—'),
+            'rfid':       _s(r.get('rfid'), '—'),
+            'desc':       _s(r.get('desc')),
+            'model':      _s(r.get('model')),
+            'link_stn':   _s(r.get('link_stn')),
+            'link_time':  _s(r.get('link_time')),
+            'close_stn':  _s(r.get('close_stn')),
+            'close_time': _s(r.get('close_time')),
+            'location':   _s(r.get('location')),
+            'extra':      _s(r.get('extra') or ''),
         }
 
     def to_dpv_item(r):
         return {
-            'body':     str(r.get('body','—')),
-            'rfid':     str(r.get('rfid','—')),
+            'body':     _s(r.get('body'), '—'),
+            'rfid':     _s(r.get('rfid'), '—'),
             'count':    1,
-            'desc':     str(r.get('desc','')),
-            'model':    str(r.get('model','')),
-            'station':  str(r.get('station',r.get('link_stn',''))),
-            'location': str(r.get('location','')),
-            'extra':    str(r.get('extra','') or ''),
+            'desc':     _s(r.get('desc')),
+            'model':    _s(r.get('model')),
+            'station':  _s(r.get('station', r.get('link_stn', ''))),
+            'location': _s(r.get('location')),
+            'extra':    _s(r.get('extra') or ''),
         }
 
     return {
