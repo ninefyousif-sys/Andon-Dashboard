@@ -816,7 +816,7 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
 </div>
 
 </main>
-<div class="footer">Morning Meeting Dashboard &middot; Body Shop (RA) &middot; Volvo Cars &nbsp;&middot;&nbsp; &#9889; Preview &mdash; A-Shop FTT &amp; Final 2 FTT items use actual WK12 D3 data &middot; Other values are sample placeholders<br><span style="font-size:10px;color:var(--muted);opacity:.6;margin-top:4px;display:inline-block;letter-spacing:.5px;">Designed &amp; Built by Ninef Yousif</span></div>
+<div class="footer"><span style="font-size:15px;font-weight:700;letter-spacing:1.5px;color:var(--blue-b);text-shadow:0 0 18px rgba(96,165,250,.7),0 0 36px rgba(96,165,250,.35);">Designed &amp; Built by Ninef Yousif</span></div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1281,6 +1281,27 @@ function renderShopBanners(){
     const c = kpiColor(key, v);
     return `<div class="shop-kpi"><div class="skv ${c}">${fmtV(key, v)}</div><div class="skl">${lbl}</div></div>`;
   }
+  // Dynamically build correct status badge from actual KPI colors
+  function setStatus(banner, keys){
+    const ss = banner.querySelector('.shop-status');
+    if(!ss) return;
+    const colors = keys.map(([key,val]) => kpiColor(key, val));
+    const badCount  = colors.filter(c => c === 'bad').length;
+    const warnCount = colors.filter(c => c === 'warn').length;
+    let html = '';
+    if(badCount > 0){
+      const label = badCount === 1 ? '1 KPI Below Target' : `${badCount} KPIs Below Target`;
+      html += `<span style="background:var(--red-d);color:var(--red);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">&#9888; ${label}</span>`;
+    }
+    if(warnCount > 0){
+      const label = warnCount === 1 ? '1 KPI Near Miss' : `${warnCount} KPIs Near Miss`;
+      html += `<span style="background:var(--amber-d);color:var(--amber);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;${badCount>0?'margin-left:6px':''}">&#9888; ${label}</span>`;
+    }
+    if(badCount === 0 && warnCount === 0){
+      html = `<span style="background:var(--green-d);color:var(--green);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">&#10003; All KPIs On Target</span>`;
+    }
+    ss.innerHTML = html;
+  }
   const ba = document.getElementById('banner-ashop');
   if(ba){
     const kpis = ba.querySelector('.shop-kpis');
@@ -1292,6 +1313,11 @@ function renderShopBanners(){
       skv('bol_opr',   k.bol_opr?.val,   'BOL OPR');
     const sn = ba.querySelector('.shop-name');
     if(sn) sn.textContent = `⬤ A Shop — ${MM_DATA.wk} D${MM_DATA.day}`;
+    setStatus(ba, [
+      ['ashop_ftt', k.ashop_ftt?.val], ['ashop_dpv', k.ashop_dpv?.val],
+      ['wg_dpv',    k.wg_dpv?.val],    ['bok_opr',   k.bok_opr?.val],
+      ['bol_opr',   k.bol_opr?.val]
+    ]);
   }
   const bb = document.getElementById('banner-bshop');
   if(bb){
@@ -1301,6 +1327,9 @@ function renderShopBanners(){
       skv('wd6_dpv', k.wd6_dpv?.val, 'Paint DPV');
     const sn = bb.querySelector('.shop-name');
     if(sn) sn.textContent = `⬤ B Shop — ${MM_DATA.wk} D${MM_DATA.day}`;
+    setStatus(bb, [
+      ['wd6_ftt', k.wd6_ftt?.val], ['wd6_dpv', k.wd6_dpv?.val]
+    ]);
   }
   const bc = document.getElementById('banner-cshop');
   if(bc){
@@ -1311,6 +1340,11 @@ function renderShopBanners(){
       skv('final2_ftt',k.final2_ftt?.val,'Final 2 FTT');
     const sn = bc.querySelector('.shop-name');
     if(sn) sn.textContent = `⬤ C Shop — ${MM_DATA.wk} D${MM_DATA.day}`;
+    setStatus(bc, [
+      ['cal_ftt',    k.cal_ftt?.val],
+      ['final1_ftt', k.final1_ftt?.val],
+      ['final2_ftt', k.final2_ftt?.val]
+    ]);
   }
 }
 
