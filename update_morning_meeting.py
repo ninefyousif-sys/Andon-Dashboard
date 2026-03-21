@@ -800,6 +800,30 @@ def query_powerbi(report_date):
     """)
     log(f"  WD6 DPV items: {len(wd6_dpv_rows)}")
 
+    # ── A Shop W&G DPV items (Weld/Geometry defects) ──────────────────────────
+    # Table name may vary — try known candidates, fail gracefully if not found
+    wg_dpv_rows = []
+    for wg_tbl in ['A Shop W&G Defects', 'A Shop WG Defects', 'WG Defects Linked', 'A Shop W&G Items']:
+        try:
+            wg_dpv_rows = run_dax(port, f"""
+                EVALUATE SELECTCOLUMNS(
+                  FILTER('{wg_tbl}',
+                         '{wg_tbl}'[Date] = DATE({yr},{mo},{dy})),
+                  "body",      '{wg_tbl}'[Body Number],
+                  "rfid",      '{wg_tbl}'[RFID],
+                  "desc",      '{wg_tbl}'[Item Description],
+                  "model",     '{wg_tbl}'[Model],
+                  "station",   '{wg_tbl}'[Station],
+                  "location",  '{wg_tbl}'[Location]
+                )
+            """)
+            log(f"  A Shop W&G DPV items ({wg_tbl}): {len(wg_dpv_rows)}")
+            break  # found the right table
+        except Exception as e:
+            log(f"  W&G table '{wg_tbl}' not found: {e}")
+    if not wg_dpv_rows:
+        log("  W&G DPV items: 0 (no matching PBI table — defect count from summary only)")
+
     # ── C Shop summary ─────────────────────────────────────────────────────────
     cshop_rows = run_dax(port, f"""
         EVALUATE SELECTCOLUMNS(
@@ -856,6 +880,7 @@ def query_powerbi(report_date):
         'bshop':         bshop_rows,
         'wd6_ftt':       wd6_ftt_rows,
         'wd6_dpv':       wd6_dpv_rows,
+        'wg_dpv':        wg_dpv_rows,
         'cshop':         cshop_rows,
         'cshop_defects': cshop_defect_rows,
         'bok_opr':       opr.get('bok_opr')   if opr   else None,
@@ -940,6 +965,7 @@ def build_ppt_items_from_pbi(pbi):
     ashop_536, ashop_519 = split_by_model(pbi['ashop_ftt'])
     wd6_ftt_536, wd6_ftt_519 = split_by_model(pbi['wd6_ftt'])
     wd6_dpv_536, wd6_dpv_519 = split_by_model(pbi['wd6_dpv'])
+    wg_dpv_536,  wg_dpv_519  = split_by_model(pbi.get('wg_dpv', []))
 
     # C Shop: split defects by linking station prefix to CAL vs Final
     cal_defects = [r for r in pbi['cshop_defects']
@@ -982,6 +1008,8 @@ def build_ppt_items_from_pbi(pbi):
     return {
         'ashop_ftt_536': [to_ftt_item(r) for r in ashop_536],
         'ashop_ftt_519': [to_ftt_item(r) for r in ashop_519],
+        'wg_dpv_536':    [to_dpv_item(r) for r in wg_dpv_536],
+        'wg_dpv_519':    [to_dpv_item(r) for r in wg_dpv_519],
         'wd6_ftt_536':   [to_ftt_item(r) for r in wd6_ftt_536],
         'wd6_ftt_519':   [to_ftt_item(r) for r in wd6_ftt_519],
         'wd6_dpv_536':   [to_dpv_item(r) for r in wd6_dpv_536],
