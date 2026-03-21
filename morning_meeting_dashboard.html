@@ -1704,10 +1704,15 @@ function renderWeekCompare(){
     { lbl:'Final 2 FTT',  key:'final2_ftt', unit:'%' },
   ];
 
-  // Build Mon–Fri of the current week from today
+  // Build Mon–Fri of the current week from the actual browser date.
+  // On weekends, anchor to Friday so the full week stays visible.
   const today = new Date();
-  const todayStr = MM_DATA.date || today.toISOString().slice(0,10);
-  const refDate  = new Date(todayStr + 'T12:00:00');
+  const todayStr = MM_DATA.date || today.toISOString().slice(0,10); // last day data was loaded
+  const actualDow = today.getDay(); // 0=Sun,6=Sat
+  const anchorDate = actualDow === 0 ? new Date(today.getTime() - 2*86400000)  // Sun→Fri
+                   : actualDow === 6 ? new Date(today.getTime() - 1*86400000)  // Sat→Fri
+                   : today;
+  const refDate  = new Date(anchorDate.toISOString().slice(0,10) + 'T12:00:00');
   const dow = refDate.getDay(); // 0=Sun … 6=Sat
   const monOffset = dow === 0 ? -6 : 1 - dow;
   const weekDays = Array.from({length:5}, (_,i) => {
@@ -1763,7 +1768,7 @@ function renderWeekCompare(){
     let prevVal = null;
     weekDays.forEach((dateStr, i) => {
       const isToday  = dateStr === todayStr;
-      const isFuture = new Date(dateStr+'T12:00:00') > new Date(todayStr+'T12:00:00');
+      const isFuture = new Date(dateStr+'T12:00:00') > today; // use real browser date, not MM_DATA date
       const kpis = getDayKpis(dateStr);
       const val  = kpis ? kpis[row.key]?.val : undefined;
       const disp = fmt(row.key, val);

@@ -200,21 +200,90 @@ def find_pbi_port():
 
 
 def run_dax(port, dax):
-    """Run a DAX query against Power BI Desktop. Returns list of dicts."""
+    """Run a DAX query against Power BI Desktop.
+    Primary: PowerShell COM/ADODB (no Python packages needed — uses MSOLAP OLE DB
+             provider installed with Power BI Desktop).
+    Fallback: pyadomd if installed."""
+
+    # ── Primary: PowerShell ADODB ─────────────────────────────────────────────
+    tmp_dax = os.path.join(WORK, '_mm_dax_q.txt')
+    tmp_out = os.path.join(WORK, '_mm_dax_r.json')
+    tmp_ps  = os.path.join(WORK, '_mm_dax_run.ps1')
+
+    ps_script = r"""param($Port, $DaxFile, $OutFile)
+$ErrorActionPreference = 'Stop'
+try {
+    $dax  = Get-Content -Path $DaxFile -Raw -Encoding UTF8
+    $conn = New-Object -ComObject ADODB.Connection
+    $conn.Open("Provider=MSOLAP;Data Source=localhost:$Port;")
+    $rs   = New-Object -ComObject ADODB.Recordset
+    $rs.Open($dax, $conn)
+    $fields = @()
+    for ($i = 0; $i -lt $rs.Fields.Count; $i++) {
+        $n = $rs.Fields.Item($i).Name
+        if ($n -match '\[([^\]]+)\]$') { $n = $Matches[1] }
+        $fields += $n
+    }
+    $rows = @()
+    while (-not $rs.EOF) {
+        $row = [ordered]@{}
+        for ($i = 0; $i -lt $fields.Count; $i++) {
+            $v = $rs.Fields.Item($i).Value
+            if ($v -is [System.DBNull]) { $v = $null }
+            $row[$fields[$i]] = $v
+        }
+        $rows += [PSCustomObject]$row
+        $rs.MoveNext()
+    }
+    $rs.Close(); $conn.Close()
+    if ($rows.Count -eq 0) { '[]' | Set-Content $OutFile -Encoding UTF8 }
+    else { $rows | ConvertTo-Json -Depth 4 -Compress | Set-Content $OutFile -Encoding UTF8 }
+} catch {
+    Write-Host "DAX_PS_ERROR: $($_.Exception.Message)"
+    '[]' | Set-Content $OutFile -Encoding UTF8
+}
+"""
+    try:
+        with open(tmp_dax, 'w', encoding='utf-8') as f: f.write(dax.strip())
+        with open(tmp_ps,  'w', encoding='utf-8') as f: f.write(ps_script)
+        subprocess.run(
+            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+             '-File', tmp_ps, '-Port', str(port),
+             '-DaxFile', tmp_dax, '-OutFile', tmp_out],
+            capture_output=True, text=True, timeout=60)
+        if os.path.exists(tmp_out):
+            # utf-8-sig strips the BOM that Windows PowerShell 5.x adds when writing UTF-8
+            with open(tmp_out, 'r', encoding='utf-8-sig') as f: raw = f.read().strip()
+            if raw and raw != '[]':
+                data = json.loads(raw)
+                if isinstance(data, dict): data = [data]
+                # clean column names: strip table prefix if present
+                cleaned = []
+                for row in data:
+                    cleaned.append({re.sub(r'.*\[([^\]]+)\]$', r'\1', k): v
+                                    for k, v in row.items()})
+                return cleaned
+    except Exception as e:
+        log(f"DAX PowerShell error: {e}\nQuery: {dax[:120]}...")
+    finally:
+        for fp in [tmp_dax, tmp_out, tmp_ps]:
+            try: os.remove(fp)
+            except: pass
+
+    # ── Fallback: pyadomd ─────────────────────────────────────────────────────
     try:
         import pyadomd
-    except ImportError:
-        log("WARNING: pyadomd not installed. Run: pip install pyadomd")
-        return []
-    try:
         conn_str = f"Provider=MSOLAP;Data Source=localhost:{port};"
         with pyadomd.Pyadomd(conn_str) as conn:
             with conn.cursor().execute(dax) as cur:
                 cols = [c.name.split('[')[-1].rstrip(']') for c in cur.description]
                 return [dict(zip(cols, row)) for row in cur.fetchall()]
+    except ImportError:
+        pass  # pyadomd not installed — PowerShell method already tried above
     except Exception as e:
-        log(f"DAX error: {e}\nQuery: {dax[:120]}...")
-        return []
+        log(f"DAX pyadomd error: {e}\nQuery: {dax[:120]}...")
+
+    return []
 
 
 def fmt_dt(v):
@@ -644,11 +713,21 @@ def find_ppt(wk_str, day_int):
     if not os.path.isdir(PPT_DIR): return None
     wk_num = wk_str.replace('WK','')
     fname  = f"A Shop 26W{wk_num}D{day_int}.pptx"
-    direct = os.path.join(PPT_DIR, fname)
-    if os.path.exists(direct): return direct
-    for f in os.listdir(PPT_DIR):
-        if f.lower() == fname.lower():
-            return os.path.join(PPT_DIR, f)
+
+    # Candidate folders: root, then week subfolders (e.g. 26WK12, WK12, 26W12)
+    wk_subfolder_names = [f"26{wk_str}", wk_str, f"26W{wk_num}"]
+    search_dirs = [PPT_DIR] + [
+        os.path.join(PPT_DIR, sub) for sub in wk_subfolder_names
+        if os.path.isdir(os.path.join(PPT_DIR, sub))
+    ]
+
+    for d in search_dirs:
+        direct = os.path.join(d, fname)
+        if os.path.exists(direct): return direct
+        for f in os.listdir(d):
+            if f.lower() == fname.lower():
+                return os.path.join(d, f)
+
     log(f"WARNING: PPT not found: {fname}")
     return None
 
