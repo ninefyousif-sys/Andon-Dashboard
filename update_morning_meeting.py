@@ -542,9 +542,12 @@ def query_opr(ports, report_date):
                     r = rows[0]
                     bok = to_pct(r.get('bok_opr') or r.get('[bok_opr]'))
                     bol = to_pct(r.get('bol_opr') or r.get('[bol_opr]'))
-                    log(f"  OPR (measures, no date filter — overall value): BOK={bok}%  BOL={bol}%")
-                    log(f"  WARNING: date filter failed — set OPR_DATE_TABLE to the correct date table name")
-                    return {'bok_opr': bok, 'bol_opr': bol}
+                    if bok is not None or bol is not None:
+                        log(f"  OPR (measures, no date filter — overall value): BOK={bok}%  BOL={bol}%")
+                        log(f"  WARNING: date filter failed — set OPR_DATE_TABLE to the correct date table name")
+                        return {'bok_opr': bok, 'bol_opr': bol}
+                    else:
+                        log(f"  OPR port {port}: measures returned BLANK — trying next port")
             except Exception as e:
                 log(f"  OPR no-filter query error on port {port}: {e}")
 
@@ -1638,7 +1641,8 @@ def patch_html(new_mm_js, day_dict, report_date, target_file=None):
     with open(target, 'r', encoding='utf-8') as f: html = f.read()
 
     # ── patch MM_DATA ─────────────────────────────────────────────────────────
-    new_html, n = re.subn(r'const MM_DATA = \{.*?\};', new_mm_js, html, flags=re.DOTALL)
+    _repl = new_mm_js  # capture for lambda — avoids re backslash-escape processing on \u etc.
+    new_html, n = re.subn(r'const MM_DATA = \{.*?\};', lambda m: _repl, html, flags=re.DOTALL)
     if n != 1:
         log(f"ERROR: Expected 1 MM_DATA block, got {n}")
         return False
