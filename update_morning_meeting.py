@@ -32,18 +32,36 @@ WK12_MON = datetime.date(2026, 3, 16)
 # ── BOK / BOL OPR TABLE CONFIG ─────────────────────────────────────────────────
 # Run:  python update_morning_meeting.py --discover-tables
 # with BIW SQD Axxos open in Power BI Desktop.
-# The log will print all table names.  Fill in the correct values below.
+# The log will print all table names + measures.  Fill in the correct values below.
 #
-# Example after running discover:
-#   OPR_TABLE    = 'A Shop BOK BOL OPR'
-#   OPR_COL_DATE = 'Date'
-#   OPR_COL_BOK  = 'BOK OPR'
-#   OPR_COL_BOL  = 'BOL OPR'
+# ── CONFIRMED: 'OPR BOK Card' is a MEASURES TABLE (no data rows).
+#    Use OPR_IS_MEASURES_TABLE = True and set OPR_BOK_MEASURE / OPR_BOL_MEASURE
+#    to the DAX measure names shown in --discover-tables output.
 #
-OPR_TABLE    = None   # set after running --discover-tables
-OPR_COL_DATE = 'Date'
-OPR_COL_BOK  = None   # column name for BOK OPR value
-OPR_COL_BOL  = None   # column name for BOL OPR value
+# Example for measures-table setup:
+#   OPR_TABLE          = 'OPR BOK Card'
+#   OPR_IS_MEASURES_TABLE = True
+#   OPR_BOK_MEASURE    = 'BOK OPR'   # measure name (from --discover-tables)
+#   OPR_BOL_MEASURE    = 'BOL OPR'   # measure name (from --discover-tables)
+#   # OPR_DATE_TABLE tries common names automatically — override if needed:
+#   OPR_DATE_TABLE     = None        # e.g. 'Date' or 'Date Table' or 'Calendar'
+#
+# Example for regular data-table setup:
+#   OPR_TABLE          = 'A Shop BOK BOL OPR'
+#   OPR_IS_MEASURES_TABLE = False
+#   OPR_COL_DATE       = 'Date'
+#   OPR_BOK_MEASURE    = 'BOK OPR'   # column name
+#   OPR_BOL_MEASURE    = 'BOL OPR'   # column name
+#
+OPR_TABLE             = 'OPR BOK Card'  # confirmed table name from --discover-tables
+OPR_IS_MEASURES_TABLE = True            # True = measures container, False = data table
+OPR_BOK_MEASURE       = None            # fill in after --discover-tables (measure name)
+OPR_BOL_MEASURE       = None            # fill in after --discover-tables (measure name)
+OPR_DATE_TABLE        = None            # auto-tries common names; override if needed
+OPR_COL_DATE          = 'Date'          # (used only when OPR_IS_MEASURES_TABLE=False)
+# Legacy aliases kept for backwards compat
+OPR_COL_BOK = OPR_BOK_MEASURE
+OPR_COL_BOL = OPR_BOL_MEASURE
 
 # ── TARGETS ────────────────────────────────────────────────────────────────────
 TARGETS = {
@@ -313,7 +331,7 @@ def discover_tables():
     """Print ALL table names (and columns for OPR/BOK/BOL tables) from every
     running Power BI Desktop instance.  Run once:
         python update_morning_meeting.py --discover-tables
-    Then fill in OPR_TABLE / OPR_COL_BOK / OPR_COL_BOL at the top of this file."""
+    Then fill in OPR_TABLE / OPR_BOK_MEASURE / OPR_BOL_MEASURE at the top of this file."""
     ports = find_pbi_ports()
     if not ports:
         log("No PBI instances found.  Open BIW SQD Axxos in Power BI Desktop first.")
@@ -349,8 +367,9 @@ def discover_tables():
             tname = r.get('NAME', r.get('name', ''))
             log(f"  TABLE: {tname}")
 
-            # For any table with OPR / BOK / BOL / AVAIL in the name, also dump columns
+            # For any table with OPR / BOK / BOL / AVAIL in the name, also dump columns + measures
             if any(kw in tname.upper() for kw in ['OPR', 'BOK', 'BOL', 'AVAIL']):
+                # Data columns
                 try:
                     col_rows = run_dax(port,
                         f"SELECT [EXPLICIT_NAME],[DATATYPE_NAME] "
@@ -359,57 +378,142 @@ def discover_tables():
                     for cr in col_rows:
                         cname = cr.get('EXPLICIT_NAME', cr.get('Name', ''))
                         ctype = cr.get('DATATYPE_NAME', cr.get('DataType', ''))
-                        log(f"      COLUMN: {cname}  ({ctype})")
+                        log(f"      COLUMN:  {cname}  ({ctype})")
+                    if not col_rows:
+                        log(f"      (no data columns — likely a measures-only table)")
                 except Exception as ce:
                     log(f"      (could not list columns: {ce})")
 
-        log(f"\n>>> ACTION: Fill in OPR_TABLE / OPR_COL_BOK / OPR_COL_BOL")
+                # Measures — these are what you reference in CALCULATETABLE/ROW
+                try:
+                    meas_rows = run_dax(port,
+                        f"SELECT [NAME],[EXPRESSION] "
+                        f"FROM $SYSTEM.TMSCHEMA_MEASURES "
+                        f"WHERE [TABLE_NAME] = '{tname}'")
+                    for mr in meas_rows:
+                        mname = mr.get('NAME', mr.get('name', ''))
+                        log(f"      MEASURE: {mname}")
+                    if meas_rows:
+                        log(f"      >>> Set OPR_TABLE='{tname}', OPR_IS_MEASURES_TABLE=True")
+                        log(f"          OPR_BOK_MEASURE='<BOK measure name above>'")
+                        log(f"          OPR_BOL_MEASURE='<BOL measure name above>'")
+                except Exception as me:
+                    log(f"      (could not list measures: {me})")
+
+        log(f"\n>>> ACTION: Fill in OPR_TABLE / OPR_BOK_MEASURE / OPR_BOL_MEASURE")
         log(f"            at the top of update_morning_meeting.py")
+        log(f"            Set OPR_IS_MEASURES_TABLE=True if the table has MEASURE: lines above")
 
 
 def query_opr(ports, report_date):
     """Query BOK/BOL OPR from any available PBI instance.
 
-    Requires OPR_TABLE, OPR_COL_BOK, OPR_COL_BOL to be set at the top of
-    the script.  Run --discover-tables first if they are not known.
+    Supports two modes controlled by OPR_IS_MEASURES_TABLE:
 
-    Returns {'bok_opr': float|None, 'bol_opr': float|None}, or None if OPR
-    table is not configured or no data found.
+    True  (measures-container table like 'OPR BOK Card'):
+        Uses CALCULATETABLE(ROW(...), DateTable[Date] = DATE(...))
+        Tries several common date table names automatically.
+
+    False (regular data table):
+        Uses FILTER/SELECTCOLUMNS by date column.
+
+    Returns {'bok_opr': float|None, 'bol_opr': float|None}, or None if not
+    configured or no data found.
     """
     if not OPR_TABLE:
         log("  BOK/BOL OPR: OPR_TABLE not configured — run --discover-tables")
         return None
-    if not OPR_COL_BOK or not OPR_COL_BOL:
-        log("  BOK/BOL OPR: OPR_COL_BOK / OPR_COL_BOL not configured")
+
+    bok_measure = OPR_BOK_MEASURE or OPR_COL_BOK
+    bol_measure = OPR_BOL_MEASURE or OPR_COL_BOL
+    if not bok_measure or not bol_measure:
+        log("  BOK/BOL OPR: OPR_BOK_MEASURE / OPR_BOL_MEASURE not configured — run --discover-tables")
         return None
 
     yr, mo, dy = report_date.year, report_date.month, report_date.day
-    date_col   = OPR_COL_DATE or 'Date'
+
+    def to_pct(v):
+        if v is None: return None
+        try:
+            f = float(v)
+            return round(f * 100, 2) if f <= 1.0 else round(f, 2)
+        except (TypeError, ValueError):
+            return None
 
     for port in ports:
-        try:
-            rows = run_dax(port, f"""
-                EVALUATE SELECTCOLUMNS(
-                  FILTER('{OPR_TABLE}',
-                         '{OPR_TABLE}'[{date_col}] = DATE({yr},{mo},{dy})),
-                  "bok_opr", '{OPR_TABLE}'[{OPR_COL_BOK}],
-                  "bol_opr", '{OPR_TABLE}'[{OPR_COL_BOL}])
-            """)
-            if rows:
-                r = rows[0]
-                def to_pct(v):
-                    if v is None: return None
-                    f = float(v)
-                    # If value is stored as a decimal (0–1), convert to percent
-                    return round(f * 100, 2) if f <= 1.0 else round(f, 2)
-                bok = to_pct(r.get('bok_opr'))
-                bol = to_pct(r.get('bol_opr'))
-                log(f"  OPR from '{OPR_TABLE}': BOK={bok}%  BOL={bol}%")
-                return {'bok_opr': bok, 'bol_opr': bol}
+        if OPR_IS_MEASURES_TABLE:
+            # ── Measures-table path (e.g. 'OPR BOK Card') ─────────────────
+            # CALCULATETABLE sets a date filter context so measures evaluate
+            # against the correct day.  Try several common date table names.
+            date_tables = []
+            if OPR_DATE_TABLE:
+                date_tables = [OPR_DATE_TABLE]
             else:
-                log(f"  OPR query on port {port}: no rows for {report_date}")
-        except Exception as e:
-            log(f"  OPR query error on port {port}: {e}")
+                date_tables = ['Date', 'Date Table', 'Calendar',
+                               'DimDate', 'Dates', 'DateTable', 'Dim Date']
+
+            for dt in date_tables:
+                dax = (
+                    f"EVALUATE CALCULATETABLE("
+                    f"ROW("
+                    f"\"bok_opr\", '{OPR_TABLE}'[{bok_measure}], "
+                    f"\"bol_opr\", '{OPR_TABLE}'[{bol_measure}]),"
+                    f"'{dt}'[Date] = DATE({yr},{mo},{dy}))"
+                )
+                try:
+                    rows = run_dax(port, dax)
+                    if rows:
+                        r = rows[0]
+                        bok = to_pct(r.get('bok_opr') or r.get('[bok_opr]'))
+                        bol = to_pct(r.get('bol_opr') or r.get('[bol_opr]'))
+                        if bok is not None or bol is not None:
+                            log(f"  OPR (measures, date table='{dt}'): BOK={bok}%  BOL={bol}%")
+                            return {'bok_opr': bok, 'bol_opr': bol}
+                except Exception as e:
+                    err_str = str(e)
+                    if 'cannot be found' in err_str or 'not found' in err_str.lower():
+                        continue   # wrong date-table name, try next
+                    log(f"  OPR measures query error (port {port}, dt='{dt}'): {e}")
+
+            # Last-resort: evaluate measure without date filter (returns overall value)
+            dax_nf = (
+                f"EVALUATE ROW("
+                f"\"bok_opr\", '{OPR_TABLE}'[{bok_measure}], "
+                f"\"bol_opr\", '{OPR_TABLE}'[{bol_measure}])"
+            )
+            try:
+                rows = run_dax(port, dax_nf)
+                if rows:
+                    r = rows[0]
+                    bok = to_pct(r.get('bok_opr') or r.get('[bok_opr]'))
+                    bol = to_pct(r.get('bol_opr') or r.get('[bol_opr]'))
+                    log(f"  OPR (measures, no date filter — overall value): BOK={bok}%  BOL={bol}%")
+                    log(f"  WARNING: date filter failed — set OPR_DATE_TABLE to the correct date table name")
+                    return {'bok_opr': bok, 'bol_opr': bol}
+            except Exception as e:
+                log(f"  OPR no-filter query error on port {port}: {e}")
+
+        else:
+            # ── Regular data-table path ────────────────────────────────────
+            date_col = OPR_COL_DATE or 'Date'
+            dax = (
+                f"EVALUATE SELECTCOLUMNS("
+                f"FILTER('{OPR_TABLE}', '{OPR_TABLE}'[{date_col}] = DATE({yr},{mo},{dy})),"
+                f"\"bok_opr\", '{OPR_TABLE}'[{bok_measure}],"
+                f"\"bol_opr\", '{OPR_TABLE}'[{bol_measure}])"
+            )
+            try:
+                rows = run_dax(port, dax)
+                if rows:
+                    r = rows[0]
+                    bok = to_pct(r.get('bok_opr'))
+                    bol = to_pct(r.get('bol_opr'))
+                    log(f"  OPR from '{OPR_TABLE}': BOK={bok}%  BOL={bol}%")
+                    return {'bok_opr': bok, 'bol_opr': bol}
+                else:
+                    log(f"  OPR query on port {port}: no rows for {report_date}")
+            except Exception as e:
+                log(f"  OPR query error on port {port}: {e}")
 
     return None
 
@@ -1328,9 +1432,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--discover-tables', action='store_true',
-        help='List all PBI table names (and OPR/BOK/BOL columns) from all running '
-             'Power BI Desktop instances.  Run with BIW SQD Axxos open, then fill '
-             'in OPR_TABLE / OPR_COL_BOK / OPR_COL_BOL at the top of this file.'
+        help='List all PBI table names, columns, and measures (for OPR/BOK/BOL tables) '
+             'from all running Power BI Desktop instances.  Run with BIW SQD Axxos open, '
+             'then fill in OPR_TABLE / OPR_BOK_MEASURE / OPR_BOL_MEASURE at the top of this file.'
     )
     args = parser.parse_args()
 

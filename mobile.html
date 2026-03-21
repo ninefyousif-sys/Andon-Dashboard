@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Body Shop · Andon</title>
+<style>
+:root{
+  --bg:#07090f;--s1:#0f1520;--s2:#141d2b;--s3:#1a2435;
+  --b1:#1c2d40;--b2:#243650;
+  --text:#c8d8e8;--dim:#5a7590;--bright:#e8f4ff;
+  --teal:#00999e;--teal-l:#30c0c5;
+  --blue:#0075be;--blue-b:#78c8f8;
+  --green:#159a58;--green-l:#25c878;
+  --amber:#c89010;--amber-l:#f0b828;
+  --red:#cc2838;--red-l:#f04858;
+  --crit:#ff1a2e;--orange:#d07018;--orange-l:#f08028;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:var(--s1);border-bottom:1px solid var(--b1);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.hdr-brand{display:flex;align-items:center;gap:10px}
+.vlogo{background:var(--blue);color:#fff;font-weight:900;font-size:10px;padding:4px 8px;letter-spacing:1px;border-radius:2px}
+.hdr-title{font-size:13px;font-weight:700;color:var(--bright)}
+.hdr-day{font-size:11px;color:var(--dim)}
+.clk{font-family:var(--font-mono);font-size:13px;color:var(--teal-l)}
+
+/* ── DAY PICKER ── */
+.day-bar{background:var(--s2);border-bottom:1px solid var(--b1);padding:8px 14px;display:flex;align-items:center;gap:8px}
+.day-select{background:var(--s3);border:1px solid var(--b2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px;flex:1}
+.ot-badge{background:rgba(200,144,16,.25);color:var(--amber-l);font-size:10px;font-weight:700;padding:3px 7px;border-radius:8px;display:none}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--b1);border-bottom:2px solid var(--b2)}
+.kpi-card{background:var(--s2);padding:12px 14px}
+.kpi-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:4px}
+.kpi-val{font-family:var(--font-mono);font-size:26px;font-weight:700;line-height:1;color:var(--text)}
+.kpi-val.g{color:var(--green-l)}
+.kpi-val.r{color:var(--red-l)}
+.kpi-val.a{color:var(--amber-l)}
+.kpi-val.b{color:var(--blue-b)}
+.kpi-sub{font-size:9px;color:var(--dim);margin-top:3px}
+.kpi-bar{height:3px;background:var(--b2);border-radius:2px;margin-top:5px}
+.kpi-bar-fill{height:3px;border-radius:2px;transition:width .3s}
+
+/* ── BOL STRIP ── */
+.bol-strip{background:var(--s1);border-bottom:1px solid var(--b1);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.bol-item{text-align:center;flex:1}
+.bol-val{font-family:var(--font-mono);font-size:22px;font-weight:700}
+.bol-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.bol-arrow{font-size:18px;color:var(--dim)}
+.buf-val{font-family:var(--font-mono);font-size:20px;font-weight:800;text-align:center}
+.buf-lbl{font-size:9px;color:var(--dim);text-align:center}
+
+/* ── SECTION ── */
+.section{padding:12px 14px;border-bottom:1px solid var(--b1)}
+.sec-title{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px}
+.card{background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.card-title{font-size:12px;font-weight:700;color:var(--bright);margin-bottom:3px}
+.card-sub{font-size:10px;color:var(--dim);margin-bottom:8px}
+
+/* ── OPR CHART ── */
+.chart-wrap{position:relative;height:160px;width:100%}
+.chart-wrap.sm{height:120px}
+
+/* ── AREA CARDS ── */
+.area-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.area-card{background:var(--s3);border:1px solid var(--b2);border-radius:5px;padding:8px 10px}
+.area-card.crit{border-left:3px solid var(--crit)}
+.area-card.high{border-left:3px solid var(--red)}
+.area-card.warn{border-left:3px solid var(--amber)}
+.area-card.ok{border-left:3px solid var(--green)}
+.area-name{font-size:10px;font-weight:700;color:var(--text);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.area-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.area-row{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:2px}
+
+/* ── CRITICAL LINES ── */
+.line-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--b1)}
+.line-row:last-child{border:none}
+.line-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.line-name{flex:1;font-size:11px;color:var(--text)}
+.line-dur{font-family:var(--font-mono);font-size:11px;font-weight:700}
+.line-cars{font-size:10px;min-width:40px;text-align:right;color:var(--dim)}
+
+/* ── DOWNTIME TILES ── */
+.dt-tiles{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.dt-tile{flex:1;min-width:60px;text-align:center;padding:8px 4px;border-radius:5px;border:1px solid}
+.dt-tile-val{font-family:var(--font-mono);font-size:16px;font-weight:700}
+.dt-tile-lbl{font-size:8px;color:var(--dim);margin-top:2px}
+
+/* ── TREND BARS ── */
+.trend-bars{display:flex;align-items:flex-end;gap:3px;height:80px;padding:0 2px}
+.trend-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.trend-bar{width:100%;border-radius:2px 2px 0 0;min-height:3px;transition:height .3s}
+.trend-cnt{font-family:var(--font-mono);font-size:9px;font-weight:700}
+.trend-lbl{font-size:8px;color:var(--dim);text-align:center;white-space:nowrap}
+
+/* ── ROOT CAUSE ── */
+.rc-row{display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--b1);font-size:10px}
+.rc-row:last-child{border:none}
+.tag{font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;text-align:center}
+.tag-hop{background:rgba(255,26,46,.15);color:var(--red-l)}
+.tag-upp{background:rgba(0,153,158,.15);color:var(--teal-l)}
+.tag-und{background:rgba(0,117,190,.12);color:var(--blue-b)}
+.tag-crit{background:rgba(255,26,46,.25);color:var(--crit)}
+.rc-min{font-family:var(--font-mono);font-size:10px;text-align:right}
+
+/* ── FOOTER ── */
+.footer{text-align:center;padding:16px;font-size:10px;color:var(--dim)}
+.btn-desktop{display:block;width:100%;background:var(--s2);border:1px solid var(--b2);color:var(--dim);padding:10px;border-radius:6px;text-align:center;font-size:12px;text-decoration:none;margin-top:10px}
+</style>
+<!-- Chart.js bundled inline (same as desktop) -->
+<script src="libs/chart.min.js"></script>
+<script src="libs/chartjs-plugin-datalabels.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-brand">
+    <div class="vlogo">VOLVO</div>
+    <div>
+      <div class="hdr-title">Body Shop (RA) · Andon</div>
+      <div class="hdr-day" id="m-day-label">—</div>
+    </div>
+  </div>
+  <div class="clk" id="m-clk">--:--</div>
+</div>
+
+<!-- DAY PICKER -->
+<div class="day-bar">
+  <select class="day-select" id="m-day-picker" onchange="mSwitchDay(this.value)">
+    <!-- populated by JS -->
+  </select>
+  <span class="ot-badge" id="m-ot-badge">⏱ OT</span>
+</div>
+
+<!-- KPI BAR -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-lbl">Empty Skids</div>
+    <div class="kpi-val a" id="m-empty-tot">—</div>
+    <div class="kpi-sub" id="m-empty-sub">/ 102 target</div>
+    <div class="kpi-bar"><div class="kpi-bar-fill" id="m-empty-bar" style="width:0%;background:var(--amber)"></div></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-lbl">OPR% · Empty Skid</div>
+    <div class="kpi-val" id="m-opr-val">—</div>
+    <div class="kpi-sub" id="m-opr-sub">CT 270s · Target 83.3%</div>
+    <div class="kpi-bar"><div class="kpi-bar-fill" id="m-opr-bar" style="width:0%"></div></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-lbl">Lost Cars (vs 102)</div>
+    <div class="kpi-val" id="m-lost-val">—</div>
+    <div class="kpi-sub" id="m-lost-sub">—</div>
+    <div class="kpi-bar"><div class="kpi-bar-fill" id="m-lost-bar" style="width:0%"></div></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-lbl">Week Avg OPR%</div>
+    <div class="kpi-val b" id="m-week-opr">—</div>
+    <div class="kpi-sub" id="m-week-sub">Target 83.3%</div>
+    <div class="kpi-bar"><div class="kpi-bar-fill" id="m-week-bar" style="width:0%;background:var(--blue)"></div></div>
+  </div>
+</div>
+
+<!-- BOL STRIP -->
+<div class="bol-strip">
+  <div class="bol-item">
+    <div class="bol-val" id="m-bol-tot" style="color:var(--teal-l)">—</div>
+    <div class="bol-lbl">BOL Entry</div>
+  </div>
+  <div class="bol-arrow">→</div>
+  <div>
+    <div class="buf-val" id="m-buf-delta">—</div>
+    <div class="buf-lbl">buffer Δ</div>
+  </div>
+  <div class="bol-arrow">→</div>
+  <div class="bol-item">
+    <div class="bol-val" id="m-empty-tot2" style="color:var(--blue-b)">—</div>
+    <div class="bol-lbl">Empty Skid</div>
+  </div>
+</div>
+
+<!-- OPR CHART -->
+<div class="section">
+  <div class="card">
+    <div class="card-title">OPR% — Empty Skids · Hour by Hour</div>
+    <div class="card-sub">CT 270s · Target 83.3% · Source: Snowflake</div>
+    <div class="chart-wrap"><canvas id="m-opr-chart"></canvas></div>
+  </div>
+</div>
+
+<!-- DOWNTIME BREAKDOWN -->
+<div class="section">
+  <div class="sec-title" id="m-dt-title">Downtime Breakdown</div>
+  <div class="dt-tiles" id="m-dt-tiles">—</div>
+  <div id="m-dt-alert" style="font-size:10px;color:var(--dim);background:var(--s2);padding:8px 10px;border-radius:5px;line-height:1.5"></div>
+</div>
+
+<!-- CRITICAL LINES -->
+<div class="section">
+  <div class="sec-title">Critical Lines · DT File Data</div>
+  <div id="m-critical-lines"></div>
+</div>
+
+<!-- ROOT CAUSE -->
+<div class="section">
+  <div class="sec-title" id="m-rc-title">Top Root Cause Faults</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div>
+      <div style="font-size:9px;color:var(--dim);font-weight:700;margin-bottom:5px">HOP</div>
+      <div id="m-hop-rows">—</div>
+    </div>
+    <div>
+      <div style="font-size:9px;color:var(--dim);font-weight:700;margin-bottom:5px">UPB + UNB</div>
+      <div id="m-oth-rows">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTION TREND -->
+<div class="section">
+  <div class="sec-title">Production Trend · Last 7 Days</div>
+  <div class="trend-bars" id="m-trend-bars"></div>
+  <div style="display:flex;justify-content:space-around;margin-top:4px" id="m-trend-labels"></div>
+  <div style="margin-top:6px;font-size:10px;color:var(--dim);display:flex;gap:12px;justify-content:center" id="m-trend-stats"></div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Made by Ninef Yousif
+  <a href="body_shop_intelligence.html" class="btn-desktop">🖥 Open Full Desktop Dashboard</a>
+</div>
+
+<script>
+// ── Shared data from desktop dashboard ──────────────────────────
+</script>
+<script>
+// This will be populated with DAYS_DATA from the main dashboard
+// For now, use a fetch to get the data from the desktop version
+// OR embed the same DAYS_DATA directly
+
+// ── Embedded constants (same as desktop) ──────────────────────────────────
+const WIN_LABELS=['06:00-07:00','07:00-08:00','08:10-09:10','09:10-10:00',
+                  '10:40-11:40','11:40-12:30','12:40-13:40','13:40-14:40'];
+const WIN_MINS=[60,60,60,50,60,50,60,60];
+const EMPTY_CT=270, BOL_CT=286;
+const EMPTY_OPR_TARGET=83.3, BOL_OPR_TARGET=88.2;
+const gridColor='rgba(44,54,72,.7)';
+
+function calcOPR(arr,ct){
+  const mj=3600/ct;
+  return arr.map((c,i)=>+((c/(WIN_MINS[i]/60*mj))*100).toFixed(1));
+}
+function oprAvg(a){return +(a.reduce((s,v)=>s+v,0)/a.length).toFixed(1);}
+
+// DAYS_DATA loaded via fetch from desktop HTML to stay in sync
+let DAYS_DATA={};
+let activeDay='';
+let oprChart=null;
+
+// ── Load DAYS_DATA from the desktop HTML ───────────────────────────────────
+let BUFFER_CFG={};
+
+async function loadData(){
+  try{
+    const resp=await fetch('body_shop_intelligence.html?cache='+Date.now());
+    const text=await resp.text();
+    // Extract DAYS_DATA
+    const m=text.match(/const DAYS_DATA = (\{[\s\S]*?\});/);
+    if(m) DAYS_DATA=eval('('+m[1]+')');
+    // Extract BUFFER_CFG for buffer-aware critical lines
+    const b=text.match(/const BUFFER_CFG = (\{[\s\S]*?\});/);
+    if(b) BUFFER_CFG=eval('('+b[1]+')');
+
+    if(Object.keys(DAYS_DATA).length){
+      activeDay=Object.keys(DAYS_DATA).find(k=>DAYS_DATA[k].isToday)
+             ||Object.keys(DAYS_DATA).sort().pop();
+      initPicker();
+      mSwitchDay(activeDay);
+      document.getElementById('m-day-label').textContent=
+        (DAYS_DATA[activeDay]?.label||'—')+' · DAY SHIFT 06:00–14:40';
+    }
+  }catch(e){
+    document.getElementById('m-day-label').textContent='Load error — '+e.message;
+  }
+}
+
+function calcBufLoss(code, dtMin){
+  const b=BUFFER_CFG[code];
+  if(!b) return {cars:Math.round(dtMin/4.5),exceeded:true,bufMin:0,bufMax:0};
+  const minT=Math.round(b.bufMin*b.impactCT/60);
+  const maxT=Math.round(b.bufMax*b.impactCT/60);
+  const excess=Math.max(0,dtMin-minT);
+  return {cars:Math.round(excess/(b.impactCT/60)),exceeded:dtMin>minT,bufMin:minT,bufMax:maxT};
+}
+
+function initPicker(){
+  const el=document.getElementById('m-day-picker');
+  el.innerHTML='';
+  Object.keys(DAYS_DATA).sort().reverse().forEach(k=>{
+    const d=DAYS_DATA[k];
+    const opt=document.createElement('option');
+    opt.value=k;
+    opt.textContent=d.label+(d.overtime?' ⏱ OT':'');
+    if(k===activeDay) opt.selected=true;
+    el.appendChild(opt);
+  });
+}
+
+function mSwitchDay(key){
+  activeDay=key;
+  const d=DAYS_DATA[key];
+  if(!d) return;
+
+  // Badge
+  const ot=document.getElementById('m-ot-badge');
+  ot.style.display=d.overtime?'inline':'none';
+  document.getElementById('m-day-label').textContent=d.label+' · DAY SHIFT 06:00–14:40'+(d.overtime?' · ⏱ OT':'');
+
+  // KPIs
+  const empTot=d.empty_tot, bolTot=d.bol_tot;
+  const empPct=Math.round(empTot/102*100);
+  const lost=102-empTot;
+  const empOPR=oprAvg(calcOPR(d.empty_h,EMPTY_CT));
+  const isGood=empOPR>=EMPTY_OPR_TARGET, isOK=empOPR>=EMPTY_OPR_TARGET-5;
+  const oCol=isGood?'var(--green-l)':isOK?'var(--amber-l)':'var(--red-l)';
+
+  // Empty skids
+  const ev=document.getElementById('m-empty-tot');
+  ev.textContent=empTot;
+  ev.className='kpi-val '+(empTot>=102?'g':empTot>=85?'a':'r');
+  document.getElementById('m-empty-sub').textContent=empPct+'% of target';
+  setBarWidth('m-empty-bar',empPct,empTot>=102?'var(--green)':empTot>=85?'var(--amber)':'var(--red)');
+
+  // OPR
+  const ov=document.getElementById('m-opr-val');
+  ov.textContent=empOPR+'%'; ov.style.color=oCol;
+  document.getElementById('m-opr-sub').textContent='Target '+EMPTY_OPR_TARGET+'% · '+(isGood?'✓ Above':'✗ Below')+' target';
+  setBarWidth('m-opr-bar',Math.min(empOPR,115),isGood?'var(--green)':isOK?'var(--amber)':'var(--red)');
+
+  // Lost cars
+  const lv=document.getElementById('m-lost-val');
+  lv.textContent=(lost<0?'+'+Math.abs(lost):lost===0?'0':'−'+lost)+' cars';
+  lv.style.color=lost<0?'var(--green-l)':lost<=10?'var(--amber-l)':'var(--red-l)';
+  document.getElementById('m-lost-sub').textContent='102 target · '+empTot+' actual';
+  setBarWidth('m-lost-bar',Math.min(Math.abs(lost)/20*100,100),lost<0?'var(--green)':lost<=10?'var(--amber)':'var(--red)');
+
+  // Week avg OPR
+  const wkKeys=Object.keys(DAYS_DATA).filter(k=>{
+    const wl=(d.label||'').split(' ')[1]?.replace('-Mar','')?.replace('-','');
+    // Simple: same last 5 dates
+    return true;
+  }).sort().slice(-5);
+  const wkOPR=wkKeys.map(k=>oprAvg(calcOPR(DAYS_DATA[k].empty_h,EMPTY_CT)));
+  const wAvg=+(wkOPR.reduce((a,b)=>a+b,0)/wkOPR.length).toFixed(1);
+  const wv=document.getElementById('m-week-opr');
+  wv.textContent=wAvg+'%';
+  wv.className='kpi-val '+(wAvg>=EMPTY_OPR_TARGET?'g':wAvg>=EMPTY_OPR_TARGET-5?'a':'r');
+  document.getElementById('m-week-sub').textContent='Target '+EMPTY_OPR_TARGET+'%';
+  setBarWidth('m-week-bar',Math.min(wAvg,115),wAvg>=EMPTY_OPR_TARGET?'var(--green)':'var(--amber)');
+
+  // BOL strip
+  document.getElementById('m-bol-tot').textContent=bolTot;
+  document.getElementById('m-empty-tot2').textContent=empTot;
+  const diff=bolTot-empTot;
+  const bv=document.getElementById('m-buf-delta');
+  bv.textContent=(diff>0?'+':'')+diff;
+  bv.style.color=diff>0?'var(--green-l)':diff<0?'var(--red-l)':'var(--blue-b)';
+
+  // OPR chart
+  buildOPRChart(d);
+
+  // Downtime
+  buildDowntime(d);
+
+  // Critical lines
+  buildCriticalLines(d);
+
+  // Root cause
+  buildRootCause(d);
+
+  // Trend
+  buildTrend();
+}
+
+function setBarWidth(id,pct,color){
+  const el=document.getElementById(id);
+  if(el){el.style.width=Math.min(pct,100)+'%';el.style.background=color;}
+}
+
+function buildOPRChart(d){
+  if(oprChart){oprChart.destroy();oprChart=null;}
+  const ctx=document.getElementById('m-opr-chart').getContext('2d');
+  const opr=calcOPR(d.empty_h,EMPTY_CT);
+  const avg=oprAvg(opr);
+  const ptCol=opr.map(v=>v>=EMPTY_OPR_TARGET?'#25c878':v>=EMPTY_OPR_TARGET-10?'#f0b828':'#f04858');
+  Chart.defaults.devicePixelRatio=window.devicePixelRatio||2;
+  oprChart=new Chart(ctx,{
+    type:'bar',
+    plugins:[ChartDataLabels],
+    data:{labels:WIN_LABELS,datasets:[
+      {label:'Cars',data:d.empty_h,backgroundColor:'rgba(90,117,144,.2)',yAxisID:'y2',order:4,
+       datalabels:{display:true,anchor:'end',align:'end',color:'rgba(90,117,144,.7)',font:{size:9},formatter:v=>v}},
+      {label:'Skid OPR%',type:'line',data:opr,borderColor:'#25c878',backgroundColor:'transparent',
+       borderWidth:2,pointRadius:5,pointBackgroundColor:ptCol,tension:.35,yAxisID:'y',order:1,
+       datalabels:{display:true,color:ptCol,font:{weight:'bold',size:10},formatter:v=>v+'%',anchor:'top',align:'top',offset:3}},
+      {label:'Target',type:'line',data:Array(8).fill(EMPTY_OPR_TARGET),borderColor:'#f0b828',
+       borderWidth:1.5,borderDash:[6,4],pointRadius:0,yAxisID:'y',order:2,datalabels:{display:false}},
+      {label:'Avg',type:'line',data:Array(8).fill(avg),borderColor:'#25c878',
+       borderWidth:1.5,borderDash:[3,3],pointRadius:0,yAxisID:'y',order:3,datalabels:{display:false}},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      layout:{padding:{top:18}},
+      plugins:{legend:{display:false},datalabels:{display:true},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}${c.datasetIndex===0?'':c.datasetIndex===1?'%':'%'}`}}},
+      scales:{
+        x:{grid:{color:gridColor},ticks:{color:'#5a7590',font:{size:8},maxRotation:30}},
+        y:{grid:{color:gridColor},min:45,max:115,ticks:{color:'#5a7590',font:{size:9},callback:v=>v+'%'},
+           title:{display:false}},
+        y2:{display:false,min:0,max:30}
+      }
+    }
+  });
+}
+
+function buildDowntime(d){
+  const p=d.pbi||{};
+  const entries=Object.entries(p).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const total=Math.round(Object.values(p).reduce((s,v)=>s+v,0));
+  document.getElementById('m-dt-title').textContent=
+    `Downtime · ${d.label}${total>0?' · '+total+' min total':''}`;
+
+  const COLS=[
+    ['rgba(255,26,46,.12)','var(--crit)','var(--crit)'],
+    ['rgba(0,153,158,.1)','var(--teal)','var(--teal-l)'],
+    ['rgba(200,144,16,.1)','var(--amber)','var(--amber-l)'],
+    ['rgba(0,117,190,.1)','var(--blue)','var(--blue-b)'],
+    ['rgba(208,112,24,.1)','var(--orange)','var(--orange-l)'],
+  ];
+  const NAMES={'285':'LH DOOR-285','286':'RH DOOR-286','287':'287 Tailgate',
+    '198':'HOP-198','155':'ROOF-155','138':'MARR-138','154':'FRAMER-154',
+    '236':'RFC-236','231':'FS-231','237':'RWHRH-237','235':'RWHLH-235',
+    '232':'FWHLH-232','233':'FWHRH-233','234':'FF-234','258':'BSO-258'};
+  const tilesEl=document.getElementById('m-dt-tiles');
+  if(!entries.length){tilesEl.innerHTML='<div style="color:var(--dim);font-size:11px">No downtime data</div>';return;}
+  tilesEl.innerHTML=entries.map(([code,min],i)=>{
+    const [bg,border,col]=COLS[i]||COLS[4];
+    return `<div class="dt-tile" style="background:${bg};border-color:${border}">
+      <div class="dt-tile-val" style="color:${col}">${min}</div>
+      <div style="font-size:7px;color:var(--dim)">min</div>
+      <div class="dt-tile-lbl">${(NAMES[code]||code).slice(0,9)}</div>
+    </div>`;
+  }).join('');
+
+  const alert=document.getElementById('m-dt-alert');
+  if(entries.length){
+    const [topCode,topMin]=entries[0];
+    alert.innerHTML=`<strong style="color:var(--amber-l)">▶ Top: ${NAMES[topCode]||topCode}</strong> — ${topMin} min (${Math.round(topMin/total*100)}% of total DT)`;
+  }
+}
+
+function buildCriticalLines(d){
+  const p=d.pbi||{};
+  const NAMES={'285':'LH DOOR-285','286':'RH DOOR-286','287':'287 Tailgate',
+    '198':'HOP-198','155':'ROOF-155','138':'MARR-138','154':'FRAMER-154',
+    '236':'RFC-236','231':'FS-231','237':'RWHRH-237','235':'RWHLH-235',
+    '232':'FWHLH-232','233':'FWHRH-233','234':'FF-234','258':'BSO-258'};
+  const HOP_CODES=['285','286','287','198'];
+  const lines=Object.entries(p).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const el=document.getElementById('m-critical-lines');
+  if(!lines.length){el.innerHTML='<div style="color:var(--dim);font-size:11px;padding:8px 0">No data</div>';return;}
+  el.innerHTML=lines.map(([code,min])=>{
+    const col=min>=100?'var(--crit)':min>=30?'var(--red-l)':min>=10?'var(--amber-l)':'var(--dim)';
+    const dur=min>=60?(min/60).toFixed(1)+'h':min+'m';
+    // Buffer-aware: use BUFFER_CFG if available
+    const buf=calcBufLoss(code,min);
+    let carsLabel,carsCol;
+    if(HOP_CODES.includes(code)||BUFFER_CFG[code]){
+      if(buf.exceeded){
+        carsLabel=`~${buf.cars}`;
+        carsCol=buf.cars>5?'var(--red-l)':'var(--amber-l)';
+      } else {
+        carsLabel='✓buf';
+        carsCol='var(--green-l)';
+      }
+    } else {
+      carsLabel='(buf)'; carsCol='var(--dim)';
+    }
+    const bufNote=buf.bufMax>0?` (max ${buf.bufMax}m)`:'';
+    return `<div class="line-row" title="${NAMES[code]||code}: ${min}min · Buffer min ${buf.bufMin}m${bufNote}">
+      <div class="line-dot" style="background:${col}"></div>
+      <div class="line-name">${NAMES[code]||code}</div>
+      <div class="line-dur" style="color:${col}">${dur}</div>
+      <div class="line-cars" style="color:${carsCol}">${carsLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildRootCause(d){
+  const gantt=d.gantt||[];
+  document.getElementById('m-rc-title').textContent='Top Root Cause · '+(d.label||'—');
+
+  const HOP=['285','286','287','198','197','160'];
+  const agg={};
+  gantt.forEach(ev=>{
+    const k=ev.line;
+    if(!agg[k]) agg[k]={line:ev.line,sec:0,lbl:ev.lbl,
+      isHOP:HOP.some(c=>ev.line.toUpperCase().includes(c))};
+    agg[k].sec+=ev.sec;
+    if((ev.lbl||'').length>(agg[k].lbl||'').length) agg[k].lbl=ev.lbl;
+  });
+  const all=Object.values(agg).sort((a,b)=>b.sec-a.sec);
+  const hop=all.filter(e=>e.isHOP).slice(0,5);
+  const oth=all.filter(e=>!e.isHOP).slice(0,5);
+
+  function rows(evts){
+    if(!evts.length) return '<div style="color:var(--dim);font-size:10px;padding:4px 0">No data</div>';
+    return evts.map(ev=>{
+      const min=Math.round(ev.sec/60);
+      const minCol=min>=100?'var(--crit)':min>=30?'var(--amber-l)':'var(--dim)';
+      const tag=ev.isHOP?(min>=100?'CRIT':'HOP'):(ev.line.includes('155')||ev.line.includes('154')?'UPP':'UND');
+      const tagCls=ev.isHOP?(min>=100?'tag-crit':'tag-hop'):(tag==='UPP'?'tag-upp':'tag-und');
+      const lbl=(ev.lbl||'').replace(/Equipment Issues.*?·\s*/gi,'').slice(0,30)||ev.line.slice(0,15);
+      return `<div class="rc-row">
+        <div class="tag ${tagCls}">${tag}</div>
+        <div style="font-size:10px">${lbl}</div>
+        <div class="rc-min" style="color:${minCol}">${min}</div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('m-hop-rows').innerHTML=rows(hop);
+  document.getElementById('m-oth-rows').innerHTML=rows(oth);
+}
+
+function buildTrend(){
+  const keys=Object.keys(DAYS_DATA).sort();
+  const wrap=document.getElementById('m-trend-bars');
+  const lbls=document.getElementById('m-trend-labels');
+  const stats=document.getElementById('m-trend-stats');
+  const target=102;
+  const cars=keys.map(k=>DAYS_DATA[k].empty_tot);
+  const maxCars=Math.max(...cars,target);
+  wrap.innerHTML='';lbls.innerHTML='';
+  keys.forEach((k,i)=>{
+    const d=DAYS_DATA[k], c=d.empty_tot;
+    const h=Math.max(4,Math.round(c/maxCars*74));
+    const col=d.isToday?'var(--teal)':d.overtime?'rgba(21,154,88,.5)':c>=102?'var(--green)':c>=85?'var(--blue)':'var(--red)';
+    const short=d.label.split(' ')[1]?.replace('-Mar','')?.split('-')[0]||k.slice(8);
+    wrap.innerHTML+=`<div class="trend-bar-wrap">
+      <div class="trend-cnt" style="color:${col};font-size:8px">${c}${d.overtime?'⏱':''}</div>
+      <div class="trend-bar" style="height:${h}px;background:${col}"></div>
+    </div>`;
+    lbls.innerHTML+=`<span style="flex:1;text-align:center;font-size:8px;color:var(--dim)">${short}</span>`;
+  });
+  const avg=Math.round(cars.reduce((a,b)=>a+b,0)/cars.length);
+  const best=Math.max(...cars), worst=Math.min(...cars);
+  stats.innerHTML=`<span>Avg <b>${avg}</b></span><span>Best <b style="color:var(--green-l)">${best}</b></span><span>Worst <b style="color:var(--red-l)">${worst}</b></span>`;
+}
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tick(){
+  document.getElementById('m-clk').textContent=
+    new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(tick,1000);tick();
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
