@@ -1056,8 +1056,8 @@ const AREA_ORDER_BOL = ['underbody','upperbody'];
 
 /* ─── CORRECT TARGETS ─── */
 const TARGETS = {
-  bok_opr:    { tgt: 83.3,  dir:'ge', lbl:'≥83.3%', unit:'%'  },
-  bol_opr:    { tgt: 88.2,  dir:'ge', lbl:'≥88.2%', unit:'%'  },
+  bok_opr:    { tgt: 98.7,  dir:'ge', lbl:'≥98.7%', unit:'%'  },
+  bol_opr:    { tgt: 95.0,  dir:'ge', lbl:'≥95.0%', unit:'%'  },
   ashop_ftt:  { tgt: 98.0,  dir:'ge', lbl:'≥98.0%', unit:'%'  },
   ashop_dpv:  { tgt: 0.10,  dir:'le', lbl:'≤0.10',  unit:''   },
   wg_dpv:     { tgt: 1.20,  dir:'le', lbl:'≤1.20',  unit:''   },
@@ -1704,26 +1704,23 @@ function renderWeekCompare(){
     { lbl:'Final 2 FTT',  key:'final2_ftt', unit:'%' },
   ];
 
-  // Build Mon–Fri of the current week from the actual browser date.
-  // On weekends, anchor to Friday so the full week stays visible.
-  const today = new Date();
-  const todayStr = MM_DATA.date || today.toISOString().slice(0,10); // last day data was loaded
-  const actualDow = today.getDay(); // 0=Sun,6=Sat
-  const anchorDate = actualDow === 0 ? new Date(today.getTime() - 2*86400000)  // Sun→Fri
-                   : actualDow === 6 ? new Date(today.getTime() - 1*86400000)  // Sat→Fri
-                   : today;
-  const refDate  = new Date(anchorDate.toISOString().slice(0,10) + 'T12:00:00');
-  const dow = refDate.getDay(); // 0=Sun … 6=Sat
-  const monOffset = dow === 0 ? -6 : 1 - dow;
+  // Anchor the week to the VIEWED date (MM_DATA.date), not the calendar date.
+  // e.g. Monday morning viewing Friday WK12 D5 → shows WK12 Mon–Fri.
+  // isFuture still uses the real browser date so future columns grey out correctly.
+  const today       = new Date();                               // real browser date
+  const selectedStr = MM_DATA.date || today.toISOString().slice(0,10);
+  const viewedDate  = new Date(selectedStr + 'T12:00:00');     // the day we're viewing
+  const viewedDow   = viewedDate.getDay();                     // 1=Mon … 5=Fri
+  const monOffset   = viewedDow === 0 ? -6 : 1 - viewedDow;   // offset back to Monday
   const weekDays = Array.from({length:5}, (_,i) => {
-    const d = new Date(refDate);
-    d.setDate(refDate.getDate() + monOffset + i);
+    const d = new Date(viewedDate);
+    d.setDate(viewedDate.getDate() + monOffset + i);
     return d.toISOString().slice(0,10);
   });
 
-  // Collect data for each weekday — prefer MM_HISTORY, fall back to MM_DATA for today
+  // Collect data for each weekday — prefer MM_HISTORY, fall back to MM_DATA for selected day
   function getDayKpis(dateStr){
-    if(dateStr === todayStr) return MM_DATA.kpis;
+    if(dateStr === selectedStr) return MM_DATA.kpis;
     const h = MM_HISTORY[dateStr];
     return h ? h.kpis : null;
   }
@@ -1742,18 +1739,18 @@ function renderWeekCompare(){
         <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);background:rgba(255,255,255,.03);white-space:nowrap;min-width:110px;">KPI</th>`;
 
   weekDays.forEach((dateStr, i) => {
-    const isToday = dateStr === todayStr;
-    const hasFuture = new Date(dateStr + 'T12:00:00') > new Date(todayStr + 'T12:00:00');
+    const isSelected = dateStr === selectedStr;
+    const hasFuture = new Date(dateStr + 'T12:00:00') > today;
     const dayKpis = getDayKpis(dateStr);
     const hasData  = !!dayKpis;
     const shortDate = new Date(dateStr+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    const bg = isToday
+    const bg = isSelected
       ? 'background:rgba(45,212,191,.08);'
       : 'background:rgba(255,255,255,.02);';
-    const border = isToday ? 'border-left:2px solid var(--teal);' : 'border-left:1px solid var(--border);';
-    html += `<th onclick="switchDay('${dateStr}')" style="cursor:pointer;padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;${bg}${border}${isToday?'color:var(--teal);text-shadow:0 0 10px rgba(45,212,191,.4);':'color:var(--muted);'}transition:background .15s;" onmouseover="this.style.background='rgba(45,212,191,.13)'" onmouseout="this.style.background='${isToday?'rgba(45,212,191,.08)':'rgba(255,255,255,.02)'}'">
+    const border = isSelected ? 'border-left:2px solid var(--teal);' : 'border-left:1px solid var(--border);';
+    html += `<th onclick="switchDay('${dateStr}')" style="cursor:pointer;padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;${bg}${border}${isSelected?'color:var(--teal);text-shadow:0 0 10px rgba(45,212,191,.4);':'color:var(--muted);'}transition:background .15s;" onmouseover="this.style.background='rgba(45,212,191,.13)'" onmouseout="this.style.background='${isSelected?'rgba(45,212,191,.08)':'rgba(255,255,255,.02)'}'">
       ${DAY_NAMES[i]}<br><span style="font-size:9px;font-weight:400;opacity:.7;">${shortDate}</span>
-      ${isToday ? '<br><span style="font-size:8px;background:rgba(45,212,191,.2);color:var(--teal);padding:1px 5px;border-radius:3px;font-weight:800;letter-spacing:.3px;">SELECTED</span>' : ''}
+      ${isSelected ? '<br><span style="font-size:8px;background:rgba(45,212,191,.2);color:var(--teal);padding:1px 5px;border-radius:3px;font-weight:800;letter-spacing:.3px;">SELECTED</span>' : ''}
     </th>`;
   });
   html += `<th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--teal);background:rgba(45,212,191,.05);border-left:1px solid var(--border);">vs Yesterday</th>`;
@@ -1767,8 +1764,8 @@ function renderWeekCompare(){
 
     let prevVal = null;
     weekDays.forEach((dateStr, i) => {
-      const isToday  = dateStr === todayStr;
-      const isFuture = new Date(dateStr+'T12:00:00') > today; // use real browser date, not MM_DATA date
+      const isSelected = dateStr === selectedStr;
+      const isFuture   = new Date(dateStr+'T12:00:00') > today; // real browser date
       const kpis = getDayKpis(dateStr);
       const val  = kpis ? kpis[row.key]?.val : undefined;
       const disp = fmt(row.key, val);
@@ -1776,9 +1773,9 @@ function renderWeekCompare(){
       const colorMap = { good:'var(--green)', bad:'var(--red)', warn:'var(--amber)', neut:'var(--muted)' };
       const glowMap  = { good:'var(--glow-g)', bad:'var(--glow-r)', warn:'var(--glow-a)', neut:'none' };
       const c = colorMap[col] || 'var(--muted)';
-      const g = isToday ? (glowMap[col] || 'none') : 'none';
-      const bg = isToday ? 'background:rgba(45,212,191,.06);' : '';
-      const bl = isToday ? 'border-left:2px solid rgba(45,212,191,.3);' : 'border-left:1px solid rgba(255,255,255,.04);';
+      const g = isSelected ? (glowMap[col] || 'none') : 'none';
+      const bg = isSelected ? 'background:rgba(45,212,191,.06);' : '';
+      const bl = isSelected ? 'border-left:2px solid rgba(45,212,191,.3);' : 'border-left:1px solid rgba(255,255,255,.04);';
 
       if(!isFuture && val !== null && val !== undefined) prevVal = val;
 
@@ -1788,15 +1785,15 @@ function renderWeekCompare(){
       } else if(disp === null){
         html += `<span style="color:var(--muted);font-size:11px;">—</span>`;
       } else {
-        html += `<span style="color:${c};font-weight:700;font-size:${isToday?'14px':'12px'};${isToday?'text-shadow:'+g+';':''}letter-spacing:.2px;">${disp}</span>`;
+        html += `<span style="color:${c};font-weight:700;font-size:${isSelected?'14px':'12px'};${isSelected?'text-shadow:'+g+';':''}letter-spacing:.2px;">${disp}</span>`;
       }
       html += `</td>`;
     });
 
     // vs Yesterday column — only for today
-    const todayKpis = getDayKpis(todayStr);
+    const todayKpis = getDayKpis(selectedStr);
     const todayVal  = todayKpis ? todayKpis[row.key]?.val : undefined;
-    const todayIdx  = weekDays.indexOf(todayStr);
+    const todayIdx  = weekDays.indexOf(selectedStr);
     const yesterStr = todayIdx > 0 ? weekDays[todayIdx - 1] : null;
     const yesterKpis = yesterStr ? getDayKpis(yesterStr) : null;
     const yesterVal  = yesterKpis ? yesterKpis[row.key]?.val : undefined;
@@ -1826,7 +1823,7 @@ function renderWeekCompare(){
   // Update subtitle — shows selected day and hint to click any column
   const sub = document.getElementById('week-panel-subtitle');
   if(sub){
-    const selFormatted = new Date(todayStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const selFormatted = new Date(selectedStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
     sub.textContent = `${MM_DATA.wk} · Viewing ${selFormatted} · Click any day column to switch`;
   }
 }

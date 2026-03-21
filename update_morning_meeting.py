@@ -29,6 +29,22 @@ GITHUB_ENABLED = True  # pushes morning_meeting_mobile.html to GitHub Pages
 
 WK12_MON = datetime.date(2026, 3, 16)
 
+# ── BOK / BOL OPR TABLE CONFIG ─────────────────────────────────────────────────
+# Run:  python update_morning_meeting.py --discover-tables
+# with BIW SQD Axxos open in Power BI Desktop.
+# The log will print all table names.  Fill in the correct values below.
+#
+# Example after running discover:
+#   OPR_TABLE    = 'A Shop BOK BOL OPR'
+#   OPR_COL_DATE = 'Date'
+#   OPR_COL_BOK  = 'BOK OPR'
+#   OPR_COL_BOL  = 'BOL OPR'
+#
+OPR_TABLE    = None   # set after running --discover-tables
+OPR_COL_DATE = 'Date'
+OPR_COL_BOK  = None   # column name for BOK OPR value
+OPR_COL_BOL  = None   # column name for BOL OPR value
+
 # ── TARGETS ────────────────────────────────────────────────────────────────────
 TARGETS = {
     'bok_opr':    {'tgt': 98.7,  'dir': 'ge'},
@@ -293,6 +309,111 @@ def fmt_dt(v):
     return str(v)
 
 
+def discover_tables():
+    """Print ALL table names (and columns for OPR/BOK/BOL tables) from every
+    running Power BI Desktop instance.  Run once:
+        python update_morning_meeting.py --discover-tables
+    Then fill in OPR_TABLE / OPR_COL_BOK / OPR_COL_BOL at the top of this file."""
+    ports = find_pbi_ports()
+    if not ports:
+        log("No PBI instances found.  Open BIW SQD Axxos in Power BI Desktop first.")
+        return
+
+    for port in ports:
+        log(f"\n{'='*60}")
+        log(f"=== Tables in PBI port {port} ===")
+        log(f"{'='*60}")
+
+        # DMV query — list all user tables in this model
+        try:
+            rows = run_dax(port,
+                "SELECT [NAME],[DATABASE_NAME] FROM $SYSTEM.TMSCHEMA_TABLES "
+                "WHERE [ISSHOWN] = TRUE()")
+        except Exception as e:
+            rows = []
+            log(f"  DMV error: {e}")
+
+        if not rows:
+            # Fallback: try without filter
+            try:
+                rows = run_dax(port, "SELECT [NAME] FROM $SYSTEM.TMSCHEMA_TABLES")
+            except Exception as e2:
+                log(f"  DMV fallback error: {e2}")
+                rows = []
+
+        if not rows:
+            log("  (no tables returned — model may not support DMV)")
+            continue
+
+        for r in rows:
+            tname = r.get('NAME', r.get('name', ''))
+            log(f"  TABLE: {tname}")
+
+            # For any table with OPR / BOK / BOL / AVAIL in the name, also dump columns
+            if any(kw in tname.upper() for kw in ['OPR', 'BOK', 'BOL', 'AVAIL']):
+                try:
+                    col_rows = run_dax(port,
+                        f"SELECT [EXPLICIT_NAME],[DATATYPE_NAME] "
+                        f"FROM $SYSTEM.TMSCHEMA_COLUMNS "
+                        f"WHERE [TABLE_NAME] = '{tname}'")
+                    for cr in col_rows:
+                        cname = cr.get('EXPLICIT_NAME', cr.get('Name', ''))
+                        ctype = cr.get('DATATYPE_NAME', cr.get('DataType', ''))
+                        log(f"      COLUMN: {cname}  ({ctype})")
+                except Exception as ce:
+                    log(f"      (could not list columns: {ce})")
+
+        log(f"\n>>> ACTION: Fill in OPR_TABLE / OPR_COL_BOK / OPR_COL_BOL")
+        log(f"            at the top of update_morning_meeting.py")
+
+
+def query_opr(ports, report_date):
+    """Query BOK/BOL OPR from any available PBI instance.
+
+    Requires OPR_TABLE, OPR_COL_BOK, OPR_COL_BOL to be set at the top of
+    the script.  Run --discover-tables first if they are not known.
+
+    Returns {'bok_opr': float|None, 'bol_opr': float|None}, or None if OPR
+    table is not configured or no data found.
+    """
+    if not OPR_TABLE:
+        log("  BOK/BOL OPR: OPR_TABLE not configured — run --discover-tables")
+        return None
+    if not OPR_COL_BOK or not OPR_COL_BOL:
+        log("  BOK/BOL OPR: OPR_COL_BOK / OPR_COL_BOL not configured")
+        return None
+
+    yr, mo, dy = report_date.year, report_date.month, report_date.day
+    date_col   = OPR_COL_DATE or 'Date'
+
+    for port in ports:
+        try:
+            rows = run_dax(port, f"""
+                EVALUATE SELECTCOLUMNS(
+                  FILTER('{OPR_TABLE}',
+                         '{OPR_TABLE}'[{date_col}] = DATE({yr},{mo},{dy})),
+                  "bok_opr", '{OPR_TABLE}'[{OPR_COL_BOK}],
+                  "bol_opr", '{OPR_TABLE}'[{OPR_COL_BOL}])
+            """)
+            if rows:
+                r = rows[0]
+                def to_pct(v):
+                    if v is None: return None
+                    f = float(v)
+                    # If value is stored as a decimal (0–1), convert to percent
+                    return round(f * 100, 2) if f <= 1.0 else round(f, 2)
+                bok = to_pct(r.get('bok_opr'))
+                bol = to_pct(r.get('bol_opr'))
+                log(f"  OPR from '{OPR_TABLE}': BOK={bok}%  BOL={bol}%")
+                return {'bok_opr': bok, 'bol_opr': bol}
+            else:
+                log(f"  OPR query on port {port}: no rows for {report_date}")
+        except Exception as e:
+            log(f"  OPR query error on port {port}: {e}")
+
+    return None
+
+
 def query_powerbi(report_date):
     """
     Query Power BI Desktop for all KPI data for report_date.
@@ -472,6 +593,9 @@ def query_powerbi(report_date):
         r['link_time']  = fmt_dt(r.get('link_time'))
         r['close_time'] = fmt_dt(r.get('close_time'))
 
+    # ── BOK / BOL OPR (from BIW SQD Axxos — may be a different PBI instance) ──
+    opr = query_opr(ports, report_date)
+
     return {
         'ashop':         ashop_rows,
         'ashop_ftt':     ashop_ftt_rows,
@@ -480,12 +604,20 @@ def query_powerbi(report_date):
         'wd6_dpv':       wd6_dpv_rows,
         'cshop':         cshop_rows,
         'cshop_defects': cshop_defect_rows,
+        'bok_opr':       opr.get('bok_opr') if opr else None,
+        'bol_opr':       opr.get('bol_opr') if opr else None,
     }
 
 
 def build_kpis_from_pbi(pbi):
     """Build the kpis dict for MM_DATA from Power BI query results."""
     kpis = {k: {'val': None} for k in TARGETS}
+
+    # ── BOK / BOL OPR ─────────────────────────────────────────────────────────
+    if pbi.get('bok_opr') is not None:
+        kpis['bok_opr'] = {'val': pbi['bok_opr']}
+    if pbi.get('bol_opr') is not None:
+        kpis['bol_opr'] = {'val': pbi['bol_opr']}
 
     # ── A Shop ────────────────────────────────────────────────────────────────
     if pbi['ashop']:
@@ -731,11 +863,33 @@ def find_ppt(wk_str, day_int):
     log(f"WARNING: PPT not found: {fname}")
     return None
 
+def ensure_markitdown():
+    """Install markitdown into the venv if not already present."""
+    try:
+        import markitdown
+        return True
+    except ImportError:
+        log("markitdown not installed — installing now...")
+        try:
+            subprocess.run([sys.executable, '-m', 'pip', 'install', 'markitdown'],
+                           capture_output=True, timeout=120)
+            log("markitdown installed OK")
+            return True
+        except Exception as e:
+            log(f"WARNING: could not install markitdown: {e}")
+            return False
+
+
 def read_ppt_markdown(ppt_path):
+    ensure_markitdown()
     try:
         result = subprocess.run([sys.executable,'-m','markitdown',ppt_path],
                                 capture_output=True, text=True, timeout=120)
-        return result.stdout if result.returncode == 0 else ''
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout
+        if result.stderr:
+            log(f"WARNING: markitdown stderr: {result.stderr[:200]}")
+        return ''
     except Exception as e:
         log(f"WARNING: PPT read error: {e}")
         return ''
@@ -1172,9 +1326,19 @@ if __name__ == '__main__':
         '--backfill-week', action='store_true',
         help='Backfill all working days of the current WK12 (Mon–Thu) into MM_HISTORY'
     )
+    parser.add_argument(
+        '--discover-tables', action='store_true',
+        help='List all PBI table names (and OPR/BOK/BOL columns) from all running '
+             'Power BI Desktop instances.  Run with BIW SQD Axxos open, then fill '
+             'in OPR_TABLE / OPR_COL_BOK / OPR_COL_BOL at the top of this file.'
+    )
     args = parser.parse_args()
 
-    if args.date:
+    if args.discover_tables:
+        discover_tables()
+        sys.exit(0)
+
+    elif args.date:
         target = datetime.date.fromisoformat(args.date)
         ok = backfill(target)
         # Push to GitHub after backfill
