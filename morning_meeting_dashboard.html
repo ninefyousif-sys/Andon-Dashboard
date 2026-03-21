@@ -1487,6 +1487,8 @@ function renderBOLStops(){
 function updatePostHeaders(){
   const k = MM_DATA.kpis;
   const updates = [
+    ['pv-bok-opr',    'pt-bok-opr',    'bok_opr',    k.bok_opr?.val],
+    ['pv-bol-opr',    'pt-bol-opr',    'bol_opr',    k.bol_opr?.val],
     ['pv-ashop-ftt',  'pt-ashop-ftt',  'ashop_ftt',  k.ashop_ftt?.val],
     ['pv-ashop-dpv',  'pt-ashop-dpv',  'ashop_dpv',  k.ashop_dpv?.val],
     ['pv-wg-dpv',     'pt-wg-dpv',     'wg_dpv',     k.wg_dpv?.val],
