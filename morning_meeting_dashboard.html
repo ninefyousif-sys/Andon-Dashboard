@@ -388,7 +388,6 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
   <div class="ni" onclick="g('pq')"><span class="nd" style="background:var(--orange)"></span>Part Quality</div>
   <div class="ni" onclick="g('bof')"><span class="nd" style="background:var(--purple)"></span>Bodies OOF</div>
   <div class="ni" onclick="g('scrap')"><span class="nd" style="background:var(--green)"></span>Scrap</div>
-  <div class="ni" onclick="g('week')"><span class="nd" style="background:var(--teal)"></span>Week Compare</div>
 </nav>
 
 <main class="wrap">
@@ -816,10 +815,76 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
 </div>
 
 </main>
-<!-- ═══ WEEK COMPARE ═══ -->
-<div id="week" class="anc">
-  <div class="sh">&#128197; Week Compare</div>
-  <div id="week-compare-grid"></div>
+
+<!-- ═══ WEEK COMPARE SIDE PANEL ═══ -->
+<!-- Vertical trigger tab -->
+<div id="week-tab" onclick="toggleWeekPanel()" style="
+  position:fixed;right:0;top:50%;transform:translateY(-50%);
+  z-index:600;cursor:pointer;
+  background:rgba(45,212,191,.12);
+  border:1px solid rgba(45,212,191,.3);
+  border-right:none;
+  border-radius:10px 0 0 10px;
+  padding:18px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:-4px 0 20px rgba(0,0,0,.4), 0 0 16px rgba(45,212,191,.1);
+  transition:right .3s ease,background .2s;
+" onmouseover="this.style.background='rgba(45,212,191,.2)'" onmouseout="this.style.background='rgba(45,212,191,.12)'">
+  <span style="width:8px;height:8px;background:var(--teal);border-radius:50%;box-shadow:0 0 8px rgba(45,212,191,.7);flex-shrink:0;"></span>
+  <span style="writing-mode:vertical-lr;text-orientation:mixed;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--teal);text-shadow:0 0 10px rgba(45,212,191,.5);">WEEK COMPARE</span>
+</div>
+
+<!-- Overlay -->
+<div id="week-overlay" onclick="closeWeekPanel()" style="
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.45);z-index:590;
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+"></div>
+
+<!-- Slide panel -->
+<div id="week-panel" style="
+  position:fixed;top:0;right:-480px;height:100vh;width:460px;
+  z-index:595;
+  background:rgba(8,14,28,.94);
+  border-left:1px solid rgba(45,212,191,.2);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  box-shadow:-8px 0 40px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+  transition:right .32s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;
+">
+  <!-- Panel header -->
+  <div style="
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.07);
+    flex-shrink:0;
+    background:linear-gradient(135deg,rgba(45,212,191,.08),rgba(45,212,191,.02));
+  ">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="width:8px;height:8px;background:var(--teal);border-radius:50%;box-shadow:0 0 10px rgba(45,212,191,.8);"></span>
+      <span style="font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--teal);text-shadow:0 0 12px rgba(45,212,191,.4);">WEEK COMPARE</span>
+    </div>
+    <button onclick="closeWeekPanel()" style="
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+      color:var(--muted);font-size:16px;width:28px;height:28px;border-radius:6px;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:background .15s,color .15s;line-height:1;
+    " onmouseover="this.style.background='rgba(251,113,133,.15)';this.style.color='var(--red)'"
+       onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.color='var(--muted)'">&#10005;</button>
+  </div>
+  <!-- Panel subtitle -->
+  <div style="padding:10px 20px 0;flex-shrink:0;">
+    <div id="week-panel-subtitle" style="font-size:10px;color:var(--muted);letter-spacing:.3px;"></div>
+  </div>
+  <!-- Scrollable content -->
+  <div style="flex:1;overflow-y:auto;padding:14px 20px 20px;">
+    <div id="week-compare-grid"></div>
+    <div style="margin-top:12px;font-size:10px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;line-height:1.8;">
+      <span>&#9632; <span style="color:var(--green)">Green</span> = On target</span>
+      <span>&#9632; <span style="color:var(--amber)">Amber</span> = Near miss</span>
+      <span>&#9632; <span style="color:var(--red)">Red</span> = Below target</span>
+    </div>
+  </div>
 </div>
 
 <div class="footer"><span style="font-size:15px;font-weight:700;letter-spacing:1.5px;color:var(--blue-b);text-shadow:0 0 18px rgba(96,165,250,.7),0 0 36px rgba(96,165,250,.35);">Designed &amp; Built by Ninef Yousif</span></div>
@@ -1747,15 +1812,38 @@ function renderWeekCompare(){
     html += `</td></tr>`;
   });
 
-  html += `</tbody></table></div>
-  <div style="margin-top:10px;font-size:10px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;">
-    <span>&#9632; <span style="color:var(--green)">Green</span> = On target</span>
-    <span>&#9632; <span style="color:var(--amber)">Amber</span> = Near miss (&lt;3% of target)</span>
-    <span>&#9632; <span style="color:var(--red)">Red</span> = Below target</span>
-    <span style="color:rgba(255,255,255,.2);">&#9632; — = No data yet</span>
-  </div>`;
+  html += `</tbody></table></div>`;
 
   el.innerHTML = html;
+
+  // Update subtitle
+  const sub = document.getElementById('week-panel-subtitle');
+  if(sub){
+    const todayFormatted = new Date(todayStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    sub.textContent = `${MM_DATA.wk} · ${todayFormatted}`;
+  }
+}
+
+function toggleWeekPanel(){
+  const panel   = document.getElementById('week-panel');
+  const overlay = document.getElementById('week-overlay');
+  const tab     = document.getElementById('week-tab');
+  const isOpen  = panel.style.right === '0px';
+  if(isOpen){
+    panel.style.right   = '-480px';
+    overlay.style.display = 'none';
+    tab.style.right     = '0';
+  } else {
+    renderWeekCompare();
+    panel.style.right   = '0px';
+    overlay.style.display = 'block';
+    tab.style.right     = '460px';
+  }
+}
+function closeWeekPanel(){
+  document.getElementById('week-panel').style.right   = '-480px';
+  document.getElementById('week-overlay').style.display = 'none';
+  document.getElementById('week-tab').style.right     = '0';
 }
 
 /* ═══ MASTER APPLY ═══ */
@@ -1774,7 +1862,6 @@ function applyMMData(){
     renderPQTable();
     renderBOFTable();
     renderScrap();
-    renderWeekCompare();
   } catch(e){ console.warn('applyMMData error:', e); }
 }
 
