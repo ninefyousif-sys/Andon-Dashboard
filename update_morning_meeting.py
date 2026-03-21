@@ -1080,10 +1080,12 @@ def build_ppt_items_from_pbi(pbi):
         'wd6_ftt_519':   [to_ftt_item(r) for r in wd6_ftt_519],
         'wd6_dpv_536':   [to_dpv_item(r) for r in wd6_dpv_536],
         'wd6_dpv_519':   [to_dpv_item(r) for r in wd6_dpv_519],
-        'cal_ftt_536':   [to_ftt_item(r) for r in cal_536],
-        'cal_ftt_519':   [to_ftt_item(r) for r in cal_519],
-        'final2_ftt_536':[to_ftt_item(r) for r in fn2_536],
-        'final2_ftt_519':[to_ftt_item(r) for r in fn2_519],
+        'cal_ftt_536':    [to_ftt_item(r) for r in cal_536],
+        'cal_ftt_519':    [to_ftt_item(r) for r in cal_519],
+        'final1_ftt_536': [to_ftt_item(r) for r in fn1_536],
+        'final1_ftt_519': [to_ftt_item(r) for r in fn1_519],
+        'final2_ftt_536': [to_ftt_item(r) for r in fn2_536],
+        'final2_ftt_519': [to_ftt_item(r) for r in fn2_519],
     }
 
 
@@ -1867,6 +1869,7 @@ def patch_history_only(day_dict, report_date, target_file=None):
         if existing.get('ppt'):
             for item_key in ['ashop_ftt_536','ashop_ftt_519','wd6_ftt_536','wd6_ftt_519',
                              'wd6_dpv_536','wd6_dpv_519','cal_ftt_536','cal_ftt_519',
+                             'final1_ftt_536','final1_ftt_519',
                              'final2_ftt_536','final2_ftt_519','wg_items_536','wg_items_519']:
                 if existing['ppt'].get(item_key) and not (day_dict.get('ppt') or {}).get(item_key):
                     if 'ppt' not in day_dict: day_dict['ppt'] = {}
