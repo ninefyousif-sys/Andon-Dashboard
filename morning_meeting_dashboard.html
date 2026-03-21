@@ -566,6 +566,13 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
             <tbody id="wd6-ftt-536-rows"><tr><td colspan="9" style="color:var(--muted);text-align:center;padding:12px;">Loading...</td></tr></tbody>
           </table>
         </div>
+        <div class="plbl" id="lbl-wd6-ftt-519" style="color:var(--orange)">519 FTT Items (PSTR)</div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Link Time</th><th>Close Stn</th><th>Close Time</th><th>Location</th></tr></thead>
+            <tbody id="wd6-ftt-519-rows"><tr><td colspan="9" style="color:var(--muted);text-align:center;padding:12px;">Loading...</td></tr></tbody>
+          </table>
+        </div>
         <div id="callout-wd6-ftt" class="callout co-a">Loading...</div>
       </div>
     </div>
@@ -586,6 +593,13 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
           <table class="t">
             <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Location</th><th>Extra Info</th></tr></thead>
             <tbody id="wd6-dpv-536-rows"><tr><td colspan="7" style="color:var(--muted);text-align:center;padding:12px;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="plbl" id="lbl-wd6-dpv-519" style="color:var(--orange)">519 DPV Items (PSTR)</div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Location</th><th>Extra Info</th></tr></thead>
+            <tbody id="wd6-dpv-519-rows"><tr><td colspan="7" style="color:var(--muted);text-align:center;padding:12px;">Loading...</td></tr></tbody>
           </table>
         </div>
         <div id="callout-wd6-dpv" class="callout co-a">Loading...</div>
@@ -624,6 +638,13 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
       </div>
       <div class="pb">
         <div id="cal-ftt-summary" style="margin-bottom:10px;"><!-- populated by JS --></div>
+        <div class="plbl" id="lbl-cal-ftt-536" style="color:var(--blue-b)">536 FTT Items (EX90)</div>
+        <div class="tw mb">
+          <table class="t">
+            <thead><tr><th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Link Time</th><th>Close Stn</th><th>Close Time</th><th>Extra Info</th></tr></thead>
+            <tbody id="cal-ftt-536-rows"><tr><td colspan="9" style="color:var(--muted);text-align:center;padding:12px;">Loading...</td></tr></tbody>
+          </table>
+        </div>
         <div class="plbl" id="lbl-cal-ftt-519" style="color:var(--orange)">519 FTT Items (PSTR)</div>
         <div class="tw mb">
           <table class="t">
@@ -1041,7 +1062,7 @@ function renderKPISummary(){
     const bgVar  = col==='good' ? 'var(--green-d)' : col==='bad' ? 'var(--red-d)' : 'var(--amber-d)';
 
     // Value display
-    const dispVal = noData ? '✓' : t.unit==='%' ? val.toFixed(1)+'%' : t.unit==='$' ? '$'+val.toFixed(2) : val.toFixed(2);
+    const dispVal = noData ? '—' : t.unit==='%' ? val.toFixed(1)+'%' : t.unit==='$' ? '$'+val.toFixed(2) : val.toFixed(2);
 
     // Progress bar percentage (capped at 100%)
     let barPct = 0;
@@ -1049,16 +1070,16 @@ function renderKPISummary(){
       if(t.dir==='ge') barPct = Math.min(val / t.tgt * 100, 115);
       else barPct = Math.min(t.tgt / (val || 0.001) * 100, 115);
     }
-    if(noData) barPct = 100;
+    if(noData) barPct = 0;
 
     // Status label
-    const ok = noData ? true : t.dir==='ge' ? val >= t.tgt : val <= t.tgt;
+    const ok = noData ? null : t.dir==='ge' ? val >= t.tgt : val <= t.tgt;
     const diff = noData ? 0 : Math.abs(val - t.tgt);
-    const statusLbl = noData ? 'No data — target met' :
+    const statusLbl = noData ? 'No data' :
       ok ? `Achieved: ${(t.dir==='ge' ? val/t.tgt*100 : t.tgt/(val||0.001)*100).toFixed(0)}%` :
       `To Go: ▼ ${diff.toFixed(t.tgt < 5 ? 2 : 1)}`;
-    const statusCol = ok ? 'var(--green)' : 'var(--red)';
-    const statusBg  = ok ? 'var(--green-d)' : 'var(--red-d)';
+    const statusCol = noData ? 'var(--muted)' : ok ? 'var(--green)' : 'var(--red)';
+    const statusBg  = noData ? 'var(--bg3)' : ok ? 'var(--green-d)' : 'var(--red-d)';
 
     html += `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;position:relative;overflow:hidden;">
@@ -1371,11 +1392,14 @@ function updatePostHeaders(){
     const tEl = document.getElementById(tid);
     if(!vEl) continue;
     const col = kpiColor(key, val);
-    vEl.className = `pval ${col}`;
-    vEl.innerHTML = val===null||val===undefined ? '✓' : kpiValDisplay(key, val);
+    const noData = val===null||val===undefined;
+    vEl.className = `pval ${noData ? 'neut' : col}`;
+    vEl.innerHTML = noData ? '<span style="font-size:22px;opacity:.4;">—</span>' : kpiValDisplay(key, val);
     if(tEl){
       const t = TARGETS[key];
-      tEl.innerHTML = `Target ${t?.lbl||''} &nbsp;${kpiDelta(key, val)}`;
+      tEl.innerHTML = noData
+        ? `Target ${t?.lbl||''} &nbsp;<span style="font-size:10px;color:var(--muted);font-weight:400;">No data yet</span>`
+        : `Target ${t?.lbl||''} &nbsp;${kpiDelta(key, val)}`;
     }
   }
 }
@@ -1517,55 +1541,116 @@ function renderAllKPIPosts(){
   // ── A-Shop DPV ──
   const dpvSummary = document.getElementById('ashop-dpv-summary');
   if(dpvSummary){
-    const dpvVal = MM_DATA.kpis.ashop_dpv?.val;
-    dpvSummary.innerHTML = (dpvVal === 0 || dpvVal === null || dpvVal === undefined)
-      ? `<div style="background:var(--green-d);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:700;">&#10003; DPV = 0.00 — No defects recorded at A-Shop checkpoint</div>`
-      : biggestProblem([], []);
+    const dpvKpi = MM_DATA.kpis.ashop_dpv;
+    const dpvVal = dpvKpi?.val;
+    const dpvDef = dpvKpi?.defects;
+    const dpvBod = dpvKpi?.bodies;
+    if(dpvVal === 0 || dpvVal === null || dpvVal === undefined){
+      dpvSummary.innerHTML = `<div style="background:var(--green-d);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:700;">&#10003; DPV = 0.00 — No defects recorded at A-Shop checkpoint</div>`;
+    } else {
+      dpvSummary.innerHTML = `<div style="background:var(--red-d);border:1px solid rgba(248,81,73,.25);border-radius:6px;padding:8px 12px;font-size:12px;">
+        <span style="color:var(--red);font-weight:700;">&#9888; A-Shop DPV = ${dpvVal.toFixed(4)}</span>
+        <span style="color:var(--muted);margin-left:8px;">${dpvDef||'?'} defects on ${dpvBod||'?'} bodies — individual items tracked in Power BI A-Shop DPV report</span>
+      </div>`;
+    }
   }
-  renderDPVRows('ashop-dpv-rows', [], 7, 'lbl-ashop-dpv', 'DPV Items');
-  setCallout('callout-ashop-dpv', [], [],
-    '&#10003; A-Shop DPV = 0.00 — zero defects at A-Shop quality checkpoint. Target ≤0.10 met.',
-    '');
+  // A-Shop DPV individual items are tracked at PBI level (not extracted to ppt)
+  { const el = document.getElementById('ashop-dpv-rows');
+    const dpvKpi = MM_DATA.kpis.ashop_dpv;
+    const dpvVal = dpvKpi?.val;
+    if(el){
+      if(!dpvVal){ el.innerHTML = `<tr><td colspan="7" style="color:var(--green);text-align:center;padding:10px;">&#10003; DPV = 0.00 — No defects at A-Shop</td></tr>`; }
+      else { el.innerHTML = `<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:10px;">&#8505; ${dpvKpi.defects||0} defect(s) on ${dpvKpi.bodies||0} bodies — item detail available in Power BI A-Shop DPV Linked report</td></tr>`; }
+    }
+  }
+  { const el = document.getElementById('callout-ashop-dpv');
+    const dpvVal = MM_DATA.kpis.ashop_dpv?.val;
+    if(el){
+      if(!dpvVal){ el.className='callout co-g'; el.innerHTML='&#10003; A-Shop DPV = 0.00 — zero defects at A-Shop quality checkpoint. Target ≤0.10 met.'; }
+      else { const ok = dpvVal <= 0.10; el.className = ok ? 'callout co-g' : 'callout co-a';
+        el.innerHTML = `&#9888; A-Shop DPV = ${dpvVal.toFixed(4)} — ${MM_DATA.kpis.ashop_dpv.defects||0} defect(s) on ${MM_DATA.kpis.ashop_dpv.bodies||0} bodies. Target ≤0.10.<span class="owner">Source: Power BI A-Shop Body Count</span>`; }
+    }
+  }
 
   // ── W&G DPV ──
+  // W&G individual items tracked in PBI (not separately extracted); use KPI defect count
   const wgSummary = document.getElementById('wg-dpv-summary');
-  if(wgSummary) wgSummary.innerHTML = biggestProblem(p.wg_items_536, p.wg_items_519);
-  renderDPVRows('wg-dpv-536-rows', p.wg_items_536, 6, 'lbl-wg-dpv-536', '536 W&amp;G Items (EX90)');
-  renderDPVRows('wg-dpv-519-rows', p.wg_items_519, 6, 'lbl-wg-dpv-519', '519 W&amp;G Items (PSTR)');
-  setCallout('callout-wg-dpv', p.wg_items_536, p.wg_items_519,
-    '&#10003; W&G DPV at target',
-    `&#9888; ${(p.wg_items_536||[]).length + (p.wg_items_519||[]).length} W&G items. Work orders in progress by Weld Masters.<span class="owner">Source: Power BI A-Shop DPV Linked</span>`);
+  const wgKpi = MM_DATA.kpis.wg_dpv;
+  const wgVal = wgKpi?.val;
+  if(wgSummary){
+    if(!wgVal || wgVal===0){
+      wgSummary.innerHTML = `<div style="background:var(--green-d);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:700;">&#10003; W&G DPV at target — no weld/geometry defects</div>`;
+    } else {
+      wgSummary.innerHTML = `<div style="background:var(--red-d);border:1px solid rgba(248,81,73,.25);border-radius:6px;padding:8px 12px;font-size:12px;">
+        <span style="color:var(--red);font-weight:700;">&#9888; W&amp;G DPV = ${wgVal.toFixed(4)}</span>
+        <span style="color:var(--muted);margin-left:8px;">${wgKpi.defects||'?'} weld/geometry defects on ${wgKpi.bodies||'?'} bodies — individual items tracked in Power BI W&amp;G DPV report</span>
+      </div>`;
+    }
+  }
+  { const el536 = document.getElementById('wg-dpv-536-rows'); const el519 = document.getElementById('wg-dpv-519-rows');
+    const msg = !wgVal || wgVal===0
+      ? `<tr><td colspan="6" style="color:var(--green);text-align:center;padding:10px;">&#10003; No W&amp;G defects — target met</td></tr>`
+      : `<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:10px;">&#8505; ${wgKpi?.defects||0} total defects — item detail available in Power BI W&amp;G DPV Linked report</td></tr>`;
+    if(el536) el536.innerHTML = msg;
+    if(el519) el519.innerHTML = msg.replace('colspan="6"','colspan="6"');
+    const lbl536 = document.getElementById('lbl-wg-dpv-536'); if(lbl536) lbl536.innerHTML = '536 W&amp;G Items (EX90)';
+    const lbl519 = document.getElementById('lbl-wg-dpv-519'); if(lbl519) lbl519.innerHTML = '519 W&amp;G Items (PSTR)';
+  }
+  { const el = document.getElementById('callout-wg-dpv');
+    if(el){
+      if(!wgVal || wgVal===0){ el.className='callout co-g'; el.innerHTML='&#10003; W&G DPV at target — no weld/geometry defects recorded.'; }
+      else { const ok = wgVal <= 1.20; el.className = ok ? 'callout co-g' : 'callout co-a';
+        el.innerHTML = `&#9888; W&amp;G DPV = ${wgVal.toFixed(4)} — ${wgKpi?.defects||0} defect(s) on ${wgKpi?.bodies||0} bodies. Work orders tracked by Weld Masters.<span class="owner">Source: Power BI A-Shop Body Count</span>`; }
+    }
+  }
 
   // ── WD6 FTT (Paint FTT) ──
   const wd6FttSum = document.getElementById('wd6-ftt-summary');
   if(wd6FttSum) wd6FttSum.innerHTML = biggestProblem(p.wd6_ftt_536, p.wd6_ftt_519);
   renderFTTRows('wd6-ftt-536-rows', p.wd6_ftt_536, 'lbl-wd6-ftt-536', '536 FTT Items (EX90)');
+  renderFTTRows('wd6-ftt-519-rows', p.wd6_ftt_519, 'lbl-wd6-ftt-519', '519 FTT Items (PSTR)');
   setCallout('callout-wd6-ftt', p.wd6_ftt_536, p.wd6_ftt_519,
     '&#10003; WD6 FTT at target — no repair items',
-    `&#9888; ${(p.wd6_ftt_536||[]).length + (p.wd6_ftt_519||[]).length} item(s) sent to repair at WD6.<span class="owner">Source: Power BI WD6 FTT Items</span>`);
+    `&#9888; ${(p.wd6_ftt_536||[]).length + (p.wd6_ftt_519||[]).length} item(s) sent to repair at WD6 Paint.<span class="owner">Source: Power BI WD6 FTT Items</span>`);
 
   // ── WD6 DPV (Paint DPV) ──
   const wd6DpvSum = document.getElementById('wd6-dpv-summary');
   if(wd6DpvSum) wd6DpvSum.innerHTML = biggestProblem(p.wd6_dpv_536, p.wd6_dpv_519);
   renderDPVRows('wd6-dpv-536-rows', p.wd6_dpv_536, 7, 'lbl-wd6-dpv-536', '536 DPV Items (EX90)');
+  renderDPVRows('wd6-dpv-519-rows', p.wd6_dpv_519, 7, 'lbl-wd6-dpv-519', '519 DPV Items (PSTR)');
   setCallout('callout-wd6-dpv', p.wd6_dpv_536, p.wd6_dpv_519,
     '&#10003; WD6 DPV at target — no defects',
-    `&#9888; ${(p.wd6_dpv_536||[]).length + (p.wd6_dpv_519||[]).length} WD6 DPV defect(s).<span class="owner">Source: Power BI WD6 DPV Items</span>`);
+    `&#9888; ${(p.wd6_dpv_536||[]).length + (p.wd6_dpv_519||[]).length} WD6 DPV defect(s) — see items above.<span class="owner">Source: Power BI WD6 DPV Items</span>`);
 
   // ── CAL FTT ──
   const calSum = document.getElementById('cal-ftt-summary');
   if(calSum) calSum.innerHTML = biggestProblem(p.cal_ftt_536, p.cal_ftt_519);
+  renderFTTRows('cal-ftt-536-rows', p.cal_ftt_536, 'lbl-cal-ftt-536', '536 FTT Items (EX90)');
   renderFTTRows('cal-ftt-519-rows', p.cal_ftt_519, 'lbl-cal-ftt-519', '519 FTT Items (PSTR)');
   setCallout('callout-cal-ftt', p.cal_ftt_536, p.cal_ftt_519,
     '&#10003; CAL FTT at target',
-    `&#9888; ${(p.cal_ftt_536||[]).length + (p.cal_ftt_519||[]).length} CAL repair item(s). EX90 CAL FTT=100%, PSTR=${MM_DATA.kpis.cal_ftt?.val != null ? (100 - ((MM_DATA.kpis.cal_ftt.eol - MM_DATA.kpis.cal_ftt.ok) / MM_DATA.kpis.cal_ftt.eol * 100)).toFixed(1) : '?'}%.<span class="owner">Source: Power BI C Shop Defects Linked</span>`);
+    `&#9888; ${(p.cal_ftt_536||[]).length + (p.cal_ftt_519||[]).length} CAL repair item(s). CAL FTT = ${MM_DATA.kpis.cal_ftt?.val != null ? MM_DATA.kpis.cal_ftt.val.toFixed(1)+'%' : '?'}.<span class="owner">Source: Power BI C Shop Defects Linked</span>`);
 
   // ── Final 1 FTT ──
   const fn1Sum = document.getElementById('final1-ftt-summary');
-  if(fn1Sum) fn1Sum.innerHTML = `<div style="background:var(--green-d);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:700;">&#10003; Final 1 FTT = 100.0% — All ${MM_DATA.kpis.final1_ftt?.eol||''} bodies OK. No repairs.</div>`;
-  setCallout('callout-final1-ftt', [], [],
-    '&#10003; Final 1 FTT = 100% — all bodies passed. No items to review.',
-    '');
+  const fn1Kpi = MM_DATA.kpis.final1_ftt;
+  const fn1Val = fn1Kpi?.val;
+  if(fn1Sum){
+    if(fn1Val === 100 || fn1Val === null || fn1Val === undefined){
+      fn1Sum.innerHTML = `<div style="background:var(--green-d);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:700;">&#10003; Final 1 FTT = ${fn1Val != null ? fn1Val.toFixed(1)+'%' : '100.0%'} — All ${fn1Kpi?.eol||''} bodies OK. No repairs.</div>`;
+    } else {
+      fn1Sum.innerHTML = `<div style="background:var(--amber-d);border:1px solid rgba(210,153,34,.25);border-radius:6px;padding:8px 12px;font-size:12px;">
+        <span style="color:var(--amber);font-weight:700;">&#9888; Final 1 FTT = ${fn1Val.toFixed(1)}%</span>
+        <span style="color:var(--muted);margin-left:8px;">${fn1Kpi?.repair||0} repair(s) out of ${fn1Kpi?.eol||0} bodies. Target 100%.</span>
+      </div>`;
+    }
+  }
+  { const el = document.getElementById('callout-final1-ftt');
+    if(el){
+      if(!fn1Val || fn1Val===100){ el.className='callout co-g'; el.innerHTML=`&#10003; Final 1 FTT = ${fn1Val != null ? fn1Val.toFixed(1)+'%' : '100%'} — all bodies passed. No items to review.`; }
+      else { el.className='callout co-a'; el.innerHTML=`&#9888; Final 1 FTT = ${fn1Val.toFixed(1)}% — ${fn1Kpi?.repair||0} body(ies) sent to repair out of ${fn1Kpi?.eol||0}.<span class="owner">Source: Power BI C Shop Body Count</span>`; }
+    }
+  }
 
   // ── Final 2 FTT ──
   const fn2Sum = document.getElementById('final2-ftt-summary');
