@@ -140,7 +140,26 @@ def find_pbi_port():
                     return port
                 except: pass
 
-    # Method 2: netstat scan for msmdsrv listening ports
+    # Method 2: PowerShell Get-WmiObject (wmic replacement — more reliable on Win11)
+    try:
+        ps_out = subprocess.check_output(
+            ['powershell', '-NoProfile', '-Command',
+             'Get-WmiObject Win32_Process | Where-Object {$_.Name -eq "msmdsrv.exe"} | Select-Object -ExpandProperty ProcessId'],
+            text=True, timeout=10)
+        pids = set(re.findall(r'\d{4,6}', ps_out))
+        if pids:
+            net_out = subprocess.check_output(['netstat', '-ano'], text=True, timeout=10)
+            for line in net_out.splitlines():
+                parts = line.split()
+                if len(parts) >= 5 and parts[4] in pids and 'LISTENING' in line:
+                    m = re.search(r':(\d{4,6})\s', line)
+                    if m:
+                        port = int(m.group(1))
+                        log(f"Found PBI XMLA port via PowerShell/netstat: {port}")
+                        return port
+    except: pass
+
+    # Method 3: fallback wmic scan (older Windows)
     try:
         out = subprocess.check_output(['netstat','-ano'], text=True, timeout=10)
         pids_raw = subprocess.check_output(
@@ -153,7 +172,7 @@ def find_pbi_port():
                 m = re.search(r':(\d{4,6})\s', line)
                 if m:
                     port = int(m.group(1))
-                    log(f"Found PBI XMLA port via netstat: {port}")
+                    log(f"Found PBI XMLA port via wmic/netstat: {port}")
                     return port
     except: pass
 
