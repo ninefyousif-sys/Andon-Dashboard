@@ -1748,12 +1748,12 @@ function renderWeekCompare(){
     const hasData  = !!dayKpis;
     const shortDate = new Date(dateStr+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
     const bg = isToday
-      ? 'background:rgba(96,165,250,.08);'
+      ? 'background:rgba(45,212,191,.08);'
       : 'background:rgba(255,255,255,.02);';
-    const border = isToday ? 'border-left:2px solid var(--blue-b);' : 'border-left:1px solid var(--border);';
-    html += `<th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;${bg}${border}${isToday?'color:var(--blue-b);text-shadow:0 0 10px rgba(96,165,250,.4);':'color:var(--muted);'}">
+    const border = isToday ? 'border-left:2px solid var(--teal);' : 'border-left:1px solid var(--border);';
+    html += `<th onclick="switchDay('${dateStr}')" style="cursor:pointer;padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;${bg}${border}${isToday?'color:var(--teal);text-shadow:0 0 10px rgba(45,212,191,.4);':'color:var(--muted);'}transition:background .15s;" onmouseover="this.style.background='rgba(45,212,191,.13)'" onmouseout="this.style.background='${isToday?'rgba(45,212,191,.08)':'rgba(255,255,255,.02)'}'">
       ${DAY_NAMES[i]}<br><span style="font-size:9px;font-weight:400;opacity:.7;">${shortDate}</span>
-      ${isToday ? '<br><span style="font-size:8px;background:rgba(96,165,250,.18);color:var(--blue-b);padding:1px 5px;border-radius:3px;font-weight:800;letter-spacing:.3px;">TODAY</span>' : ''}
+      ${isToday ? '<br><span style="font-size:8px;background:rgba(45,212,191,.2);color:var(--teal);padding:1px 5px;border-radius:3px;font-weight:800;letter-spacing:.3px;">SELECTED</span>' : ''}
     </th>`;
   });
   html += `<th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--teal);background:rgba(45,212,191,.05);border-left:1px solid var(--border);">vs Yesterday</th>`;
@@ -1777,8 +1777,8 @@ function renderWeekCompare(){
       const glowMap  = { good:'var(--glow-g)', bad:'var(--glow-r)', warn:'var(--glow-a)', neut:'none' };
       const c = colorMap[col] || 'var(--muted)';
       const g = isToday ? (glowMap[col] || 'none') : 'none';
-      const bg = isToday ? 'background:rgba(96,165,250,.06);' : '';
-      const bl = isToday ? 'border-left:2px solid rgba(96,165,250,.3);' : 'border-left:1px solid rgba(255,255,255,.04);';
+      const bg = isToday ? 'background:rgba(45,212,191,.06);' : '';
+      const bl = isToday ? 'border-left:2px solid rgba(45,212,191,.3);' : 'border-left:1px solid rgba(255,255,255,.04);';
 
       if(!isFuture && val !== null && val !== undefined) prevVal = val;
 
@@ -1823,11 +1823,11 @@ function renderWeekCompare(){
 
   el.innerHTML = html;
 
-  // Update subtitle
+  // Update subtitle — shows selected day and hint to click any column
   const sub = document.getElementById('week-panel-subtitle');
   if(sub){
-    const todayFormatted = new Date(todayStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-    sub.textContent = `${MM_DATA.wk} · ${todayFormatted}`;
+    const selFormatted = new Date(todayStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    sub.textContent = `${MM_DATA.wk} · Viewing ${selFormatted} · Click any day column to switch`;
   }
 }
 
@@ -1897,13 +1897,16 @@ function initDayPicker(){
 
 function switchDay(date){
   const sub = document.querySelector('.h-tit p');
+  // Sync dropdown to match
+  const sel = document.getElementById('day-picker');
+  if(sel) sel.value = date || '';
+
   if(!date){
-    // Restore today
     if(_todayData){
       MM_DATA.date=_todayData.date; MM_DATA.wk=_todayData.wk; MM_DATA.day=_todayData.day;
       MM_DATA.kpis=_todayData.kpis; MM_DATA.downtime=_todayData.downtime; MM_DATA.ppt=_todayData.ppt;
       if(sub) sub.textContent=`Body Shop (RA) \u00b7 ${_todayData.wk} D${_todayData.day} \u00b7 Daily Production Review`;
-      applyMMData();
+      applyMMData(); renderWeekCompare();
     }
     return;
   }
@@ -1912,14 +1915,24 @@ function switchDay(date){
   MM_DATA.date=d.date; MM_DATA.wk=d.wk; MM_DATA.day=d.day;
   MM_DATA.kpis=d.kpis; MM_DATA.downtime=d.downtime; MM_DATA.ppt=d.ppt;
   if(sub) sub.textContent=`Body Shop (RA) \u00b7 ${d.wk} D${d.day} \u00b7 ${new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}`;
-  applyMMData();
+  applyMMData(); renderWeekCompare();
 }
 
 /* ─── Init ─── */
 document.getElementById('dt').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
 document.querySelectorAll('.ni').forEach(el=>{el.addEventListener('click',()=>{document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));el.classList.add('on');});});
 function g(id){document.getElementById(id).scrollIntoView({behavior:'smooth'});}
-document.addEventListener('DOMContentLoaded', ()=>{ applyMMData(); initDayPicker(); });
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Auto-sync MM_DATA to the most recent confirmed history entry.
+  // This corrects any stale or manually-edited MM_DATA on page load.
+  const _hDates = Object.keys(MM_HISTORY).sort();
+  if(_hDates.length > 0){
+    const _latest = MM_HISTORY[_hDates[_hDates.length - 1]];
+    MM_DATA.date=_latest.date; MM_DATA.wk=_latest.wk; MM_DATA.day=_latest.day;
+    MM_DATA.kpis=_latest.kpis; MM_DATA.downtime=_latest.downtime; MM_DATA.ppt=_latest.ppt;
+  }
+  applyMMData(); initDayPicker(); renderWeekCompare();
+});
 </script>
 </body>
 </html>
