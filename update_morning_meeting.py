@@ -124,23 +124,30 @@ def prev_working_day(ref=None):
 # Requires: pip install pyadomd  (wraps ADOMD.NET — ships with Power BI Desktop)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def find_pbi_port():
-    """Find the Analysis Services port exposed by Power BI Desktop."""
-    # Method 1: scan known workspace folder Power BI writes its port to
+def find_pbi_ports():
+    """Find ALL Analysis Services ports exposed by running Power BI Desktop instances.
+    Returns a list of integer ports (may contain multiple if several PBI files are open)."""
+    ports = []
+
+    # Method 1: scan AnalysisServicesWorkspaces folder — PBI writes one port file per instance
     appdata = os.environ.get('LOCALAPPDATA', '')
     ws_root = os.path.join(appdata, 'Microsoft', 'Power BI Desktop',
                            'AnalysisServicesWorkspaces')
     if os.path.isdir(ws_root):
-        for folder in os.listdir(ws_root):
+        for folder in sorted(os.listdir(ws_root)):
             port_file = os.path.join(ws_root, folder, 'Data', 'msmdsrv.port.txt')
             if os.path.exists(port_file):
                 try:
                     port = int(open(port_file).read().strip())
-                    log(f"Found PBI XMLA port: {port} (from {folder})")
-                    return port
+                    if port not in ports:
+                        ports.append(port)
+                        log(f"Found PBI XMLA port: {port} (from {folder})")
                 except: pass
 
-    # Method 2: PowerShell Get-WmiObject (wmic replacement — more reliable on Win11)
+    if ports:
+        return ports
+
+    # Method 2: PowerShell Get-WmiObject — collect ALL msmdsrv pids then ALL their ports
     try:
         ps_out = subprocess.check_output(
             ['powershell', '-NoProfile', '-Command',
@@ -155,9 +162,13 @@ def find_pbi_port():
                     m = re.search(r':(\d{4,6})\s', line)
                     if m:
                         port = int(m.group(1))
-                        log(f"Found PBI XMLA port via PowerShell/netstat: {port}")
-                        return port
+                        if port not in ports:
+                            ports.append(port)
+                            log(f"Found PBI XMLA port via PowerShell/netstat: {port}")
     except: pass
+
+    if ports:
+        return ports
 
     # Method 3: fallback wmic scan (older Windows)
     try:
@@ -172,12 +183,20 @@ def find_pbi_port():
                 m = re.search(r':(\d{4,6})\s', line)
                 if m:
                     port = int(m.group(1))
-                    log(f"Found PBI XMLA port via wmic/netstat: {port}")
-                    return port
+                    if port not in ports:
+                        ports.append(port)
+                        log(f"Found PBI XMLA port via wmic/netstat: {port}")
     except: pass
 
-    log("WARNING: Power BI Desktop not found / not running")
-    return None
+    if not ports:
+        log("WARNING: Power BI Desktop not found / not running")
+    return ports
+
+
+def find_pbi_port():
+    """Compatibility shim — returns first port found (use find_pbi_ports() for multi-instance)."""
+    ports = find_pbi_ports()
+    return ports[0] if ports else None
 
 
 def run_dax(port, dax):
@@ -208,13 +227,36 @@ def fmt_dt(v):
 def query_powerbi(report_date):
     """
     Query Power BI Desktop for all KPI data for report_date.
+    Tries ALL running PBI instances and uses the first one that has A Shop data.
     Returns dict with kpis + ppt item arrays, or None if PBI not available.
     """
-    port = find_pbi_port()
-    if not port:
+    ports = find_pbi_ports()
+    if not ports:
         return None
 
     yr, mo, dy = report_date.year, report_date.month, report_date.day
+
+    # Probe each port: use the first one that returns A Shop rows for this date
+    port = None
+    probe_dax = f"""
+        EVALUATE SELECTCOLUMNS(
+          FILTER('A Shop Body Count-FTT/DPV',
+                 'A Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
+          "Model", 'A Shop Body Count-FTT/DPV'[Model])"""
+    for p in ports:
+        probe = run_dax(p, probe_dax)
+        if probe:
+            port = p
+            log(f"Using PBI port {port} — has {len(probe)} A Shop row(s) for {report_date}")
+            break
+        else:
+            log(f"Port {p} — no A Shop data for {report_date}, trying next...")
+
+    if port is None:
+        # No port returned data for this specific date — fall back to first available port
+        port = ports[0]
+        log(f"No port had data for {report_date}; defaulting to port {port}")
+
     log(f"Querying Power BI Desktop (port {port}) for {report_date}...")
 
     # ── A Shop summary ────────────────────────────────────────────────────────
