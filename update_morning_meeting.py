@@ -824,6 +824,36 @@ def query_powerbi(report_date):
             break  # found the right table
         except Exception as e:
             log(f"  W&G table '{wg_tbl}' not found: {e}")
+
+    # Fallback: query 'A Shop Defects' filtered by Linking Station = W&G AND link time date.
+    # The [Date] column in 'A Shop Defects' is the CLOSE date — items not yet repaired won't
+    # appear in the main ashop_ftt_rows query.  Filter by Link Time date instead to get all
+    # W&G items linked on the report day (open or closed).
+    if not wg_dpv_rows:
+        try:
+            wg_dpv_rows = run_dax(port, f"""
+                EVALUATE SELECTCOLUMNS(
+                  FILTER('A Shop Defects',
+                         'A Shop Defects'[Linking Station] = "07W&G" &&
+                         YEAR('A Shop Defects'[Link Time])  = {yr} &&
+                         MONTH('A Shop Defects'[Link Time]) = {mo} &&
+                         DAY('A Shop Defects'[Link Time])   = {dy}),
+                  "body",       'A Shop Defects'[Body Number],
+                  "rfid",       'A Shop Defects'[RFID],
+                  "desc",       'A Shop Defects'[Item Description],
+                  "model",      'A Shop Defects'[Model],
+                  "link_stn",   'A Shop Defects'[Linking Station],
+                  "link_time",  'A Shop Defects'[Link Time],
+                  "close_stn",  'A Shop Defects'[Closing Station],
+                  "close_time", 'A Shop Defects'[Close Time],
+                  "location",   'A Shop Defects'[Location],
+                  "extra",      'A Shop Defects'[Extra Info]
+                )
+            """)
+            log(f"  W&G items via link-time filter: {len(wg_dpv_rows)}")
+        except Exception as e:
+            log(f"  W&G link-time query failed: {e}")
+
     if not wg_dpv_rows:
         log("  W&G DPV items: 0 (no matching PBI table — defect count from summary only)")
 
@@ -986,10 +1016,17 @@ def build_ppt_items_from_pbi(pbi):
     wd6_ftt_536, wd6_ftt_519 = split_by_model(pbi['wd6_ftt'])
     wd6_dpv_536, wd6_dpv_519 = split_by_model(pbi['wd6_dpv'])
 
-    # W&G DPV: merge dedicated W&G table items + W&G-station items from A-Shop Defects
-    wg_ded_536, wg_ded_519   = split_by_model(pbi.get('wg_dpv', []))
-    wg_dpv_536 = wg_ded_536 + [r for r in ashop_wg_536 if r not in wg_ded_536]
-    wg_dpv_519 = wg_ded_519 + [r for r in ashop_wg_519 if r not in wg_ded_519]
+    # W&G DPV: use dedicated table / link-time fallback when available;
+    # otherwise fall back to W&G-station items from the close-date ashop query
+    wg_ded_536, wg_ded_519 = split_by_model(pbi.get('wg_dpv', []))
+    if wg_ded_536 or wg_ded_519:
+        # Link-time or dedicated table returned the full W&G item list — use directly
+        wg_dpv_536 = wg_ded_536
+        wg_dpv_519 = wg_ded_519
+    else:
+        # Last resort: items linked at W&G from the close-date-filtered ashop query
+        wg_dpv_536 = ashop_wg_536
+        wg_dpv_519 = ashop_wg_519
 
     log(f"  A-Shop split: {len(ashop_repair)} repair items, {len(ashop_dpv_all)} DPV items, "
         f"{len(ashop_wg)} W&G-station items, {len(wg_dpv_536)+len(wg_dpv_519)} W&G total")
