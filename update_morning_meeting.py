@@ -384,21 +384,56 @@ def discover_tables():
                 except Exception as ce:
                     log(f"      (could not list columns: {ce})")
 
-                # Measures — these are what you reference in CALCULATETABLE/ROW
+                # Measures — use MDSCHEMA_MEASURES (uses MEASUREGROUP_NAME = table display name)
+                meas_names = []
                 try:
                     meas_rows = run_dax(port,
-                        f"SELECT [NAME],[EXPRESSION] "
-                        f"FROM $SYSTEM.TMSCHEMA_MEASURES "
-                        f"WHERE [TABLE_NAME] = '{tname}'")
-                    for mr in meas_rows:
-                        mname = mr.get('NAME', mr.get('name', ''))
-                        log(f"      MEASURE: {mname}")
-                    if meas_rows:
-                        log(f"      >>> Set OPR_TABLE='{tname}', OPR_IS_MEASURES_TABLE=True")
-                        log(f"          OPR_BOK_MEASURE='<BOK measure name above>'")
-                        log(f"          OPR_BOL_MEASURE='<BOL measure name above>'")
-                except Exception as me:
-                    log(f"      (could not list measures: {me})")
+                        f"SELECT [MEASURE_NAME],[MEASUREGROUP_NAME] "
+                        f"FROM $SYSTEM.MDSCHEMA_MEASURES "
+                        f"WHERE [MEASUREGROUP_NAME] = '{tname}'")
+                    meas_names = [mr.get('MEASURE_NAME', mr.get('measure_name', ''))
+                                  for mr in meas_rows if mr.get('MEASURE_NAME') or mr.get('measure_name')]
+                except Exception:
+                    pass
+
+                if not meas_names:
+                    # Fallback: get all TMSCHEMA_MEASURES and cross-reference by table ID
+                    try:
+                        tbl_id_rows = run_dax(port,
+                            f"SELECT [ID] FROM $SYSTEM.TMSCHEMA_TABLES WHERE [NAME] = '{tname}'")
+                        tbl_id = (tbl_id_rows[0].get('ID') or tbl_id_rows[0].get('id')) if tbl_id_rows else None
+                        if tbl_id is not None:
+                            all_meas = run_dax(port,
+                                "SELECT [NAME],[TABLEID] FROM $SYSTEM.TMSCHEMA_MEASURES")
+                            meas_names = [r.get('NAME', r.get('name', ''))
+                                          for r in all_meas
+                                          if str(r.get('TABLEID', r.get('tableid', ''))) == str(tbl_id)]
+                    except Exception:
+                        pass
+
+                for mname in meas_names:
+                    log(f"      MEASURE: {mname}")
+                if meas_names:
+                    log(f"      >>> Set OPR_TABLE='{tname}', OPR_IS_MEASURES_TABLE=True")
+                    log(f"          OPR_BOK_MEASURE='<BOK measure name above>'")
+                    log(f"          OPR_BOL_MEASURE='<BOL measure name above>'")
+                elif not col_rows:
+                    log(f"      (no measures found via DMV — table may use hidden/implicit measures)")
+
+        # ── Broad search: any measure with BOK / BOL / OPR in name (all tables) ──
+        log(f"\n--- Searching ALL measures for BOK / BOL / OPR keywords ---")
+        try:
+            all_meas = run_dax(port,
+                "SELECT [MEASURE_NAME],[MEASUREGROUP_NAME] FROM $SYSTEM.MDSCHEMA_MEASURES")
+            found = [m for m in all_meas
+                     if any(kw in str(m.get('MEASURE_NAME','') or '').upper()
+                            for kw in ['BOK','BOL','OPR','AVAIL'])]
+            for m in found:
+                log(f"  FOUND: [{m.get('MEASURE_NAME','')}]  in table '{m.get('MEASUREGROUP_NAME','')}'")
+            if not found:
+                log("  (no BOK/BOL/OPR measures found by name search)")
+        except Exception as be:
+            log(f"  (broad measure search error: {be})")
 
         log(f"\n>>> ACTION: Fill in OPR_TABLE / OPR_BOK_MEASURE / OPR_BOL_MEASURE")
         log(f"            at the top of update_morning_meeting.py")
