@@ -187,8 +187,7 @@ def find_pbi_ports():
                         log(f"Found PBI XMLA port: {port} (from {folder})")
                 except: pass
 
-    if ports:
-        return ports
+    # Always continue to Method 2 to catch any instances Method 1 may have missed
 
     # Method 2: PowerShell Get-WmiObject — collect ALL msmdsrv pids then ALL their ports
     try:
@@ -210,10 +209,7 @@ def find_pbi_ports():
                             log(f"Found PBI XMLA port via PowerShell/netstat: {port}")
     except: pass
 
-    if ports:
-        return ports
-
-    # Method 3: fallback wmic scan (older Windows)
+    # Method 3: fallback wmic scan (older Windows) — also try even if Method 2 found ports
     try:
         out = subprocess.check_output(['netstat','-ano'], text=True, timeout=10)
         pids_raw = subprocess.check_output(
@@ -751,19 +747,55 @@ def query_powerbi(report_date):
     # ── B Shop (WD6) summary ──────────────────────────────────────────────────
     # Date column in B Shop is a String — filter by string match
     date_str = report_date.strftime('%Y-%m-%d')
-    bshop_rows = run_dax(port, f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('B Shop Body Count-FTT/DPV',
-                 LEFT('B Shop Body Count-FTT/DPV'[Date], 10) = "{date_str}"),
-          "Model",      'B Shop Body Count-FTT/DPV'[Model],
-          "BodyOK",     'B Shop Body Count-FTT/DPV'[Body OK],
-          "BIWOut",     'B Shop Body Count-FTT/DPV'[WD6 BIW Out],
-          "WD6_FTT",    'B Shop Body Count-FTT/DPV'[WD6 FTT],
-          "Defects",    'B Shop Body Count-FTT/DPV'[Defect Count],
-          "WD6_DPV",    'B Shop Body Count-FTT/DPV'[WD6 DPV]
-        )
-    """)
-    log(f"  B Shop summary: {len(bshop_rows)} model rows")
+    bshop_rows = []
+    # Try multiple date filter approaches — B Shop [Date] column format is unknown
+    bshop_attempts = [
+        # Attempt 1: Date is a proper DATE type
+        f"""EVALUATE SELECTCOLUMNS(
+              FILTER('B Shop Body Count-FTT/DPV',
+                     'B Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
+              "Model","B Shop Body Count-FTT/DPV"[Model],
+              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
+              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
+              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
+              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
+              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
+        # Attempt 2: String LEFT filter
+        f"""EVALUATE SELECTCOLUMNS(
+              FILTER('B Shop Body Count-FTT/DPV',
+                     LEFT(FORMAT('B Shop Body Count-FTT/DPV'[Date],"YYYY-MM-DD"),10) = "{date_str}"),
+              "Model","B Shop Body Count-FTT/DPV"[Model],
+              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
+              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
+              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
+              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
+              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
+        # Attempt 3: Year/Month/Day extract
+        f"""EVALUATE SELECTCOLUMNS(
+              FILTER('B Shop Body Count-FTT/DPV',
+                     YEAR('B Shop Body Count-FTT/DPV'[Date])={yr} &&
+                     MONTH('B Shop Body Count-FTT/DPV'[Date])={mo} &&
+                     DAY('B Shop Body Count-FTT/DPV'[Date])={dy}),
+              "Model","B Shop Body Count-FTT/DPV"[Model],
+              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
+              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
+              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
+              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
+              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
+    ]
+    for i, dax in enumerate(bshop_attempts, 1):
+        try:
+            rows = run_dax(port, dax)
+            if rows:
+                bshop_rows = rows
+                log(f"  B Shop summary: {len(bshop_rows)} model rows (attempt {i})")
+                break
+            else:
+                log(f"  B Shop attempt {i}: 0 rows")
+        except Exception as e:
+            log(f"  B Shop attempt {i} error: {e}")
+    if not bshop_rows:
+        log("  B Shop summary: 0 rows — all attempts failed, check --discover-tables for B Shop")
 
     # ── WD6 FTT items ─────────────────────────────────────────────────────────
     wd6_ftt_rows = run_dax(port, f"""
@@ -834,7 +866,8 @@ def query_powerbi(report_date):
             wg_dpv_rows = run_dax(port, f"""
                 EVALUATE SELECTCOLUMNS(
                   FILTER('A Shop Defects',
-                         'A Shop Defects'[Linking Station] = "07W&G" &&
+                         (CONTAINSSTRING('A Shop Defects'[Linking Station], "W&G") ||
+                          CONTAINSSTRING('A Shop Defects'[Linking Station], "WG")) &&
                          YEAR('A Shop Defects'[Link Time])  = {yr} &&
                          MONTH('A Shop Defects'[Link Time]) = {mo} &&
                          DAY('A Shop Defects'[Link Time])   = {dy}),
@@ -1036,8 +1069,26 @@ def build_ppt_items_from_pbi(pbi):
                    if any(x in str(r.get('link_stn','')).upper()
                           for x in ['CAL','EXCAL','EX-CAL','CALCAL'])]
     fn_defects  = [r for r in pbi['cshop_defects'] if r not in cal_defects]
+    # Log unique C Shop Final stations to help identify FN1 vs FN2 station names
+    fn_stns = sorted(set(str(r.get('link_stn','')).upper() for r in fn_defects))
+    log(f"  C Shop Final station names: {fn_stns}")
+    # Split fn_defects into Final 1 vs Final 2 by linking station
+    FN1_MARKERS = ['FN1','FINAL1','FINAL 1','F1-','F1 ']
+    FN2_MARKERS = ['FN2','FINAL2','FINAL 2','F2-','F2 ','EOL','EO-']
+    fn1_defects = [r for r in fn_defects
+                   if any(m in str(r.get('link_stn','')).upper() for m in FN1_MARKERS)]
+    fn2_defects = [r for r in fn_defects
+                   if any(m in str(r.get('link_stn','')).upper() for m in FN2_MARKERS)]
+    # If no station-based split possible, put all non-CAL defects in fn2 (more failures)
+    if not fn1_defects and not fn2_defects:
+        fn2_defects = fn_defects
+    elif not fn2_defects:
+        fn2_defects = [r for r in fn_defects if r not in fn1_defects]
+    elif not fn1_defects:
+        fn1_defects = []  # Final 1 repaired at FN2 or passed without recorded items
     cal_536, cal_519   = split_by_model(cal_defects)
-    fn2_536, fn2_519   = split_by_model(fn_defects)
+    fn1_536, fn1_519   = split_by_model(fn1_defects)
+    fn2_536, fn2_519   = split_by_model(fn2_defects)
 
     def _s(v, default=''):
         """Convert to string and strip newlines/carriage-returns (they break inline JS)."""
