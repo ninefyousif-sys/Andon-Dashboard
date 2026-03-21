@@ -321,10 +321,21 @@ try {
 
 
 def fmt_dt(v):
-    """Format a datetime value from DAX result to string."""
+    """Format a datetime value from DAX result to string.
+    Handles: datetime objects, OData /Date(ms)/ strings, plain strings."""
+    import datetime as _dt
     if v is None: return ''
     if hasattr(v, 'strftime'): return v.strftime('%m/%d/%Y %I:%M %p')
-    return str(v)
+    s = str(v)
+    # OData JSON date: /Date(1773947962000)/
+    m = re.match(r'^/Date\((-?\d+)\)/$', s.strip())
+    if m:
+        try:
+            ts = int(m.group(1)) / 1000.0
+            return _dt.datetime.fromtimestamp(ts).strftime('%m/%d/%Y %I:%M %p')
+        except Exception:
+            pass
+    return s
 
 
 def discover_tables():
@@ -1002,112 +1013,286 @@ def find_ppt(wk_str, day_int):
     log(f"WARNING: PPT not found: {fname}")
     return None
 
-def ensure_markitdown():
-    """Install markitdown into the venv if not already present."""
+def ensure_pptx_deps():
+    """Ensure python-pptx and markitdown[pptx] are installed."""
     try:
-        import markitdown
+        from pptx import Presentation  # noqa
         return True
     except ImportError:
-        log("markitdown not installed — installing now...")
+        log("python-pptx not installed — installing now...")
         try:
-            subprocess.run([sys.executable, '-m', 'pip', 'install', 'markitdown'],
-                           capture_output=True, timeout=120)
-            log("markitdown installed OK")
+            subprocess.run(
+                [sys.executable, '-m', 'pip', 'install', 'markitdown[pptx]', 'python-pptx'],
+                capture_output=True, timeout=300)
+            log("python-pptx installed OK")
             return True
         except Exception as e:
-            log(f"WARNING: could not install markitdown: {e}")
+            log(f"WARNING: could not install python-pptx: {e}")
             return False
+
+# Keep old name so any external callers still work
+def ensure_markitdown():
+    return ensure_pptx_deps()
 
 
 def read_ppt_markdown(ppt_path):
-    ensure_markitdown()
+    """Read a .pptx file and return a markdown string with <!-- Slide number: N --> markers.
+
+    Primary path:  markitdown Python API (markitdown[pptx])
+    Fallback path: python-pptx direct read → synthesises the same markdown format
+    """
+    ensure_pptx_deps()
+
+    # ── Primary: markitdown Python API ────────────────────────────────────────
     try:
-        result = subprocess.run([sys.executable,'-m','markitdown',ppt_path],
-                                capture_output=True, text=True, timeout=120)
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout
-        if result.stderr:
-            log(f"WARNING: markitdown stderr: {result.stderr[:200]}")
-        return ''
+        from markitdown import MarkItDown
+        md_converter = MarkItDown()
+        result = md_converter.convert(ppt_path)
+        md_text = result.text_content
+        if md_text and md_text.strip():
+            log(f"  PPT markitdown API: {len(md_text)} chars")
+            return md_text
     except Exception as e:
-        log(f"WARNING: PPT read error: {e}")
+        log(f"  markitdown API unavailable ({type(e).__name__}) — using python-pptx fallback")
+
+    # ── Fallback: python-pptx direct → mimic markitdown slide format ──────────
+    try:
+        from pptx import Presentation
+        from pptx.util import Pt
+        import io
+
+        prs = Presentation(ppt_path)
+        parts = []
+        for idx, slide in enumerate(prs.slides):
+            slide_num = idx + 1
+            parts.append(f"\n<!-- Slide number: {slide_num} -->\n")
+
+            for shape in slide.shapes:
+                # Text frames
+                if shape.has_text_frame:
+                    txt = shape.text_frame.text.strip()
+                    if txt:
+                        # Detect heading by large font or shape name
+                        try:
+                            size = shape.text_frame.paragraphs[0].runs[0].font.size
+                            is_heading = size and size >= Pt(18)
+                        except Exception:
+                            is_heading = False
+                        if is_heading:
+                            parts.append(f"## {txt}\n\n")
+                        else:
+                            parts.append(f"{txt}\n\n")
+
+                # Tables → markdown table
+                if shape.has_table:
+                    tbl = shape.table
+                    rows_out = []
+                    for row_idx, row in enumerate(tbl.rows):
+                        cells = [c.text.strip().replace('\n', ' ') for c in row.cells]
+                        rows_out.append('| ' + ' | '.join(cells) + ' |')
+                        if row_idx == 0:
+                            rows_out.append('| ' + ' | '.join(['---'] * len(cells)) + ' |')
+                    parts.append('\n'.join(rows_out) + '\n\n')
+
+        md_text = ''.join(parts)
+        log(f"  PPT python-pptx fallback: {len(md_text)} chars, {len(prs.slides)} slides")
+        return md_text
+
+    except Exception as e:
+        log(f"WARNING: PPT read completely failed: {e}")
         return ''
 
 def parse_md_table(text):
+    """Parse a markdown pipe-table from text. Strips zero-width/invisible chars."""
+    # Characters to strip beyond normal whitespace: zero-width space, ZWNJ, ZWJ, BOM
+    _ZW = '\u200b\u200c\u200d\ufeff\u00ad'
+    def _clean(s):
+        return s.strip().strip(_ZW).strip()
     rows, headers, in_table = [], [], False
     for line in text.split('\n'):
         line = line.strip()
         if not (line.startswith('|') and line.endswith('|')):
             if in_table: break
             continue
-        cells = [c.strip() for c in line[1:-1].split('|')]
+        cells = [_clean(c) for c in line[1:-1].split('|')]
         if not in_table:
-            headers = cells; in_table = True; continue
-        if all(re.match(r'^[-: ]+$', c) for c in cells): continue
+            headers = [_clean(h) for h in cells]; in_table = True; continue
+        if all(re.match(r'^[-: ]+$', c) for c in cells if c): continue
         if any(c and c != 'None' for c in cells):
             rows.append({headers[j] if j < len(headers) else f'c{j}': cells[j]
                          for j in range(len(cells))})
     return rows
 
+def _first_val(r, *keys):
+    """Return first non-empty value from a dict matching any of the given keys (case-insensitive)."""
+    ku = {k.upper(): v for k, v in r.items()}
+    for key in keys:
+        v = ku.get(key.upper(), '')
+        if v: return v
+    # Partial match fallback
+    for key in keys:
+        for k, v in ku.items():
+            if key.upper() in k and v:
+                return v
+    return ''
+
+
 def parse_ppt_tables(md_text):
+    """Parse PPT markdown (all slides) using content-based detection.
+    NEVER relies on hardcoded slide numbers — slides change position every day.
+    Detects each section by table headers and text keywords."""
     data = {
-        'safety':       {'title':'','detail':'','meta':''},
+        'safety':       {'title': '', 'detail': '', 'meta': ''},
         'part_quality': [],
         'bodies_oof':   [],
         'scrap':        '$0',
-        'scrap_note':   'Both scrapped parts covered by supplier warranty — zero cost to Volvo Cars',
+        'scrap_note':   'No scrap today',
     }
-    if not md_text: return data
+    if not md_text:
+        return data
+
     chunks = re.split(r'<!--\s*Slide number:\s*(\d+)\s*-->', md_text)
+    # Track which slides were already classified as data-table slides (PQ or BOF)
+    # so we don't also detect them as safety/scrap
+    data_table_slides = set()
+
     for i in range(1, len(chunks), 2):
         slide_num = int(chunks[i])
-        content   = chunks[i+1] if i+1 < len(chunks) else ''
-        if slide_num == 3:
-            lines = [l.strip() for l in content.split('\n') if l.strip() and not l.startswith('!')]
-            title  = next((l for l in lines if 'ALERT' in l.upper() or 'SAFETY' in l.upper()), '')
-            detail = next((l for l in lines if len(l) > 30 and 'ALERT' not in l.upper()
-                           and not l.startswith('#') and not re.match(r'\d{1,2}/\d+',l)), '')
-            date   = next((l for l in lines if re.search(r'\d{1,2}/\d{1,2}/\d{4}',l)), '')
-            data['safety'] = {'title':title.strip(),'detail':detail.strip(),'meta':date.strip()}
-        elif slide_num == 4:
+        content   = chunks[i + 1] if i + 1 < len(chunks) else ''
+        cu        = content.upper()
+
+        # ── Part Quality ────────────────────────────────────────────────────────
+        # Detect by table having: PROD, PART DESCRIPTION, SUPPLIER, HOW BIG
+        if not data['part_quality']:
             rows = parse_md_table(content)
             if rows:
-                data['part_quality'] = [
-                    {'area':    r.get('PROD.AREA',r.get('PROD. AREA','')),
-                     'model':   r.get('EX90 /723N',r.get('EX90/723N','')),
-                     'part':    r.get('PART DESCRIPTION',''),
-                     'supplier':r.get('SUPPLIER NAME',''),
-                     'partno':  r.get('PART NUMBER',''),
-                     'qty':     r.get('HOW BIG/HOW MANY?',r.get('HOW BIG/HOW MANY','')),
-                     'status':  r.get('STATUS',''),
-                     'repeater':r.get('REPEATER',''),
-                     'sort':    r.get('Sort',r.get('SORT','')),
-                     'problem': r.get('PROBLEM STATEMENT/DETAILS',r.get('PROBLEM STATEMENT','')),
-                     'handshake':r.get('HANDSHAKE/VIRA',r.get('HANDSHAKE / VIRA','')),}
-                    for r in rows if r.get('PART DESCRIPTION')]
-        elif slide_num == 6:
+                hdr_str = ' '.join(rows[0].keys()).upper()
+                if ('PART DESCRIPTION' in hdr_str or
+                        ('PROD' in hdr_str and 'SUPPLIER' in hdr_str)):
+                    items = []
+                    for r in rows:
+                        part = _first_val(r, 'PART DESCRIPTION')
+                        if not part:
+                            continue
+                        items.append({
+                            'area':     _first_val(r, 'PROD.AREA', 'PROD. AREA', 'AREA', 'PRODUCTION AREA'),
+                            'model':    _first_val(r, 'EX90 /723N', 'EX90/723N', 'MODEL', 'EX90'),
+                            'part':     part,
+                            'supplier': _first_val(r, 'SUPPLIER NAME', 'SUPPLIER'),
+                            'partno':   _first_val(r, 'PART NUMBER', 'PART NO', 'PARTNO'),
+                            'qty':      _first_val(r, 'HOW BIG/HOW MANY?', 'HOW BIG/HOW MANY', 'QTY', 'HOW BIG'),
+                            'status':   _first_val(r, 'STATUS'),
+                            'repeater': _first_val(r, 'REPEATER'),
+                            'sort':     _first_val(r, 'SORT'),
+                            'problem':  _first_val(r, 'PROBLEM STATEMENT/DETAILS', 'PROBLEM STATEMENT', 'PROBLEM'),
+                            'handshake':_first_val(r, 'HANDSHAKE/VIRA', 'HANDSHAKE / VIRA', 'HANDSHAKE', 'VIRA'),
+                        })
+                    if items:
+                        data['part_quality'] = items
+                        data_table_slides.add(slide_num)
+                        log(f"  PPT: Part Quality found on slide {slide_num} ({len(items)} items)")
+
+        # ── Bodies Out of Flow ──────────────────────────────────────────────────
+        # Detect by table having: RFID, LOCATION, AUTOMATION, BODY
+        if not data['bodies_oof']:
             rows = parse_md_table(content)
             if rows:
-                data['bodies_oof'] = [
-                    {'mode':     r.get('Automation /Manual',r.get('AUTOMATION /MANUAL','')),
-                     'rfid':     r.get('Body/RFID​',r.get('BODY/RFID','')),
-                     'type':     next((v for k,v in r.items() if 'TYPE' in k.upper() and v), ''),
-                     'bodytype': next((v for k,v in r.items() if 'UNDERBODY' in k.upper() or 'COMPLETE' in k.upper() and v),'Complete'),
-                     'location': r.get('Location Staged​',r.get('LOCATION STAGED','')),
-                     'status':   r.get('Status​',r.get('STATUS','')),
-                     'reason':   r.get('Reason​',r.get('REASON','')),
-                     'removed':  r.get('Date Removed from Line​WKxxDxx​',r.get('DATE REMOVED','')),
-                     'expected': r.get('Expected Repair Date​WKxxDxx​',r.get('EXPECTED REPAIR','')),
-                     'dummy':    r.get('Dummy Order Entered?​"Yes or No"​',r.get('DUMMY ORDER','')),
-                     'champion': r.get('Responsible Champion​',r.get('CHAMPION','')),}
-                    for r in rows if r.get('Body/RFID​') or r.get('BODY/RFID','')]
-        elif slide_num == 17:
-            m = re.search(r'\$\s*[\d,]+', content)
-            scrap_val = m.group(0).replace(' ','') if m else '$0'
-            data['scrap'] = scrap_val
-            data['scrap_note'] = ('Both scrapped parts covered by supplier warranty — zero cost to Volvo Cars'
-                                  if scrap_val == '$0' else
-                                  f"{scrap_val} scrap cost — review breakdown with team")
+                hdr_str = ' '.join(rows[0].keys()).upper()
+                if ('RFID' in hdr_str or
+                        ('LOCATION' in hdr_str and ('AUTOMATION' in hdr_str or 'BODY' in hdr_str))):
+                    items = []
+                    for r in rows:
+                        rfid = _first_val(r, 'BODY/RFID', 'RFID', 'BODY')
+                        items.append({
+                            'mode':     _first_val(r, 'AUTOMATION /MANUAL', 'AUTOMATION/MANUAL', 'AUTOMATION', 'MANUAL'),
+                            'rfid':     rfid,
+                            'type':     _first_val(r, 'TYPE'),
+                            'bodytype': _first_val(r, 'UNDERBODY TYPE', 'COMPLETE BODY', 'BODY TYPE') or 'Complete',
+                            'location': _first_val(r, 'LOCATION STAGED', 'LOCATION'),
+                            'status':   _first_val(r, 'STATUS'),
+                            'reason':   _first_val(r, 'REASON'),
+                            'removed':  _first_val(r, 'DATE REMOVED FROM LINE', 'DATE REMOVED', 'REMOVED'),
+                            'expected': _first_val(r, 'EXPECTED REPAIR DATE', 'EXPECTED REPAIR', 'EXPECTED'),
+                            'dummy':    _first_val(r, 'DUMMY ORDER ENTERED', 'DUMMY ORDER', 'DUMMY'),
+                            'champion': _first_val(r, 'RESPONSIBLE CHAMPION', 'CHAMPION', 'RESPONSIBLE'),
+                        })
+                    if items:
+                        data['bodies_oof'] = items
+                        data_table_slides.add(slide_num)
+                        log(f"  PPT: Bodies OOF found on slide {slide_num} ({len(items)} bodies)")
+
+        # ── Safety ──────────────────────────────────────────────────────────────
+        # Detect by text containing safety/GEMBA/alert/NOK/incident keywords
+        # Skip slides already classified as Part Quality or Bodies OOF tables
+        if not data['safety']['title'] and slide_num not in data_table_slides:
+            SAFETY_KWS = ['GEMBA', 'ALERT', 'SAFETY', 'INCIDENT', 'NOK', 'SUSPECT',
+                          'ESCALAT', 'INJURY', 'NEAR MISS', 'STOP THE LINE',
+                          'QUALITY CONCERN', 'STOP SHIP']
+            # Only count keyword hits in NON-table lines
+            non_table_lines = [l.strip() for l in content.split('\n')
+                               if l.strip()
+                               and not l.strip().startswith('|')   # table rows
+                               and not l.strip().startswith('!')   # images
+                               and not re.match(r'^[-|: ]+$', l.strip())]  # dividers
+            non_table_text = ' '.join(non_table_lines).upper()
+            if any(kw in non_table_text for kw in SAFETY_KWS):
+                # PPT template placeholder patterns to skip
+                TMPL_PATS = [
+                    r'^hard subsection$', r'enter\s+pictures?\s+here', r'click\s+to\s+(add|edit)',
+                    r'^add\s+your\s+text', r'^subtitle$', r'^type\s+here$',
+                    r'^text\s+box$', r'^insert\s+picture', r'^picture\s+placeholder',
+                    r'^\(enter\s+pictures?\s+here\)$',
+                ]
+                def _is_template(line):
+                    l = line.strip().lower()
+                    return any(re.search(p, l) for p in TMPL_PATS) or len(l) < 4
+                # Get non-heading, non-template text lines for the safety message
+                text_lines = [l for l in non_table_lines
+                              if not re.match(r'^#+\s', l) and not _is_template(l)]
+                # Prefer lines that directly contain a safety keyword as the title
+                title_line = ''
+                detail_lines = []
+                # Look for a line with a strong safety keyword first
+                for l in text_lines:
+                    if any(kw in l.upper() for kw in SAFETY_KWS) and len(l) > 6:
+                        title_line = l
+                        break
+                if not title_line and text_lines:
+                    title_line = text_lines[0]
+                for l in text_lines:
+                    if l == title_line:
+                        continue
+                    if len(l) > 8:
+                        detail_lines.append(l)
+                    if len(detail_lines) >= 3:
+                        break
+                if title_line:
+                    data['safety'] = {
+                        'title':  title_line,
+                        'detail': ' | '.join(detail_lines),
+                        'meta':   f'Slide {slide_num}',
+                    }
+                    log(f"  PPT: Safety found on slide {slide_num}: {title_line[:60]}")
+
+        # ── Scrap ───────────────────────────────────────────────────────────────
+        # Detect by text containing SCRAP keyword (skip data-table slides)
+        if data['scrap'] == '$0' and 'SCRAP' in cu and slide_num not in data_table_slides:
+            dollar = re.search(r'\$\s*[\d,]+', content)
+            if dollar:
+                scrap_val = dollar.group(0).replace(' ', '')
+                data['scrap'] = scrap_val
+                data['scrap_note'] = f"{scrap_val} scrap cost — review breakdown with team"
+                log(f"  PPT: Scrap found on slide {slide_num}: {scrap_val}")
+            elif 'NO SCRAP' in cu:
+                data['scrap'] = '$0'
+                data['scrap_note'] = 'No scrap today'
+                log(f"  PPT: Scrap slide {slide_num}: NO SCRAP")
+
+    # Log what was / wasn't found
+    if not data['part_quality']:  log("  PPT WARNING: Part Quality table not found in any slide")
+    if not data['bodies_oof']:    log("  PPT WARNING: Bodies OOF table not found in any slide")
+    if not data['safety']['title']: log("  PPT WARNING: Safety action item not found in any slide")
+
     return data
 
 
@@ -1361,6 +1546,28 @@ def patch_history_only(day_dict, report_date, target_file=None):
     else:
         history = {}
 
+    # ── Merge: preserve existing real KPI values if new backfill got null data ──
+    existing = history.get(str(report_date), {})
+    if existing:
+        def _has_val(kpis):
+            return any((v or {}).get('val') is not None for v in (kpis or {}).values()
+                       if isinstance(v, dict))
+        # If existing entry has real KPIs but new backfill doesn't, keep the old KPIs
+        if _has_val(existing.get('kpis')) and not _has_val(day_dict.get('kpis')):
+            log(f"  Keeping existing KPIs for {report_date} (PBI returned 0 rows this run)")
+            day_dict['kpis'] = existing['kpis']
+        # If existing entry has real FTT/DPV item lists, keep them
+        if existing.get('ppt'):
+            for item_key in ['ashop_ftt_536','ashop_ftt_519','wd6_ftt_536','wd6_ftt_519',
+                             'wd6_dpv_536','wd6_dpv_519','cal_ftt_536','cal_ftt_519',
+                             'final2_ftt_536','final2_ftt_519','wg_items_536','wg_items_519']:
+                if existing['ppt'].get(item_key) and not (day_dict.get('ppt') or {}).get(item_key):
+                    if 'ppt' not in day_dict: day_dict['ppt'] = {}
+                    day_dict['ppt'][item_key] = existing['ppt'][item_key]
+        # Preserve downtime events if new run got zeros
+        if (existing.get('downtime',{}).get('total_min',0) > 0 and
+                day_dict.get('downtime',{}).get('total_min',0) == 0):
+            day_dict['downtime'] = existing['downtime']
     history[str(report_date)] = day_dict
     sorted_dates = sorted(history.keys())
     if len(sorted_dates) > HISTORY_MAX:
