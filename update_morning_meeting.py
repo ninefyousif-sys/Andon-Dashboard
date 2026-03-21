@@ -53,11 +53,11 @@ WK12_MON = datetime.date(2026, 3, 16)
 #   OPR_BOK_MEASURE    = 'BOK OPR'   # column name
 #   OPR_BOL_MEASURE    = 'BOL OPR'   # column name
 #
-OPR_TABLE             = 'OPR BOK Card'  # confirmed table name from --discover-tables
-OPR_IS_MEASURES_TABLE = True            # True = measures container, False = data table
-OPR_BOK_MEASURE       = None            # fill in after --discover-tables (measure name)
-OPR_BOL_MEASURE       = None            # fill in after --discover-tables (measure name)
-OPR_DATE_TABLE        = None            # auto-tries common names; override if needed
+OPR_TABLE             = 'OPR BOK Card'  # confirmed via --discover-tables
+OPR_IS_MEASURES_TABLE = True            # confirmed — no data columns, only measures
+OPR_BOK_MEASURE       = 'OPR BOK Card'  # confirmed via --discover-tables (2026-03-21)
+OPR_BOL_MEASURE       = 'OPR BOL Card'  # confirmed via --discover-tables (2026-03-21)
+OPR_DATE_TABLE        = 'Date Table'    # confirmed present in port 58016
 OPR_COL_DATE          = 'Date'          # (used only when OPR_IS_MEASURES_TABLE=False)
 # Legacy aliases kept for backwards compat
 OPR_COL_BOK = OPR_BOK_MEASURE
