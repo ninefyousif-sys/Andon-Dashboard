@@ -962,10 +962,34 @@ def build_ppt_items_from_pbi(pbi):
         if not e536 and not e519: e536 = rows
         return e536, e519
 
-    ashop_536, ashop_519 = split_by_model(pbi['ashop_ftt'])
+    # ── A-Shop: split 'A Shop Defects' rows into three purposeful lists ──────────
+    # All items from 'A Shop Defects' for the report date
+    ashop_all  = pbi.get('ashop_ftt', [])
+    # FTT repair items: only bodies closed at an HVR repair station
+    # (matches the PBI 536/519 FTT Items report filter)
+    ashop_repair = [r for r in ashop_all
+                    if 'HVR' in str(r.get('close_stn', '')).upper()]
+    # DPV items: all items on finalized bodies (close_stn set, any station)
+    # This approximates the DPV defect scope (repair bodies + bodies that passed)
+    ashop_dpv_all = [r for r in ashop_all if r.get('close_stn') or r.get('close_time')]
+    # W&G items: items linked at W&G stations (supplement dedicated W&G table query)
+    ashop_wg = [r for r in ashop_all
+                if any(x in str(r.get('link_stn', '')).upper() for x in ['W&G', 'WG'])]
+
+    ashop_536,     ashop_519     = split_by_model(ashop_repair)
+    ashop_dpv_536, ashop_dpv_519 = split_by_model(ashop_dpv_all)
+    ashop_wg_536,  ashop_wg_519  = split_by_model(ashop_wg)
+
     wd6_ftt_536, wd6_ftt_519 = split_by_model(pbi['wd6_ftt'])
     wd6_dpv_536, wd6_dpv_519 = split_by_model(pbi['wd6_dpv'])
-    wg_dpv_536,  wg_dpv_519  = split_by_model(pbi.get('wg_dpv', []))
+
+    # W&G DPV: merge dedicated W&G table items + W&G-station items from A-Shop Defects
+    wg_ded_536, wg_ded_519   = split_by_model(pbi.get('wg_dpv', []))
+    wg_dpv_536 = wg_ded_536 + [r for r in ashop_wg_536 if r not in wg_ded_536]
+    wg_dpv_519 = wg_ded_519 + [r for r in ashop_wg_519 if r not in wg_ded_519]
+
+    log(f"  A-Shop split: {len(ashop_repair)} repair items, {len(ashop_dpv_all)} DPV items, "
+        f"{len(ashop_wg)} W&G-station items, {len(wg_dpv_536)+len(wg_dpv_519)} W&G total")
 
     # C Shop: split defects by linking station prefix to CAL vs Final
     cal_defects = [r for r in pbi['cshop_defects']
@@ -1006,10 +1030,12 @@ def build_ppt_items_from_pbi(pbi):
         }
 
     return {
-        'ashop_ftt_536': [to_ftt_item(r) for r in ashop_536],
-        'ashop_ftt_519': [to_ftt_item(r) for r in ashop_519],
-        'wg_dpv_536':    [to_dpv_item(r) for r in wg_dpv_536],
-        'wg_dpv_519':    [to_dpv_item(r) for r in wg_dpv_519],
+        'ashop_ftt_536':  [to_ftt_item(r) for r in ashop_536],
+        'ashop_ftt_519':  [to_ftt_item(r) for r in ashop_519],
+        'ashop_dpv_536':  [to_ftt_item(r) for r in ashop_dpv_536],  # all-body defects for DPV table
+        'ashop_dpv_519':  [to_ftt_item(r) for r in ashop_dpv_519],
+        'wg_dpv_536':     [to_dpv_item(r) for r in wg_dpv_536],
+        'wg_dpv_519':     [to_dpv_item(r) for r in wg_dpv_519],
         'wd6_ftt_536':   [to_ftt_item(r) for r in wd6_ftt_536],
         'wd6_ftt_519':   [to_ftt_item(r) for r in wd6_ftt_519],
         'wd6_dpv_536':   [to_dpv_item(r) for r in wd6_dpv_536],

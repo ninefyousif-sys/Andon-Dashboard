@@ -810,29 +810,7 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
 <!-- ═══ SCRAP ═══ -->
 <div id="scrap" class="anc">
   <div class="sh">&#9851;&#65039; Scrap</div>
-  <div class="sch">
-    <div class="big" id="scrap-val">$0</div>
-    <div class="sub" id="scrap-sub">Total Scrap Cost &mdash; WK12 D3 (Yesterday)</div>
-    <div class="ok" id="scrap-note">&#10003; Both scrapped parts covered by supplier warranty &mdash; zero cost to Volvo Cars</div>
-  </div>
-  <div class="g4 mb">
-    <div class="kpi cg"><div class="kl">Scrap Cost Yesterday</div><div class="kv good">$0</div><div class="kt">Target &#8804;budget</div><div class="kd dg">&#10003;</div></div>
-    <div class="kpi ca"><div class="kl">Scrap Units</div><div class="kv warn">2</div><div class="kt">Both Underbody</div></div>
-    <div class="kpi cg"><div class="kl">Scrap per Car</div><div class="kv good">$0.00</div><div class="kt">Target &#8804;budget/car</div><div class="kd dg">&#10003;</div></div>
-    <div class="kpi cg"><div class="kl">MTD Scrap</div><div class="kv good">$0</div><div class="kt">Full budget intact</div><div class="kd dg">&#10003;</div></div>
-  </div>
-  <div class="card mb">
-    <div class="ctit">Scrapped Parts Detail</div>
-    <div class="tw">
-      <table class="t">
-        <thead><tr><th>Part</th><th>Prod Area</th><th>Body Area</th><th>Model</th><th>Supplier</th><th>Reason</th><th>Scrap Cost</th><th>Recovery</th></tr></thead>
-        <tbody>
-          <tr><td>LH Side-Member</td><td>RWH</td><td style="color:var(--ub)">Underbody</td><td>EX90</td><td>Herzogenb</td><td>Bent on line</td><td class="tc-g">$0</td><td>Supplier warranty</td></tr>
-          <tr><td>Reinf Side Member Front RH</td><td>232-060 FWH</td><td style="color:var(--ub)">Underbody</td><td>723N</td><td>Chengdu Jiarun</td><td>Bent</td><td class="tc-g">$0</td><td>Supplier warranty</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <div id="scrap-hero-block"><!-- populated by renderScrap() from kpis.scrap_car --></div>
 </div>
 
 </main>
@@ -1220,14 +1198,26 @@ function renderBOFTable(){
 }
 
 function renderScrap(){
-  const p = MM_DATA.ppt;
-  if(!p) return;
-  const val  = document.getElementById('scrap-val');
-  const sub  = document.getElementById('scrap-sub');
-  const note = document.getElementById('scrap-note');
-  if(val)  val.textContent  = p.scrap || '$0';
-  if(sub)  sub.textContent  = `Total Scrap Cost — ${MM_DATA.wk} D${MM_DATA.day} (Yesterday)`;
-  if(note) note.textContent = p.scrap_note || '✓ On budget';
+  const el = document.getElementById('scrap-hero-block');
+  if(!el) return;
+  const k   = MM_DATA.kpis;
+  const kpi = k.scrap_car;
+  const val = kpi?.val;
+  const t   = TARGETS.scrap_car;
+  const noData = val === null || val === undefined;
+  const ok  = noData || (t ? (t.dir === 'le' ? val <= t.tgt : val >= t.tgt) : true);
+  const col = noData ? 'var(--muted)' : (ok ? 'var(--green)' : 'var(--red)');
+  const disp = noData ? '—' : '$' + val.toFixed(2);
+  const tgtStr = t ? '≤$' + t.tgt.toFixed(2) : '—';
+  const statusNote = noData
+    ? 'No data from Power BI yet — run update_morning_meeting.py'
+    : (ok ? `&#10003; On target (${tgtStr} per car)` : `&#9888; Above target (${tgtStr} per car)`);
+  el.innerHTML = `<div style="text-align:center;padding:36px 20px 28px;">
+    <div style="font-size:60px;font-weight:900;color:${col};letter-spacing:-3px;line-height:1;">${disp}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:.5px;">SCRAP / CAR &mdash; ${MM_DATA.wk} D${MM_DATA.day}</div>
+    <div style="font-size:12px;color:${col};margin-top:6px;font-weight:700;">${statusNote}</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px;">Source: Power BI BIW SQD Axxos</div>
+  </div>`;
 }
 
 /* ═══ SHOP BANNER RENDERER ═══ */
@@ -1440,6 +1430,26 @@ function setItemCountLabel(lblId, shown, total, baseLabel){
   el.innerHTML = baseLabel + badge;
 }
 
+// ── Compact defect-type highlight pills ──────────────────────────────────────
+// Returns a flex row of colored pills showing every defect type + count.
+// Shows up to MAX_TYPES pills then "+N more types". Used above every Quality KPI.
+function defectTypePills(items536, items519){
+  const all = [...(items536||[]), ...(items519||[])];
+  if(!all.length) return `<div style="color:var(--green);font-size:11px;font-weight:700;padding:4px 0;">&#10003; No defect items — target met</div>`;
+  const counts = {};
+  all.forEach(r=>{ const k=r.desc||'?'; counts[k]=(counts[k]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const MAX = 5;
+  const pills = sorted.slice(0, MAX).map(([d,c])=>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.28);border-radius:10px;padding:2px 8px;font-size:10px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;">`+
+    `<span style="color:var(--text);opacity:.85;">${d}</span><span style="color:var(--red);font-weight:800;">&times;${c}</span></span>`
+  );
+  if(sorted.length > MAX){
+    pills.push(`<span style="color:var(--muted);font-size:10px;white-space:nowrap;">+${sorted.length-MAX} more types</span>`);
+  }
+  return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:4px 0;">${pills.join('')}&nbsp;<span style="color:var(--muted);font-size:10px;">(${all.length} total)</span></div>`;
+}
+
 function renderFTTRows(tbodyId, items, lblId, baseLabel){
   const el = document.getElementById(tbodyId);
   if(!el) return;
@@ -1449,7 +1459,7 @@ function renderFTTRows(tbodyId, items, lblId, baseLabel){
     if(lblId) setItemCountLabel(lblId, 0, 0, baseLabel||'');
     return;
   }
-  const TOP = 10;
+  const TOP = 5;
   const visible = items.slice(0, TOP);
   el.innerHTML = visible.map(r=>`<tr>
     <td class="mono">${r.body||'—'}</td>
@@ -1474,7 +1484,7 @@ function renderDPVRows(tbodyId, items, cols, lblId, baseLabel){
     if(lblId) setItemCountLabel(lblId, 0, 0, baseLabel||'');
     return;
   }
-  const TOP = 10;
+  const TOP = 5;
   const visible = items.slice(0, TOP);
   el.innerHTML = visible.map(r=>`<tr>
     <td class="mono">${r.body||'—'}</td>
@@ -1537,14 +1547,15 @@ function renderAllKPIPosts(){
   renderFTTRows('ashop-ftt-536-rows', p.ashop_ftt_536, 'lbl-ashop-ftt-536', '536 Items (EX90)');
   renderFTTRows('ashop-ftt-519-rows', p.ashop_ftt_519, 'lbl-ashop-ftt-519', '519 Items (PSTR)');
   const aFTTTags = document.getElementById('dtags-ashop-ftt');
-  if(aFTTTags) aFTTTags.innerHTML = biggestProblem(p.ashop_ftt_536, p.ashop_ftt_519);
+  if(aFTTTags) aFTTTags.innerHTML = defectTypePills(p.ashop_ftt_536, p.ashop_ftt_519);
   setCallout('callout-ashop-ftt', p.ashop_ftt_536, p.ashop_ftt_519,
     '&#10003; A-Shop FTT at target — minimal repair items',
-    `&#9888; ${(p.ashop_ftt_536||[]).length + (p.ashop_ftt_519||[]).length} item(s) sent to repair.<span class="owner">Source: Power BI FTT-DPV</span>`);
+    `&#9888; ${(p.ashop_ftt_536||[]).length + (p.ashop_ftt_519||[]).length} item(s) sent to repair.<span class="owner">Source: Power BI A Shop Defects</span>`);
 
   // ── A-Shop DPV ──
-  // Items come from 'A Shop Defects' table (same source as FTT repair items = all defect rows)
-  { const dpvItems = [...(p.ashop_ftt_536||[]), ...(p.ashop_ftt_519||[])];
+  // Items come from ashop_dpv_536/519 (all finalized-body defects from 'A Shop Defects')
+  // Falls back to ashop_ftt if the split hasn't been run yet (old ppt format)
+  { const dpvItems = [...(p.ashop_dpv_536||p.ashop_ftt_536||[]), ...(p.ashop_dpv_519||p.ashop_ftt_519||[])];
     const dpvKpi   = MM_DATA.kpis.ashop_dpv;
     const dpvVal   = dpvKpi?.val;
     const dpvDef   = dpvKpi?.defects ?? dpvItems.length;
@@ -1558,20 +1569,20 @@ function renderAllKPIPosts(){
         const bg = ok ? 'var(--amber-d)' : 'var(--red-d)';
         const bc = ok ? 'rgba(210,153,34,.25)' : 'rgba(248,81,73,.25)';
         const cl = ok ? 'var(--amber)' : 'var(--red)';
-        dpvSummary.innerHTML = `<div style="background:${bg};border:1px solid ${bc};border-radius:6px;padding:8px 12px;font-size:12px;">
-          <span style="color:${cl};font-weight:700;">&#9888; A-Shop DPV = ${dpvVal.toFixed(4)}</span>
-          <span style="color:var(--muted);margin-left:8px;">${dpvDef} defect(s) on ${dpvBod||'?'} bodies — top 10 shown below</span>
+        dpvSummary.innerHTML = `<div style="background:${bg};border:1px solid ${bc};border-radius:6px;padding:6px 12px;font-size:12px;">
+          <div><span style="color:${cl};font-weight:700;">&#9888; A-Shop DPV = ${dpvVal.toFixed(4)}</span><span style="color:var(--muted);margin-left:8px;">${dpvDef} defect(s) on ${dpvBod||'?'} bodies — top 5 shown</span></div>
+          ${defectTypePills(p.ashop_dpv_536||p.ashop_ftt_536, p.ashop_dpv_519||p.ashop_ftt_519)}
         </div>`;
       }
     }
-    // Render actual DPV items (defect rows from 'A Shop Defects')
+    // Render actual DPV items (defect rows from 'A Shop Defects' — all finalized bodies)
     { const el = document.getElementById('ashop-dpv-rows');
       if(el){
         if(dpvItems.length === 0){
           el.innerHTML = `<tr><td colspan="7" style="color:var(--green);text-align:center;padding:10px;">&#10003; No defects at A-Shop</td></tr>`;
           setItemCountLabel('lbl-ashop-dpv', 0, 0, 'DPV Items');
         } else {
-          const TOP = 10;
+          const TOP = 5;
           const vis = dpvItems.slice(0, TOP);
           el.innerHTML = vis.map(r=>`<tr>
             <td class="mono">${r.body||'—'}</td>
@@ -1611,10 +1622,10 @@ function renderAllKPIPosts(){
         const bg = ok ? 'var(--amber-d)' : 'var(--red-d)';
         const bc = ok ? 'rgba(210,153,34,.25)' : 'rgba(248,81,73,.25)';
         const cl = ok ? 'var(--amber)' : 'var(--red)';
-        const itemNote = hasItems ? 'top 10 shown below' : 'work orders tracked in Weld Masters';
-        wgSummary.innerHTML = `<div style="background:${bg};border:1px solid ${bc};border-radius:6px;padding:8px 12px;font-size:12px;">
-          <span style="color:${cl};font-weight:700;">&#9888; W&amp;G DPV = ${wgVal.toFixed(4)}</span>
-          <span style="color:var(--muted);margin-left:8px;">${wgKpi.defects||'?'} weld/geometry defects on ${wgKpi.bodies||'?'} bodies — ${itemNote}</span>
+        const itemNote = hasItems ? 'top 5 shown' : 'work orders tracked in Weld Masters';
+        wgSummary.innerHTML = `<div style="background:${bg};border:1px solid ${bc};border-radius:6px;padding:6px 12px;font-size:12px;">
+          <div><span style="color:${cl};font-weight:700;">&#9888; W&amp;G DPV = ${wgVal.toFixed(4)}</span><span style="color:var(--muted);margin-left:8px;">${wgKpi.defects||'?'} weld/geometry defects on ${wgKpi.bodies||'?'} bodies — ${itemNote}</span></div>
+          ${hasItems ? defectTypePills(wg536, wg519) : ''}
         </div>`;
       }
     }
@@ -1644,7 +1655,7 @@ function renderAllKPIPosts(){
 
   // ── WD6 FTT (Paint FTT) ──
   const wd6FttSum = document.getElementById('wd6-ftt-summary');
-  if(wd6FttSum) wd6FttSum.innerHTML = biggestProblem(p.wd6_ftt_536, p.wd6_ftt_519);
+  if(wd6FttSum) wd6FttSum.innerHTML = defectTypePills(p.wd6_ftt_536, p.wd6_ftt_519);
   renderFTTRows('wd6-ftt-536-rows', p.wd6_ftt_536, 'lbl-wd6-ftt-536', '536 FTT Items (EX90)');
   renderFTTRows('wd6-ftt-519-rows', p.wd6_ftt_519, 'lbl-wd6-ftt-519', '519 FTT Items (PSTR)');
   setCallout('callout-wd6-ftt', p.wd6_ftt_536, p.wd6_ftt_519,
@@ -1653,7 +1664,7 @@ function renderAllKPIPosts(){
 
   // ── WD6 DPV (Paint DPV) ──
   const wd6DpvSum = document.getElementById('wd6-dpv-summary');
-  if(wd6DpvSum) wd6DpvSum.innerHTML = biggestProblem(p.wd6_dpv_536, p.wd6_dpv_519);
+  if(wd6DpvSum) wd6DpvSum.innerHTML = defectTypePills(p.wd6_dpv_536, p.wd6_dpv_519);
   renderDPVRows('wd6-dpv-536-rows', p.wd6_dpv_536, 7, 'lbl-wd6-dpv-536', '536 DPV Items (EX90)');
   renderDPVRows('wd6-dpv-519-rows', p.wd6_dpv_519, 7, 'lbl-wd6-dpv-519', '519 DPV Items (PSTR)');
   setCallout('callout-wd6-dpv', p.wd6_dpv_536, p.wd6_dpv_519,
@@ -1662,7 +1673,7 @@ function renderAllKPIPosts(){
 
   // ── CAL FTT ──
   const calSum = document.getElementById('cal-ftt-summary');
-  if(calSum) calSum.innerHTML = biggestProblem(p.cal_ftt_536, p.cal_ftt_519);
+  if(calSum) calSum.innerHTML = defectTypePills(p.cal_ftt_536, p.cal_ftt_519);
   renderFTTRows('cal-ftt-536-rows', p.cal_ftt_536, 'lbl-cal-ftt-536', '536 FTT Items (EX90)');
   renderFTTRows('cal-ftt-519-rows', p.cal_ftt_519, 'lbl-cal-ftt-519', '519 FTT Items (PSTR)');
   setCallout('callout-cal-ftt', p.cal_ftt_536, p.cal_ftt_519,
@@ -1692,7 +1703,7 @@ function renderAllKPIPosts(){
 
   // ── Final 2 FTT ──
   const fn2Sum = document.getElementById('final2-ftt-summary');
-  if(fn2Sum) fn2Sum.innerHTML = biggestProblem(p.final2_ftt_536, p.final2_ftt_519);
+  if(fn2Sum) fn2Sum.innerHTML = defectTypePills(p.final2_ftt_536, p.final2_ftt_519);
   renderFTTRows('final2-ftt-536-rows', p.final2_ftt_536, 'lbl-final2-ftt-536', '536 FTT Items (EX90)');
   renderFTTRows('final2-ftt-519-rows', p.final2_ftt_519, 'lbl-final2-ftt-519', '519 FTT Items (PSTR)');
   setCallout('callout-final2-ftt', p.final2_ftt_536, p.final2_ftt_519,
