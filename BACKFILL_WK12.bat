@@ -14,7 +14,7 @@ echo.
 echo === Backfilling WK12 history using Power BI + OneDrive data ===
 echo.
 
-venv\Scripts\python.exe update_morning_meeting.py --backfill-week >> mm_update_log.txt 2>&1
+venv\Scripts\python.exe update_morning_meeting.py --backfill-week
 
 echo.
 echo Done! Check mm_update_log.txt for details.
