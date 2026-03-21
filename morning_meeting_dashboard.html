@@ -374,7 +374,6 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
         <option value="">— Today —</option>
       </select>
     </div>
-    <span class="ptag">&#9889; PREVIEW</span>
     <div class="h-meta"><strong id="dt">&#8212;</strong><span>Shift 1 &middot; 06:00</span></div>
   </div>
 </header>
@@ -389,6 +388,7 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
   <div class="ni" onclick="g('pq')"><span class="nd" style="background:var(--orange)"></span>Part Quality</div>
   <div class="ni" onclick="g('bof')"><span class="nd" style="background:var(--purple)"></span>Bodies OOF</div>
   <div class="ni" onclick="g('scrap')"><span class="nd" style="background:var(--green)"></span>Scrap</div>
+  <div class="ni" onclick="g('week')"><span class="nd" style="background:var(--teal)"></span>Week Compare</div>
 </nav>
 
 <main class="wrap">
@@ -816,6 +816,12 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
 </div>
 
 </main>
+<!-- ═══ WEEK COMPARE ═══ -->
+<div id="week" class="anc">
+  <div class="sh">&#128197; Week Compare</div>
+  <div id="week-compare-grid"></div>
+</div>
+
 <div class="footer"><span style="font-size:15px;font-weight:700;letter-spacing:1.5px;color:var(--blue-b);text-shadow:0 0 18px rgba(96,165,250,.7),0 0 36px rgba(96,165,250,.35);">Designed &amp; Built by Ninef Yousif</span></div>
 
 <script>
@@ -1040,7 +1046,7 @@ function renderDTHeader(){
       ${badge}
       <span style="background:var(--amber-d);color:var(--amber);font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;">Availability ${dt.availability}%</span>
     </div>
-    <span style="font-size:10px;color:var(--muted);">&#128190; Andon Downtime Sheet (OneDrive)</span>`;
+    `;
 }
 
 function renderAreaCards(){
@@ -1167,10 +1173,10 @@ function renderCallouts(){
   const T = 15;
   const el1 = document.getElementById('bok-dt-callout');
   const ho = dt.areas.hangon;
-  if(el1) el1.innerHTML = `&#9888; Hang-On total: ${ho.total} min (${ho.unplanned} min unplanned). Hang-On stops directly affect body acceptance &amp; BOK OPR.<span class="owner">&#128190; Andon Downtime Sheet (OneDrive)</span>`;
+  if(el1) el1.innerHTML = `&#9888; Hang-On total: ${ho.total} min (${ho.unplanned} min unplanned). Hang-On stops directly affect body acceptance &amp; BOK OPR.`;
   const ub = dt.areas.underbody, up = dt.areas.upperbody;
   const el2 = document.getElementById('bol-dt-callout');
-  if(el2) el2.innerHTML = `&#9888; Underbody <strong>${ub.unplanned} min unplanned</strong> (St.232) is the primary BOL driver. Upperbody ${up.unplanned} min unplanned (St.285) is secondary.<span class="owner">&#128190; Andon Downtime Sheet (OneDrive)</span>`;
+  if(el2) el2.innerHTML = `&#9888; Underbody <strong>${ub.unplanned} min unplanned</strong> (St.232) is the primary BOL driver. Upperbody ${up.unplanned} min unplanned (St.285) is secondary.`;
 }
 
 /* ═══ PPT DATA RENDERERS ═══ */
@@ -1612,6 +1618,146 @@ function renderAllKPIPosts(){
     `&#9888; ${(p.final2_ftt_536||[]).length + (p.final2_ftt_519||[]).length} Final 2 repair items — FL2.0 carry-through from A-Shop. Fix A-Shop FL2.0 = Final 2 recovers.<span class="owner">Source: Power BI C Shop Defects Linked</span>`);
 }
 
+/* ═══ WEEK COMPARE ═══ */
+function renderWeekCompare(){
+  const el = document.getElementById('week-compare-grid');
+  if(!el) return;
+
+  // KPIs to show — label, key, direction
+  const ROWS = [
+    { lbl:'A-Shop FTT',   key:'ashop_ftt',  unit:'%' },
+    { lbl:'A-Shop DPV',   key:'ashop_dpv',  unit:''  },
+    { lbl:'W&G DPV',      key:'wg_dpv',     unit:''  },
+    { lbl:'BOK OPR',      key:'bok_opr',    unit:'%' },
+    { lbl:'BOL OPR',      key:'bol_opr',    unit:'%' },
+    { lbl:'Paint FTT',    key:'wd6_ftt',    unit:'%' },
+    { lbl:'Paint DPV',    key:'wd6_dpv',    unit:''  },
+    { lbl:'CAL FTT',      key:'cal_ftt',    unit:'%' },
+    { lbl:'Final 1 FTT',  key:'final1_ftt', unit:'%' },
+    { lbl:'Final 2 FTT',  key:'final2_ftt', unit:'%' },
+  ];
+
+  // Build Mon–Fri of the current week from today
+  const today = new Date();
+  const todayStr = MM_DATA.date || today.toISOString().slice(0,10);
+  const refDate  = new Date(todayStr + 'T12:00:00');
+  const dow = refDate.getDay(); // 0=Sun … 6=Sat
+  const monOffset = dow === 0 ? -6 : 1 - dow;
+  const weekDays = Array.from({length:5}, (_,i) => {
+    const d = new Date(refDate);
+    d.setDate(refDate.getDate() + monOffset + i);
+    return d.toISOString().slice(0,10);
+  });
+
+  // Collect data for each weekday — prefer MM_HISTORY, fall back to MM_DATA for today
+  function getDayKpis(dateStr){
+    if(dateStr === todayStr) return MM_DATA.kpis;
+    const h = MM_HISTORY[dateStr];
+    return h ? h.kpis : null;
+  }
+  function fmt(key, val){
+    if(val === null || val === undefined) return null;
+    const t = TARGETS[key];
+    return t && t.unit==='%' ? val.toFixed(1)+'%' : (typeof val==='number' ? val.toFixed(2) : val);
+  }
+  const DAY_NAMES = ['MON','TUE','WED','THU','FRI'];
+
+  // Header row
+  let html = `<div style="overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:var(--card-glow);">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:580px;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border2);">
+        <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);background:rgba(255,255,255,.03);white-space:nowrap;min-width:110px;">KPI</th>`;
+
+  weekDays.forEach((dateStr, i) => {
+    const isToday = dateStr === todayStr;
+    const hasFuture = new Date(dateStr + 'T12:00:00') > new Date(todayStr + 'T12:00:00');
+    const dayKpis = getDayKpis(dateStr);
+    const hasData  = !!dayKpis;
+    const shortDate = new Date(dateStr+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const bg = isToday
+      ? 'background:rgba(96,165,250,.08);'
+      : 'background:rgba(255,255,255,.02);';
+    const border = isToday ? 'border-left:2px solid var(--blue-b);' : 'border-left:1px solid var(--border);';
+    html += `<th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;${bg}${border}${isToday?'color:var(--blue-b);text-shadow:0 0 10px rgba(96,165,250,.4);':'color:var(--muted);'}">
+      ${DAY_NAMES[i]}<br><span style="font-size:9px;font-weight:400;opacity:.7;">${shortDate}</span>
+      ${isToday ? '<br><span style="font-size:8px;background:rgba(96,165,250,.18);color:var(--blue-b);padding:1px 5px;border-radius:3px;font-weight:800;letter-spacing:.3px;">TODAY</span>' : ''}
+    </th>`;
+  });
+  html += `<th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--teal);background:rgba(45,212,191,.05);border-left:1px solid var(--border);">vs Yesterday</th>`;
+  html += `</tr></thead><tbody>`;
+
+  // Data rows
+  ROWS.forEach((row, ri) => {
+    const zebra = ri%2===0 ? '' : 'background:rgba(255,255,255,.015);';
+    html += `<tr style="${zebra}border-bottom:1px solid rgba(255,255,255,.04);">`;
+    html += `<td style="padding:10px 16px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;">${row.lbl}</td>`;
+
+    let prevVal = null;
+    weekDays.forEach((dateStr, i) => {
+      const isToday  = dateStr === todayStr;
+      const isFuture = new Date(dateStr+'T12:00:00') > new Date(todayStr+'T12:00:00');
+      const kpis = getDayKpis(dateStr);
+      const val  = kpis ? kpis[row.key]?.val : undefined;
+      const disp = fmt(row.key, val);
+      const col  = (val !== null && val !== undefined) ? kpiColor(row.key, val) : 'neut';
+      const colorMap = { good:'var(--green)', bad:'var(--red)', warn:'var(--amber)', neut:'var(--muted)' };
+      const glowMap  = { good:'var(--glow-g)', bad:'var(--glow-r)', warn:'var(--glow-a)', neut:'none' };
+      const c = colorMap[col] || 'var(--muted)';
+      const g = isToday ? (glowMap[col] || 'none') : 'none';
+      const bg = isToday ? 'background:rgba(96,165,250,.06);' : '';
+      const bl = isToday ? 'border-left:2px solid rgba(96,165,250,.3);' : 'border-left:1px solid rgba(255,255,255,.04);';
+
+      if(!isFuture && val !== null && val !== undefined) prevVal = val;
+
+      html += `<td style="padding:10px 14px;text-align:center;${bg}${bl}">`;
+      if(isFuture){
+        html += `<span style="color:rgba(255,255,255,.12);font-size:11px;">—</span>`;
+      } else if(disp === null){
+        html += `<span style="color:var(--muted);font-size:11px;">—</span>`;
+      } else {
+        html += `<span style="color:${c};font-weight:700;font-size:${isToday?'14px':'12px'};${isToday?'text-shadow:'+g+';':''}letter-spacing:.2px;">${disp}</span>`;
+      }
+      html += `</td>`;
+    });
+
+    // vs Yesterday column — only for today
+    const todayKpis = getDayKpis(todayStr);
+    const todayVal  = todayKpis ? todayKpis[row.key]?.val : undefined;
+    const todayIdx  = weekDays.indexOf(todayStr);
+    const yesterStr = todayIdx > 0 ? weekDays[todayIdx - 1] : null;
+    const yesterKpis = yesterStr ? getDayKpis(yesterStr) : null;
+    const yesterVal  = yesterKpis ? yesterKpis[row.key]?.val : undefined;
+
+    html += `<td style="padding:10px 14px;text-align:center;background:rgba(45,212,191,.03);border-left:1px solid rgba(255,255,255,.04);">`;
+    if(todayVal !== undefined && yesterVal !== undefined){
+      const t = TARGETS[row.key];
+      const diff = todayVal - yesterVal;
+      const absDiff = Math.abs(diff).toFixed(t && t.unit==='%' ? 1 : 2);
+      const up = diff > 0;
+      const isGood = t ? (t.dir==='ge' ? diff > 0 : diff < 0) : null;
+      const neutral = Math.abs(diff) < 0.01;
+      const dColor = neutral ? 'var(--muted)' : isGood===null ? 'var(--muted)' : isGood ? 'var(--green)' : 'var(--red)';
+      const arrow  = neutral ? '—' : (up ? '&#9650;' : '&#9660;');
+      const suffix = t && t.unit==='%' ? 'pp' : '';
+      html += `<span style="color:${dColor};font-size:11px;font-weight:700;">${neutral ? '—' : arrow+' '+(absDiff)+(suffix ? ' '+suffix : '')}</span>`;
+    } else {
+      html += `<span style="color:rgba(255,255,255,.12);font-size:11px;">—</span>`;
+    }
+    html += `</td></tr>`;
+  });
+
+  html += `</tbody></table></div>
+  <div style="margin-top:10px;font-size:10px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;">
+    <span>&#9632; <span style="color:var(--green)">Green</span> = On target</span>
+    <span>&#9632; <span style="color:var(--amber)">Amber</span> = Near miss (&lt;3% of target)</span>
+    <span>&#9632; <span style="color:var(--red)">Red</span> = Below target</span>
+    <span style="color:rgba(255,255,255,.2);">&#9632; — = No data yet</span>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
 /* ═══ MASTER APPLY ═══ */
 function applyMMData(){
   try {
@@ -1628,6 +1774,7 @@ function applyMMData(){
     renderPQTable();
     renderBOFTable();
     renderScrap();
+    renderWeekCompare();
   } catch(e){ console.warn('applyMMData error:', e); }
 }
 
