@@ -666,6 +666,12 @@ function initDayPicker(){
   const sel=document.getElementById('m-day-picker'); if(!sel) return;
   _todayData={date:MM_DATA.date,wk:MM_DATA.wk,day:MM_DATA.day,kpis:MM_DATA.kpis,downtime:MM_DATA.downtime,ppt:MM_DATA.ppt};
   const today=MM_DATA.date;
+  // Replace the static "Today" label with the actual report date
+  const todayOpt=sel.querySelector('option[value=""]');
+  if(todayOpt){
+    const dt=new Date(today+'T12:00:00');
+    todayOpt.textContent=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+` (${MM_DATA.wk} D${MM_DATA.day})`;
+  }
   Object.keys(MM_HISTORY).sort().reverse().forEach(d=>{
     if(d===today) return;
     const opt=document.createElement('option');
