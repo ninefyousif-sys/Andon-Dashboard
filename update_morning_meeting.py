@@ -63,6 +63,13 @@ OPR_COL_DATE          = 'Date'          # (used only when OPR_IS_MEASURES_TABLE=
 OPR_COL_BOK = OPR_BOK_MEASURE
 OPR_COL_BOL = OPR_BOL_MEASURE
 
+# ── SCRAP (Power BI) ────────────────────────────────────────────────────────────
+# Set after running --discover-tables on the Scrap/Car Power BI report
+# The measure appears as "Scrap / Car" ($X.XX) in the Body Shop KPI dashboard
+SCRAP_TABLE        = ''    # e.g. 'Scrap Card' or 'OPR BOK Card' — run --discover-tables
+SCRAP_MEASURE      = ''    # e.g. 'Scrap/Car' or 'Scrap Cost per Car'
+SCRAP_DATE_TABLE   = ''    # usually same as OPR_DATE_TABLE — leave blank to auto-detect
+
 # ── TARGETS ────────────────────────────────────────────────────────────────────
 TARGETS = {
     'bok_opr':    {'tgt': 98.7,  'dir': 'ge'},
@@ -564,6 +571,67 @@ def query_opr(ports, report_date):
     return None
 
 
+def query_scrap(ports, report_date):
+    """Query Scrap/Car ($) from Power BI Desktop.
+
+    Returns {'scrap_car': float|None} or None if not configured / not available.
+    Configure SCRAP_TABLE and SCRAP_MEASURE after running --discover-tables.
+    """
+    if not SCRAP_TABLE or not SCRAP_MEASURE:
+        log("  Scrap/Car: SCRAP_TABLE / SCRAP_MEASURE not configured — run --discover-tables")
+        return None
+
+    yr, mo, dy = report_date.year, report_date.month, report_date.day
+    date_tables = [SCRAP_DATE_TABLE] if SCRAP_DATE_TABLE else [
+        OPR_DATE_TABLE, 'Date Table', 'Date', 'Calendar', 'DimDate', 'Dates', 'DateTable'
+    ]
+    date_tables = [d for d in date_tables if d]  # remove empty strings
+
+    for port in ports:
+        for dt in date_tables:
+            dax = (
+                f"EVALUATE CALCULATETABLE("
+                f"ROW(\"scrap_car\", '{SCRAP_TABLE}'[{SCRAP_MEASURE}]),"
+                f"'{dt}'[Date] = DATE({yr},{mo},{dy}))"
+            )
+            try:
+                rows = run_dax(port, dax)
+                if rows:
+                    r = rows[0]
+                    val = r.get('scrap_car') or r.get('[scrap_car]')
+                    if val is not None:
+                        try:
+                            fval = round(float(val), 4)
+                            log(f"  Scrap/Car (date table='{dt}'): ${fval}")
+                            return {'scrap_car': fval}
+                        except (TypeError, ValueError):
+                            pass
+            except Exception as e:
+                err_str = str(e)
+                if 'cannot be found' in err_str or 'not found' in err_str.lower():
+                    continue
+                log(f"  Scrap query error (port {port}, dt='{dt}'): {e}")
+
+        # Last-resort: no date filter
+        dax_nf = f"EVALUATE ROW(\"scrap_car\", '{SCRAP_TABLE}'[{SCRAP_MEASURE}])"
+        try:
+            rows = run_dax(port, dax_nf)
+            if rows:
+                r = rows[0]
+                val = r.get('scrap_car') or r.get('[scrap_car]')
+                if val is not None:
+                    try:
+                        fval = round(float(val), 4)
+                        log(f"  Scrap/Car (no date filter — overall): ${fval}")
+                        return {'scrap_car': fval}
+                    except (TypeError, ValueError):
+                        pass
+        except Exception as e:
+            log(f"  Scrap no-filter error on port {port}: {e}")
+
+    return None
+
+
 def query_powerbi(report_date):
     """
     Query Power BI Desktop for all KPI data for report_date.
@@ -744,7 +812,8 @@ def query_powerbi(report_date):
         r['close_time'] = fmt_dt(r.get('close_time'))
 
     # ── BOK / BOL OPR (from BIW SQD Axxos — may be a different PBI instance) ──
-    opr = query_opr(ports, report_date)
+    opr   = query_opr(ports, report_date)
+    scrap = query_scrap(ports, report_date)
 
     return {
         'ashop':         ashop_rows,
@@ -754,8 +823,9 @@ def query_powerbi(report_date):
         'wd6_dpv':       wd6_dpv_rows,
         'cshop':         cshop_rows,
         'cshop_defects': cshop_defect_rows,
-        'bok_opr':       opr.get('bok_opr') if opr else None,
-        'bol_opr':       opr.get('bol_opr') if opr else None,
+        'bok_opr':       opr.get('bok_opr')   if opr   else None,
+        'bol_opr':       opr.get('bol_opr')   if opr   else None,
+        'scrap_car':     scrap.get('scrap_car') if scrap else None,
     }
 
 
@@ -768,6 +838,10 @@ def build_kpis_from_pbi(pbi):
         kpis['bok_opr'] = {'val': pbi['bok_opr']}
     if pbi.get('bol_opr') is not None:
         kpis['bol_opr'] = {'val': pbi['bol_opr']}
+
+    # ── Scrap / Car ───────────────────────────────────────────────────────────
+    if pbi.get('scrap_car') is not None:
+        kpis['scrap_car'] = {'val': pbi['scrap_car']}
 
     # ── A Shop ────────────────────────────────────────────────────────────────
     if pbi['ashop']:
@@ -1035,15 +1109,83 @@ def ensure_markitdown():
     return ensure_pptx_deps()
 
 
+def _ocr_slide_images(slide):
+    """Try OCR on picture shapes in a slide. Returns list of text lines.
+    Only used when a slide has NO text frames and NO tables (image-only slide).
+    Requires pytesseract + Pillow; silently returns [] if not available."""
+    try:
+        import io as _io
+        from PIL import Image as _Image
+        import pytesseract as _tess
+        text_lines = []
+        for shape in slide.shapes:
+            if shape.shape_type == 13:  # PICTURE
+                try:
+                    img = _Image.open(_io.BytesIO(shape.image.blob))
+                    # Downscale large images for faster OCR (max 1000px wide)
+                    w, h = img.size
+                    if w > 1000:
+                        img = img.resize((1000, int(h * 1000 / w)), _Image.LANCZOS)
+                    # Convert to RGB (some PNGs have RGBA transparency that slows OCR)
+                    if img.mode not in ('L', 'RGB'):
+                        img = img.convert('RGB')
+                    ocr_text = _tess.image_to_string(img, config='--psm 3')
+                    lines = [l.strip() for l in ocr_text.split('\n')
+                             if l.strip() and len(l.strip()) > 3]
+                    text_lines.extend(lines)
+                except Exception:
+                    pass
+        return text_lines
+    except ImportError:
+        return []
+
+
+def _inject_ocr_into_md(md_text, image_only_ocr):
+    """Insert OCR lines for image-only slides into existing markitdown output."""
+    import re as _re
+    result = []
+    chunks = _re.split(r'(<!--\s*Slide number:\s*\d+\s*-->)', md_text)
+    for chunk in chunks:
+        m = _re.match(r'<!--\s*Slide number:\s*(\d+)\s*-->', chunk.strip())
+        result.append(chunk)
+        if m:
+            snum = int(m.group(1))
+            if snum in image_only_ocr:
+                result.append('\n' + '\n'.join(image_only_ocr[snum]) + '\n')
+    return ''.join(result)
+
+
 def read_ppt_markdown(ppt_path):
     """Read a .pptx file and return a markdown string with <!-- Slide number: N --> markers.
 
     Primary path:  markitdown Python API (markitdown[pptx])
-    Fallback path: python-pptx direct read → synthesises the same markdown format
+    Fallback path: python-pptx direct read -> synthesises the same markdown format
+
+    Either way: image-only slides (safety escalation reports, safety alerts)
+    are supplemented with OCR text so the safety detector can find them.
     """
     ensure_pptx_deps()
 
-    # ── Primary: markitdown Python API ────────────────────────────────────────
+    # Pre-scan for image-only slides and OCR them (works for both paths below)
+    image_only_ocr = {}
+    try:
+        from pptx import Presentation as _Prs
+        _prs = _Prs(ppt_path)
+        for _idx, _slide in enumerate(_prs.slides):
+            _snum = _idx + 1
+            _has_text  = any(s.has_text_frame and s.text_frame.text.strip()
+                             for s in _slide.shapes)
+            _has_table = any(s.has_table for s in _slide.shapes)
+            _has_pics  = any(s.shape_type == 13 for s in _slide.shapes)
+            if _has_pics and not _has_text and not _has_table:
+                _lines = _ocr_slide_images(_slide)
+                if _lines:
+                    image_only_ocr[_snum] = _lines
+                    log(f"  PPT OCR slide {_snum}: {len(_lines)} lines extracted")
+    except Exception as _e:
+        log(f"  PPT OCR pre-scan: {_e}")
+
+    # Primary: markitdown Python API
     try:
         from markitdown import MarkItDown
         md_converter = MarkItDown()
@@ -1051,11 +1193,13 @@ def read_ppt_markdown(ppt_path):
         md_text = result.text_content
         if md_text and md_text.strip():
             log(f"  PPT markitdown API: {len(md_text)} chars")
+            if image_only_ocr:
+                md_text = _inject_ocr_into_md(md_text, image_only_ocr)
             return md_text
     except Exception as e:
-        log(f"  markitdown API unavailable ({type(e).__name__}) — using python-pptx fallback")
+        log(f"  markitdown API unavailable ({type(e).__name__}) -- using python-pptx fallback")
 
-    # ── Fallback: python-pptx direct → mimic markitdown slide format ──────────
+    # Fallback: python-pptx direct -> mimic markitdown slide format
     try:
         from pptx import Presentation
         from pptx.util import Pt
@@ -1072,7 +1216,6 @@ def read_ppt_markdown(ppt_path):
                 if shape.has_text_frame:
                     txt = shape.text_frame.text.strip()
                     if txt:
-                        # Detect heading by large font or shape name
                         try:
                             size = shape.text_frame.paragraphs[0].runs[0].font.size
                             is_heading = size and size >= Pt(18)
@@ -1083,7 +1226,7 @@ def read_ppt_markdown(ppt_path):
                         else:
                             parts.append(f"{txt}\n\n")
 
-                # Tables → markdown table
+                # Tables -> markdown table
                 if shape.has_table:
                     tbl = shape.table
                     rows_out = []
@@ -1093,6 +1236,10 @@ def read_ppt_markdown(ppt_path):
                         if row_idx == 0:
                             rows_out.append('| ' + ' | '.join(['---'] * len(cells)) + ' |')
                     parts.append('\n'.join(rows_out) + '\n\n')
+
+            # Append OCR text for image-only slides
+            if slide_num in image_only_ocr:
+                parts.append('\n'.join(image_only_ocr[slide_num]) + '\n\n')
 
         md_text = ''.join(parts)
         log(f"  PPT python-pptx fallback: {len(md_text)} chars, {len(prs.slides)} slides")
@@ -1222,12 +1369,10 @@ def parse_ppt_tables(md_text):
                         log(f"  PPT: Bodies OOF found on slide {slide_num} ({len(items)} bodies)")
 
         # ── Safety ──────────────────────────────────────────────────────────────
-        # Detect by text containing safety/GEMBA/alert/NOK/incident keywords
-        # Skip slides already classified as Part Quality or Bodies OOF tables
+        # Detect ONLY genuine safety cross / one-pager slides.
+        # Must have an explicit safety alert phrase OR "SAFETY" + an injury word.
+        # NEVER triggers on quality-only keywords like NOK, SUSPECT, GEMBA, ESCALAT.
         if not data['safety']['title'] and slide_num not in data_table_slides:
-            SAFETY_KWS = ['GEMBA', 'ALERT', 'SAFETY', 'INCIDENT', 'NOK', 'SUSPECT',
-                          'ESCALAT', 'INJURY', 'NEAR MISS', 'STOP THE LINE',
-                          'QUALITY CONCERN', 'STOP SHIP']
             # Only count keyword hits in NON-table lines
             non_table_lines = [l.strip() for l in content.split('\n')
                                if l.strip()
@@ -1235,7 +1380,20 @@ def parse_ppt_tables(md_text):
                                and not l.strip().startswith('!')   # images
                                and not re.match(r'^[-|: ]+$', l.strip())]  # dividers
             non_table_text = ' '.join(non_table_lines).upper()
-            if any(kw in non_table_text for kw in SAFETY_KWS):
+            # Strong phrase triggers (safety cross / one-pager / escalation report)
+            SAFETY_STRONG = ['SAFETY ALERT', 'SAFETY CROSS', 'NEAR MISS',
+                             'FIRST AID', 'RECORDABLE INCIDENT', 'STOP THE LINE',
+                             'ESCALATION REPORT']  # Volvo safety escalation report template
+            # Weak injury words — only trigger when "SAFETY" also present on slide
+            SAFETY_INJURY = ['INJURY', 'INJURED', 'LACERATION', 'CUT/PUNCTURE',
+                             'CUT/BURN', 'SLIP', 'FALL', 'STRUCK BY', 'PINCH POINT',
+                             'ABRASION', 'STRAIN', 'CONTUSION']
+            _is_safety_slide = (
+                any(phrase in non_table_text for phrase in SAFETY_STRONG) or
+                ('SAFETY' in non_table_text and
+                 any(kw in non_table_text for kw in SAFETY_INJURY))
+            )
+            if _is_safety_slide:
                 # PPT template placeholder patterns to skip
                 TMPL_PATS = [
                     r'^hard subsection$', r'enter\s+pictures?\s+here', r'click\s+to\s+(add|edit)',
@@ -1246,15 +1404,19 @@ def parse_ppt_tables(md_text):
                 def _is_template(line):
                     l = line.strip().lower()
                     return any(re.search(p, l) for p in TMPL_PATS) or len(l) < 4
-                # Get non-heading, non-template text lines for the safety message
-                text_lines = [l for l in non_table_lines
-                              if not re.match(r'^#+\s', l) and not _is_template(l)]
-                # Prefer lines that directly contain a safety keyword as the title
+                # Get non-template text lines — strip any ## heading markers but keep content
+                text_lines = []
+                for _l in non_table_lines:
+                    _stripped = re.sub(r'^#+\s*', '', _l).strip()
+                    if _stripped and not _is_template(_stripped):
+                        text_lines.append(_stripped)
+                # Prefer lines that directly contain a safety phrase as the title
                 title_line = ''
                 detail_lines = []
+                _ALL_SAFETY = SAFETY_STRONG + SAFETY_INJURY + ['SAFETY', 'ALERT']
                 # Look for a line with a strong safety keyword first
                 for l in text_lines:
-                    if any(kw in l.upper() for kw in SAFETY_KWS) and len(l) > 6:
+                    if any(kw in l.upper() for kw in _ALL_SAFETY) and len(l) > 6:
                         title_line = l
                         break
                 if not title_line and text_lines:
@@ -1277,12 +1439,23 @@ def parse_ppt_tables(md_text):
         # ── Scrap ───────────────────────────────────────────────────────────────
         # Detect by text containing SCRAP keyword (skip data-table slides)
         if data['scrap'] == '$0' and 'SCRAP' in cu and slide_num not in data_table_slides:
-            dollar = re.search(r'\$\s*[\d,]+', content)
+            # Match "$1,234" or "1,234$" or "0$" formats
+            dollar = re.search(r'\$\s*[\d,]+', content) or re.search(r'[\d,]+\s*\$', content)
             if dollar:
-                scrap_val = dollar.group(0).replace(' ', '')
-                data['scrap'] = scrap_val
-                data['scrap_note'] = f"{scrap_val} scrap cost — review breakdown with team"
-                log(f"  PPT: Scrap found on slide {slide_num}: {scrap_val}")
+                raw = dollar.group(0).replace(' ', '').strip('$').replace(',','')
+                try:
+                    amt = int(raw)
+                except Exception:
+                    amt = -1
+                if amt == 0:
+                    data['scrap'] = '$0'
+                    data['scrap_note'] = 'No scrap today'
+                    log(f"  PPT: Scrap slide {slide_num}: $0 (no scrap)")
+                else:
+                    scrap_val = '$' + dollar.group(0).replace(' ', '').strip('$')
+                    data['scrap'] = scrap_val
+                    data['scrap_note'] = f"{scrap_val} scrap cost — review breakdown with team"
+                    log(f"  PPT: Scrap found on slide {slide_num}: {scrap_val}")
             elif 'NO SCRAP' in cu:
                 data['scrap'] = '$0'
                 data['scrap_note'] = 'No scrap today'
