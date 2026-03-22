@@ -53,24 +53,21 @@ WK12_MON = datetime.date(2026, 3, 16)
 #   OPR_BOK_MEASURE    = 'BOK OPR'   # column name
 #   OPR_BOL_MEASURE    = 'BOL OPR'   # column name
 #
-OPR_TABLE             = 'OPR BOK Card'  # confirmed via --discover-tables
-OPR_IS_MEASURES_TABLE = True            # confirmed — no data columns, only measures
-OPR_BOK_MEASURE       = 'OPR BOK Card'  # confirmed via --discover-tables (2026-03-21)
-OPR_BOL_MEASURE       = 'OPR BOL Card'  # confirmed via --discover-tables (2026-03-21)
-OPR_DATE_TABLE        = 'Date Table'    # confirmed present in port 58016
-OPR_COL_DATE          = 'Date'          # (used only when OPR_IS_MEASURES_TABLE=False)
+OPR_TABLE             = 'SQD'               # confirmed via DMV scan 2026-03-21
+OPR_IS_MEASURES_TABLE = True                # measures-only table (no data rows)
+OPR_BOK_MEASURE       = 'OPR BOK Measure'   # actual BOK OPR value (not Target)
+OPR_BOL_MEASURE       = 'OPR BOL Measure'   # actual BOL OPR value (not Target)
+OPR_DATE_TABLE        = 'Date Table'        # confirmed present
+OPR_COL_DATE          = 'Date'              # (used only when OPR_IS_MEASURES_TABLE=False)
 # Legacy aliases kept for backwards compat
 OPR_COL_BOK = OPR_BOK_MEASURE
 OPR_COL_BOL = OPR_BOL_MEASURE
 
 # ── SCRAP (Power BI) ────────────────────────────────────────────────────────────
-# Shows as "Scrap / Car" ($X.XX) in the Body Shop KPI dashboard.
-# Leave blank — query_scrap() auto-discovers the measure across all common names.
-# After first successful run, the log will print a HINT with the exact names to
-# set here so future runs skip the auto-discovery loop.
-SCRAP_TABLE        = ''    # e.g. 'Scrap Card'   — auto-discovered if blank
-SCRAP_MEASURE      = ''    # e.g. 'Scrap/Car'    — auto-discovered if blank
-SCRAP_DATE_TABLE   = ''    # leave blank to reuse OPR_DATE_TABLE automatically
+# Confirmed via DMV scan 2026-03-21: [Production Scrap per Car] in table 'SQD'
+SCRAP_TABLE        = 'SQD'                  # confirmed via DMV scan 2026-03-21
+SCRAP_MEASURE      = 'Production Scrap per Car'  # confirmed measure name
+SCRAP_DATE_TABLE   = ''                     # reuses OPR_DATE_TABLE automatically
 
 # ── TARGETS ────────────────────────────────────────────────────────────────────
 TARGETS = {
