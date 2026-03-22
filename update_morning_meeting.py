@@ -1529,32 +1529,490 @@ def ensure_markitdown():
 def _ocr_slide_images(slide):
     """Try OCR on picture shapes in a slide. Returns list of text lines.
     Only used when a slide has NO text frames and NO tables (image-only slide).
-    Requires pytesseract + Pillow; silently returns [] if not available."""
+    Uses EasyOCR if available; silently returns [] if not."""
     try:
         import io as _io
         from PIL import Image as _Image
-        import pytesseract as _tess
+        import numpy as _np
+        reader = _get_ocr_reader()
+        if reader is None:
+            return []
         text_lines = []
         for shape in slide.shapes:
             if shape.shape_type == 13:  # PICTURE
                 try:
                     img = _Image.open(_io.BytesIO(shape.image.blob))
-                    # Downscale large images for faster OCR (max 1000px wide)
                     w, h = img.size
-                    if w > 1000:
-                        img = img.resize((1000, int(h * 1000 / w)), _Image.LANCZOS)
-                    # Convert to RGB (some PNGs have RGBA transparency that slows OCR)
+                    if w > 1200:
+                        img = img.resize((1200, int(h * 1200 / w)), _Image.LANCZOS)
                     if img.mode not in ('L', 'RGB'):
                         img = img.convert('RGB')
-                    ocr_text = _tess.image_to_string(img, config='--psm 3')
-                    lines = [l.strip() for l in ocr_text.split('\n')
-                             if l.strip() and len(l.strip()) > 3]
-                    text_lines.extend(lines)
+                    results = reader.readtext(_np.array(img))
+                    for _, text, conf in results:
+                        if text.strip() and len(text.strip()) > 3 and conf > 0.4:
+                            text_lines.append(text.strip())
                 except Exception:
                     pass
         return text_lines
-    except ImportError:
+    except Exception:
         return []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PPT IMAGE OCR — PRIMARY KPI DATA SOURCE
+# Reads KPI values and item details from PPTX slide images using EasyOCR.
+# EasyOCR replaces Power BI XMLA for all quality KPIs.
+# Downtime remains from Excel only.  Safety/Part Quality/Bodies OOF remain from
+# PPT table text (unchanged).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_OCR_READER = None  # module-level cache — initialized once
+
+
+def _get_ocr_reader():
+    """Return cached EasyOCR reader (CPU mode). Initializes on first call."""
+    global _OCR_READER
+    if _OCR_READER is None:
+        try:
+            import easyocr
+            log("  Initializing EasyOCR reader ...")
+            _OCR_READER = easyocr.Reader(['en'], gpu=False, verbose=False)
+            log("  EasyOCR reader ready")
+        except ImportError:
+            log("  WARNING: EasyOCR not installed — run: py -m pip install easyocr")
+        except Exception as e:
+            log(f"  WARNING: EasyOCR init failed: {e}")
+    return _OCR_READER
+
+
+def _ocr_image_to_words(img_bytes):
+    """Run EasyOCR on raw image bytes.
+    Returns list of (text, cx, cy, conf) — cx/cy = center of bounding box."""
+    reader = _get_ocr_reader()
+    if reader is None:
+        return []
+    try:
+        from PIL import Image as _PIL
+        import io as _io
+        import numpy as _np
+        img = _PIL.open(_io.BytesIO(img_bytes))
+        w, h = img.size
+        # Scale up small images for better OCR accuracy
+        if w < 1000:
+            scale = 1000 / w
+            img = img.resize((int(w * scale), int(h * scale)), _PIL.LANCZOS)
+        if img.mode not in ('L', 'RGB'):
+            img = img.convert('RGB')
+        results = reader.readtext(_np.array(img))
+        words = []
+        for bbox, text, conf in results:
+            xs = [p[0] for p in bbox]
+            ys = [p[1] for p in bbox]
+            cx = (min(xs) + max(xs)) / 2.0
+            cy = (min(ys) + max(ys)) / 2.0
+            words.append((text.strip(), cx, cy, conf))
+        return words
+    except Exception as e:
+        log(f"  OCR image error: {e}")
+        return []
+
+
+def _slide_main_image(slide):
+    """Return image bytes of the largest picture shape on a slide, or None."""
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+    import io as _io
+    best_bytes = None
+    best_area  = 0
+    for shape in slide.shapes:
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            try:
+                from PIL import Image as _PIL
+                img = _PIL.open(_io.BytesIO(shape.image.blob))
+                w, h = img.size
+                if w > 100 and h > 50 and w * h > best_area:
+                    best_bytes = shape.image.blob
+                    best_area  = w * h
+            except Exception:
+                pass
+    return best_bytes
+
+
+def _find_slides_by_keyword(prs, keywords, exclude_keywords=None):
+    """Find slides whose text labels match any keyword (case-insensitive).
+    Returns list of (slide_index, slide) tuples.
+    Empty list = slide not in deck = Green/OK for that KPI."""
+    exclude_keywords = exclude_keywords or []
+    results = []
+    for idx, slide in enumerate(prs.slides):
+        all_text = ' '.join(
+            shape.text.strip()
+            for shape in slide.shapes
+            if hasattr(shape, 'text') and shape.text.strip()
+        ).upper()
+        if any(kw.upper() in all_text for kw in keywords):
+            if not any(ex.upper() in all_text for ex in exclude_keywords):
+                results.append((idx, slide))
+    return results
+
+
+def _parse_kpi_card_words(words):
+    """Parse KPI summary values from EasyOCR words extracted from the KPI Card image.
+
+    Strategy: find each label keyword in the word list, then look for the first
+    numeric value that is spatially below (and close in X) to that label.
+
+    Returns dict: kpi_key → float value."""
+
+    # Map KPI keys to lists of label strings to search for (partial, case-insensitive)
+    KPI_LABELS = {
+        'bok_opr':    ['OPERATION RATE BOK', 'OPR BOK', 'RATE BOK', 'BOK OPR', 'BOK CURRENT'],
+        'bol_opr':    ['OPERATION RATE BOL', 'OPR BOL', 'RATE BOL', 'BOL OPR', 'BOL CURRENT'],
+        'ashop_ftt':  ['BODY SHOP FTT', 'A-SHOP FTT', 'ASHOP FTT', 'BODY SHOP FT'],
+        'ashop_dpv':  ['BODY SHOP DPV', 'A-SHOP DPV', 'ASHOP DPV'],
+        'wg_dpv':     ['W&G DPV', 'WAG DPV', 'WG DPV', 'ASHOP W&G', 'ASHOP WAG',
+                       'A SHOP W&G', 'SHOP WG DPV', 'SHOP W&G'],
+        'wd6_ftt':    ['PAINT SHOP FTT', 'WD6 FTT', 'B-SHOP FTT', 'B SHOP FTT', 'PAINT FTT'],
+        'wd6_dpv':    ['PAINT SHOP DPV', 'WD6 DPV', 'B-SHOP DPV', 'B SHOP DPV', 'PAINT DPV'],
+        'cal_ftt':    ['CAL LINE', 'CAL FTT', 'CAL LINE FTT'],
+        'final1_ftt': ['FINAL 1 FTT', 'FINAL1 FTT', 'FN1 FTT', 'FINAL 1 F'],
+        'final2_ftt': ['FINAL 2 FTT', 'FINAL2 FTT', 'FN2 FTT', 'FINAL 2 F', 'EOL FTT'],
+        'scrap_car':  ['SCRAP PER CAR', 'SCRAP/CAR', 'SAP PER CAR', 'SCRAP CAR',
+                       'SCRAP PER', 'PRODUCTION SCRAP'],
+    }
+
+    # Build per-word uppercase text for fast searching
+    all_words = [(t.upper(), cx, cy, conf) for t, cx, cy, conf in words]
+
+    def _find_label_pos(label_variants):
+        """Return (cx, cy) of the label, or (None, None).
+
+        Rules to avoid false matches on short single-char OCR tokens:
+        - Direct:   the OCR word contains the full label string (and word len > 5)
+        - Combined: 2-3 adjacent same-row words concatenated contain the label
+                    (each individual word must be > 2 chars to avoid noise)
+        We never check 'label_substring in word' in the reverse direction because
+        short garbage chars like 'A', '0', '8' would match every label."""
+        for variant in label_variants:
+            vu = variant.upper()
+            # Single-word match: OCR word fully contains the label text
+            for i, (t, cx, cy, conf) in enumerate(all_words):
+                if vu in t and len(t) > 5:
+                    return cx, cy
+
+            # Two-word combination: adjacent words on same line contain the label
+            for i in range(len(all_words) - 1):
+                t1, cx1, cy1, c1 = all_words[i]
+                t2, cx2, cy2, c2 = all_words[i + 1]
+                if abs(cy1 - cy2) < 25 and len(t1) > 2 and len(t2) > 2:
+                    combined = t1 + ' ' + t2
+                    if vu in combined:
+                        return (cx1 + cx2) / 2, (cy1 + cy2) / 2
+
+            # Three-word combination
+            for i in range(len(all_words) - 2):
+                t1, cx1, cy1, _ = all_words[i]
+                t2, cx2, cy2, _ = all_words[i + 1]
+                t3, cx3, cy3, _ = all_words[i + 2]
+                if abs(cy1 - cy3) < 30 and len(t1) > 2 and len(t2) > 2 and len(t3) > 2:
+                    combined = t1 + ' ' + t2 + ' ' + t3
+                    if vu in combined:
+                        return (cx1 + cx3) / 2, (cy1 + cy3) / 2
+        return None, None
+
+    def _extract_numeric_below(label_cx, label_cy, max_dy=70, x_tol=210):
+        """Find the main KPI value below/near a label center.
+
+        Strategy:
+          1. High-confidence pass: tight Y window (70px), must START with digit
+             Sort by cy ascending so the topmost (closest) value wins.
+          2. Fallback pass: wider Y window (120px), same digit-start rule.
+        This prevents picking up 'Target 98.xx' lines that appear AFTER the value.
+        """
+        def _try_extract(candidates_list):
+            for t, cx, cy, conf in sorted(candidates_list, key=lambda x: x[2]):
+                cleaned = (t.replace('%', '').replace('$', '').replace(',', '')
+                            .replace('O', '0').replace('o', '0').strip())
+                # Must start with a digit — filters out 'Target', 'To GO:', etc.
+                if not re.match(r'^\d', cleaned):
+                    continue
+                m = re.search(r'\d+\.?\d*', cleaned)
+                if m:
+                    try:
+                        return float(m.group(0))
+                    except ValueError:
+                        pass
+            return None
+
+        # Pass 1: high confidence, tight Y window
+        hi_conf = [
+            (t, cx, cy, conf)
+            for t, cx, cy, conf in all_words
+            if abs(cx - label_cx) < x_tol
+            and 5 < (cy - label_cy) < max_dy
+            and conf > 0.55
+        ]
+        val = _try_extract(hi_conf)
+        if val is not None:
+            return val
+
+        # Pass 2: any confidence, wider Y window
+        any_conf = [
+            (t, cx, cy, conf)
+            for t, cx, cy, conf in all_words
+            if abs(cx - label_cx) < x_tol
+            and 5 < (cy - label_cy) < 120
+        ]
+        return _try_extract(any_conf)
+
+    kpis = {}
+    for kpi_key, label_variants in KPI_LABELS.items():
+        lx, ly = _find_label_pos(label_variants)
+        if lx is not None:
+            val = _extract_numeric_below(lx, ly)
+            if val is not None:
+                # Normalize: FTT/OPR are percentages
+                if kpi_key in ('bok_opr', 'bol_opr', 'ashop_ftt', 'wd6_ftt',
+                               'cal_ftt', 'final1_ftt', 'final2_ftt'):
+                    if val <= 1.0:
+                        val = round(val * 100, 4)
+                    else:
+                        val = round(val, 4)
+                else:
+                    val = round(val, 4)
+                # Special fix: EasyOCR often misreads "$" as "5" in some fonts
+                # e.g. "$7.53" → "57.53".  Heuristic: if scrap_car value >= 10
+                # and starts with "5", try stripping the leading digit.
+                if kpi_key == 'scrap_car' and val >= 10:
+                    s = str(val)
+                    if s.startswith('5') and '.' in s:
+                        try:
+                            stripped = float(s[1:])  # "57.53" → 7.53
+                            log(f"  KPI Card OCR: scrap_car raw={val} → adjusted to {stripped} ($→5 fix)")
+                            val = stripped
+                        except ValueError:
+                            pass
+                kpis[kpi_key] = val
+                log(f"  KPI Card OCR: {kpi_key} = {val}")
+            else:
+                log(f"  KPI Card OCR: {kpi_key} — label found but no value below")
+        else:
+            log(f"  KPI Card OCR: {kpi_key} — label not found in OCR output")
+    return kpis
+
+
+def _parse_item_slide_words(words, kpi_type='ftt'):
+    """Parse item rows from an item detail slide's OCR word list.
+
+    Identifies body numbers (pattern: 5XX-NNNN) and extracts description text.
+    Returns list of item dicts matching to_ftt_item / to_dpv_item format."""
+    import re as _re
+
+    BODY_PATTERN = _re.compile(
+        r'\b(5[13][69][-_]?\d{3,5}|5[13][69]\d{4,6}|\d{7,8})\b', _re.IGNORECASE)
+    MODEL_MAP = {'536': 'EX90 (536)', '519': 'PSTR (519)'}
+
+    # Group OCR words into lines by Y proximity (within 18px)
+    sorted_words = sorted(words, key=lambda w: (w[2], w[1]))
+    lines = []
+    cur_line = []
+    last_y = -999
+    for text, cx, cy, conf in sorted_words:
+        if abs(cy - last_y) > 18:
+            if cur_line:
+                lines.append(cur_line)
+            cur_line = [(text, cx, cy, conf)]
+            last_y = cy
+        else:
+            cur_line.append((text, cx, cy, conf))
+    if cur_line:
+        lines.append(cur_line)
+
+    items = []
+    seen_bodies = set()
+
+    for line in lines:
+        line_text = ' '.join(t for t, _, _, _ in sorted(line, key=lambda x: x[1]))
+        body_m = BODY_PATTERN.search(line_text)
+        if body_m:
+            body = body_m.group(0).replace('_', '-')
+            if body in seen_bodies:
+                continue
+            seen_bodies.add(body)
+
+            # Detect model from body number prefix
+            model_code = body[:3].replace('-', '')
+            model = MODEL_MAP.get(model_code, model_code)
+
+            # Description: line text minus body number and short tokens
+            desc = _re.sub(r'\b5[13][69][-_]?\d{3,6}\b', '', line_text, flags=_re.IGNORECASE)
+            desc = _re.sub(r'\b(536|519|EX90|PSTR)\b', '', desc, flags=_re.IGNORECASE)
+            desc = _re.sub(r'[^\w\s\-/.,#()&%]', ' ', desc)
+            desc = _re.sub(r'\s+', ' ', desc).strip()
+
+            if kpi_type == 'dpv':
+                items.append({
+                    'body':     body, 'rfid': '', 'count': 1,
+                    'desc':     desc[:80], 'model': model,
+                    'station':  '', 'location': '', 'extra': '',
+                })
+            else:
+                items.append({
+                    'body':       body, 'rfid': '', 'desc': desc[:80],
+                    'model':      model, 'link_stn':   '', 'link_time':  '',
+                    'close_stn':  '', 'close_time': '', 'location':   '',
+                    'extra':      '',
+                })
+    return items
+
+
+def parse_ppt_kpi_images(ppt_path):
+    """PRIMARY KPI DATA SOURCE: Read all KPI values and item details from PPT images.
+
+    Slide identification (by text label on slide, position-independent):
+      'RTM'            → KPI Card (BOK/BOL OPR, FTT, DPV, Scrap $/car)
+      'A-SHOP FTT'     → A-Shop repair items
+      'A - DPV'        → A-Shop DPV items
+      'W&G DPV'        → W&G DPV items
+      'WD6' / 'B-DPV'  → WD6/B-Shop DPV items
+      'C - FTT' / 'C-SHOP' → C-Shop CAL/Final items
+      'NO SCRAP'       → scrap = $0 (zero-scrap confirmation slide)
+
+    Missing slide → empty items list = Green/OK for that KPI.
+
+    Returns:
+        ppt_kpis:  dict  kpi_key → float value  (to feed build_kpis_from_ppt)
+        ppt_items: dict  matching build_ppt_items_from_pbi() output keys
+    """
+    ensure_pptx_deps()
+
+    ppt_kpis  = {}
+    ppt_items = {
+        'ashop_ftt_536': [],  'ashop_ftt_519': [],
+        'ashop_dpv_536': [],  'ashop_dpv_519': [],
+        'wg_dpv_536':    [],  'wg_dpv_519':    [],
+        'wd6_ftt_536':   [],  'wd6_ftt_519':   [],
+        'wd6_dpv_536':   [],  'wd6_dpv_519':   [],
+        'cal_ftt_536':   [],  'cal_ftt_519':   [],
+        'final1_ftt_536':[],  'final1_ftt_519':[],
+        'final2_ftt_536':[],  'final2_ftt_519':[],
+    }
+
+    # Copy to local temp (OneDrive files can't be opened directly by python-pptx)
+    tmp_path = os.path.join(WORK, '_mm_ppt_tmp.pptx')
+    try:
+        shutil.copy2(ppt_path, tmp_path)
+    except Exception as e:
+        log(f"  PPT copy failed: {e}")
+        return ppt_kpis, ppt_items
+
+    try:
+        from pptx import Presentation
+        prs = Presentation(tmp_path)
+    except Exception as e:
+        log(f"  PPT open failed: {e}")
+        try: os.remove(tmp_path)
+        except: pass
+        return ppt_kpis, ppt_items
+
+    log(f"  PPT image KPI parse: {len(prs.slides)} slides")
+
+    # ── KPI Card: OCR the main image (PRIMARY source for all summary values) ─
+    kpi_card_slides = _find_slides_by_keyword(prs, ['RTM'])
+    if kpi_card_slides:
+        _, kpi_slide = kpi_card_slides[0]
+        img_bytes = _slide_main_image(kpi_slide)
+        if img_bytes:
+            log(f"  KPI Card: running OCR ({len(img_bytes)//1024} KB image)...")
+            words = _ocr_image_to_words(img_bytes)
+            log(f"  KPI Card: {len(words)} OCR regions found")
+            card_kpis = _parse_kpi_card_words(words)
+            ppt_kpis.update(card_kpis)
+        else:
+            log(f"  KPI Card: RTM slide has no image — KPI Card values will be null")
+    else:
+        log(f"  KPI Card: no RTM slide found — KPI Card values will be null")
+
+    # ── NO SCRAP slide: only override scrap if KPI Card gave no value ────────
+    # NOTE: "NO SCRAP" = no bodies physically scrapped (different from scrap $/car).
+    # The KPI Card always shows the dollar figure; NO SCRAP slide is a visual summary.
+    # We only use NO SCRAP → $0 if there was no KPI Card scrap value at all.
+    no_scrap_slides = _find_slides_by_keyword(prs, ['NO SCRAP', 'NOSCRAP', 'NO-SCRAP'])
+    if no_scrap_slides:
+        log(f"  PPT: NO SCRAP slide found (body scrap = 0)")
+        if ppt_kpis.get('scrap_car') is None:
+            ppt_kpis['scrap_car'] = 0.0
+            log(f"  PPT: scrap_car set to $0 (KPI Card had no value)")
+
+    # ── Item detail slides ───────────────────────────────────────────────────
+    # Each entry: (search_keywords, exclude_keywords, key_536, key_519, kpi_type)
+    SLIDE_CONFIG = [
+        (['A-SHOP FTT', 'A SHOP FTT'],
+         ['GEMBA', 'NOK UNIT', 'PHOTO', 'PICTURES'],
+         'ashop_ftt_536', 'ashop_ftt_519', 'ftt'),
+
+        (['A - DPV', 'A-SHOP DPV', 'A DPV', 'ASHOP DPV'],
+         [],
+         'ashop_dpv_536', 'ashop_dpv_519', 'dpv'),
+
+        (['W&G DPV', 'WG DPV', 'WAG DPV', 'W&G'],
+         ['GEMBA'],
+         'wg_dpv_536', 'wg_dpv_519', 'dpv'),
+
+        (['WD6', 'B - DPV', 'B-DPV', 'B SHOP DPV', 'WD6 FTT'],
+         ['SECTION', 'OVERVIEW', 'GEMBA'],
+         'wd6_dpv_536', 'wd6_dpv_519', 'dpv'),
+
+        (['C - FTT', 'C-SHOP FTT', 'C SHOP FTT', 'CAL FTT', 'C-SHOP FTT REPORT'],
+         [],
+         'cal_ftt_536', 'cal_ftt_519', 'ftt'),
+    ]
+
+    for search_kws, excl_kws, key_536, key_519, kpi_type in SLIDE_CONFIG:
+        found_slides = _find_slides_by_keyword(prs, search_kws, excl_kws)
+        if not found_slides:
+            log(f"  PPT items [{search_kws[0]}]: slide not found → Green/OK")
+            continue
+
+        for slide_idx, slide in found_slides:
+            img_bytes = _slide_main_image(slide)
+            if not img_bytes:
+                log(f"  PPT items [{search_kws[0]}]: slide {slide_idx+1} has no image")
+                continue
+            log(f"  PPT items [{search_kws[0]}]: OCR slide {slide_idx+1} ({len(img_bytes)//1024} KB)...")
+            words = _ocr_image_to_words(img_bytes)
+            slide_items = _parse_item_slide_words(words, kpi_type)
+
+            # Split by model (EX90=536, PSTR=519)
+            items_536 = [r for r in slide_items
+                         if '536' in str(r.get('model','')) or 'EX90' in str(r.get('model',''))]
+            items_519 = [r for r in slide_items
+                         if '519' in str(r.get('model','')) or 'PSTR' in str(r.get('model',''))]
+            if not items_536 and not items_519:
+                items_536 = slide_items  # can't split by model → all in 536
+
+            ppt_items[key_536].extend(items_536)
+            ppt_items[key_519].extend(items_519)
+            log(f"  PPT items [{search_kws[0]}]: {len(items_536)} EX90 + {len(items_519)} PSTR items")
+
+    try:
+        os.remove(tmp_path)
+    except Exception:
+        pass
+
+    return ppt_kpis, ppt_items
+
+
+def build_kpis_from_ppt(ppt_kpis):
+    """Build the kpis dict for MM_DATA from PPT image OCR results.
+    Returns dict with same structure as build_kpis_from_pbi()."""
+    kpis = {k: {'val': None} for k in TARGETS}
+    for kpi_key in ('bok_opr', 'bol_opr', 'scrap_car',
+                    'ashop_ftt', 'ashop_dpv', 'wg_dpv',
+                    'wd6_ftt', 'wd6_dpv',
+                    'cal_ftt', 'final1_ftt', 'final2_ftt'):
+        if ppt_kpis.get(kpi_key) is not None:
+            kpis[kpi_key] = {'val': ppt_kpis[kpi_key]}
+    return kpis
 
 
 def _inject_ocr_into_md(md_text, image_only_ocr):
@@ -2033,23 +2491,47 @@ def update():
     log(f"Report date: {report_date}  ({wk_str} D{day_int})")
     if wk_str is None: log("ERROR: weekend"); return False
 
-    # ── 0. Wait for Power BI Desktop to be ready (auto-launched at 7:20am) ────
-    wait_for_pbi(max_wait_min=8)
-
-    # ── 1. Power BI query (FTT/DPV — pre-calculated, no math needed) ──────────
-    pbi = query_powerbi(report_date)
-    if pbi:
-        kpis      = build_kpis_from_pbi(pbi)
-        ppt_items = build_ppt_items_from_pbi(pbi)
-        log(f"  Power BI data loaded successfully")
+    # ── 0. PPT Image KPI Data (PRIMARY source for all quality KPIs) ──────────
+    ppt_path = find_ppt(wk_str, day_int)
+    if ppt_path:
+        log(f"Found PPT: {ppt_path}")
+        ppt_kpi_values, ppt_items = parse_ppt_kpi_images(ppt_path)
+        kpis = build_kpis_from_ppt(ppt_kpi_values)
+        log("  PPT image data loaded")
         for k, v in kpis.items():
             if isinstance(v, dict) and v.get('val') is not None:
                 log(f"    {k}: {v['val']}")
     else:
-        log("  WARNING: Power BI not available — using cached/sample KPI values")
-        log("  TIP: Open Power BI Desktop, refresh the FTT-DPV file, then re-run this script")
-        kpis      = {k: {'val': None} for k in TARGETS}
-        ppt_items = {}
+        log("  WARNING: PPT not found — all quality KPIs will be null")
+        ppt_kpi_values = {}
+        ppt_items      = {}
+        kpis           = {k: {'val': None} for k in TARGETS}
+
+    # ── 1. Power BI optional fallback (for any KPIs not found in PPT) ─────────
+    pbi_used = False
+    if any(kpis[k].get('val') is None for k in kpis):
+        ports = find_pbi_ports()
+        if ports:
+            log("  Some KPIs null — trying PBI as fallback...")
+            pbi = query_powerbi(report_date)
+            if pbi:
+                pbi_kpis  = build_kpis_from_pbi(pbi)
+                pbi_items = build_ppt_items_from_pbi(pbi)
+                pbi_used  = True
+                for k in kpis:
+                    if kpis[k].get('val') is None and pbi_kpis.get(k, {}).get('val') is not None:
+                        kpis[k] = pbi_kpis[k]
+                        log(f"    PBI fallback: {k} = {pbi_kpis[k]['val']}")
+                # Use PBI items only where PPT items are empty
+                for ikey in ppt_items:
+                    if not ppt_items[ikey] and pbi_items.get(ikey):
+                        ppt_items[ikey] = pbi_items[ikey]
+            else:
+                log("  PBI not available — KPIs from PPT only")
+        else:
+            log("  PBI not open — KPIs from PPT only")
+
+    log(f"  Power BI data loaded" if pbi_used else "  Running on PPT data only (no PBI)")
 
     # ── 2. Downtime from OneDrive Excel ───────────────────────────────────────
     tmp_hop = os.path.join(WORK, '_mm_hop.xlsm')
@@ -2078,12 +2560,21 @@ def update():
         log(f"  {k:12s}: total={a['total']} min  unplanned={a['unplanned']}")
     log(f"  Top HOP stop: {hop_stops[0]['line'] if hop_stops else 'none'}")
 
-    # ── 3. PPT tables (Safety, Part Quality, Bodies OOF, Scrap) ──────────────
-    ppt_path = find_ppt(wk_str, day_int)
+    # ── 3. PPT tables (Safety, Part Quality, Bodies OOF) ─────────────────────
+    # ppt_path already found in step 0; scrap now comes from KPI Card OCR
     if ppt_path:
-        log(f"Found PPT: {ppt_path}")
         md_text    = read_ppt_markdown(ppt_path)
         ppt_tables = parse_ppt_tables(md_text)
+        # Inject scrap value from KPI Card OCR (overrides text-only scrap detection)
+        scrap_from_card = ppt_kpi_values.get('scrap_car')
+        if scrap_from_card is not None:
+            if scrap_from_card == 0:
+                ppt_tables['scrap']      = '$0'
+                ppt_tables['scrap_note'] = 'No scrap today'
+            else:
+                ppt_tables['scrap']      = f'${scrap_from_card:.2f}'
+                ppt_tables['scrap_note'] = f'${scrap_from_card:.2f}/car scrap cost'
+            log(f"  Scrap from KPI Card OCR: {ppt_tables['scrap']}")
     else:
         ppt_tables = {'safety':{'title':'','detail':'','meta':'','days_safe':None},
                       'part_quality':[], 'bodies_oof':[], 'scrap':'$0',
@@ -2287,19 +2778,38 @@ def backfill(target_date):
 
     log(f"=== Backfill history: {target_date}  ({wk_str} D{day_int}) ===")
 
-    # 1. Power BI (same as daily update)
-    pbi = query_powerbi(target_date)
-    if pbi:
-        kpis      = build_kpis_from_pbi(pbi)
-        ppt_items = build_ppt_items_from_pbi(pbi)
-        log("  Power BI data loaded")
+    # 1. PPT Image KPI Data (PRIMARY source)
+    ppt_path = find_ppt(wk_str, day_int)
+    if ppt_path:
+        log(f"  Found PPT: {ppt_path}")
+        ppt_kpi_values, ppt_items = parse_ppt_kpi_images(ppt_path)
+        kpis = build_kpis_from_ppt(ppt_kpi_values)
+        log("  PPT image data loaded")
         for k, v in kpis.items():
             if isinstance(v, dict) and v.get('val') is not None:
                 log(f"    {k}: {v['val']}")
     else:
-        log("  WARNING: Power BI not available — KPIs will be null for this day")
-        kpis      = {k: {'val': None} for k in TARGETS}
-        ppt_items = {}
+        log("  WARNING: PPT not found — KPIs will be null for this day")
+        ppt_kpi_values = {}
+        ppt_items      = {}
+        kpis           = {k: {'val': None} for k in TARGETS}
+
+    # PBI optional fallback for null KPIs
+    if any(kpis[k].get('val') is None for k in kpis):
+        ports = find_pbi_ports()
+        if ports:
+            log("  Some KPIs null — trying PBI fallback...")
+            pbi = query_powerbi(target_date)
+            if pbi:
+                pbi_kpis  = build_kpis_from_pbi(pbi)
+                pbi_items = build_ppt_items_from_pbi(pbi)
+                for k in kpis:
+                    if kpis[k].get('val') is None and pbi_kpis.get(k, {}).get('val') is not None:
+                        kpis[k] = pbi_kpis[k]
+                        log(f"    PBI fallback: {k} = {pbi_kpis[k]['val']}")
+                for ikey in ppt_items:
+                    if not ppt_items[ikey] and pbi_items.get(ikey):
+                        ppt_items[ikey] = pbi_items[ikey]
 
     # 2. Downtime (same as daily update)
     tmp_hop = os.path.join(WORK, '_mm_hop.xlsm')
@@ -2324,11 +2834,17 @@ def backfill(target_date):
     areas     = read_area_dt(hop_ws, dt_ws, wk_str, day_int)
     hop_stops = build_hop_stops(hop_ws, dt_ws, wk_str, day_int)
 
-    # 3. PPT (same as daily update)
-    ppt_path = find_ppt(wk_str, day_int)
+    # 3. PPT tables (Safety, Part Quality, Bodies OOF) — ppt_path already found in step 1
     if ppt_path:
-        log(f"  Found PPT: {ppt_path}")
         ppt_tables = parse_ppt_tables(read_ppt_markdown(ppt_path))
+        scrap_from_card = ppt_kpi_values.get('scrap_car')
+        if scrap_from_card is not None:
+            if scrap_from_card == 0:
+                ppt_tables['scrap']      = '$0'
+                ppt_tables['scrap_note'] = 'No scrap today'
+            else:
+                ppt_tables['scrap']      = f'${scrap_from_card:.2f}'
+                ppt_tables['scrap_note'] = f'${scrap_from_card:.2f}/car scrap cost'
     else:
         ppt_tables = {'safety': {'title': '', 'detail': '', 'meta': '', 'days_safe': None},
                       'part_quality': [], 'bodies_oof': [],
