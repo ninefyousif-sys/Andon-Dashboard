@@ -1748,14 +1748,14 @@ function renderAllKPIPosts(){
         const bg = ok ? 'var(--amber-d)' : 'var(--red-d)';
         const bc = ok ? 'rgba(210,153,34,.25)' : 'rgba(248,81,73,.25)';
         const cl = ok ? 'var(--amber)' : 'var(--red)';
-        const itemNote = hasItems ? 'top 5 shown' : 'items in PBI A-Shop W&G model — will capture on next run (Mon 7:45am)';
+        const itemNote = hasItems ? 'top 5 shown' : 'item details from PPT OCR — no PPT file found for this day';
         wgSummary.innerHTML = `<div style="background:${bg};border:1px solid ${bc};border-radius:6px;padding:6px 12px;font-size:12px;">
           <div><span style="color:${cl};font-weight:700;">&#9888; W&amp;G DPV = ${wgVal.toFixed(4)}</span><span style="color:var(--muted);margin-left:8px;">${wgKpi.defects||'?'} weld/geometry defects on ${wgKpi.bodies||'?'} bodies — ${itemNote}</span></div>
           ${hasItems ? defectTypePills(wg536, wg519) : ''}
         </div>`;
       }
     }
-    // Render W&G items if available from PBI, otherwise show count summary
+    // Render W&G items if available from PPT OCR, otherwise show count summary
     if(hasItems){
       renderDPVRows('wg-dpv-536-rows', wg536, 6, 'lbl-wg-dpv-536', '536 W&G Items (EX90)');
       renderDPVRows('wg-dpv-519-rows', wg519, 6, 'lbl-wg-dpv-519', '519 W&G Items (PSTR)');
@@ -1764,7 +1764,7 @@ function renderAllKPIPosts(){
       const el519 = document.getElementById('wg-dpv-519-rows');
       const msg = !wgVal || wgVal===0
         ? `<tr><td colspan="6" style="color:var(--green);text-align:center;padding:10px;">&#10003; No W&amp;G defects — target met</td></tr>`
-        : `<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:10px;">&#8505; ${wgKpi?.defects||0} total defects — item details not captured for this day — will populate on next scheduled run</td></tr>`;
+        : `<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:10px;">&#8505; ${wgKpi?.defects||0} total defects — no PPT file available for this day — upload the Friday PPT to OneDrive to enable item details</td></tr>`;
       if(el536) el536.innerHTML = msg;
       if(el519) el519.innerHTML = msg;
       const lbl536 = document.getElementById('lbl-wg-dpv-536'); if(lbl536) lbl536.innerHTML = '536 W&amp;G Items (EX90)';

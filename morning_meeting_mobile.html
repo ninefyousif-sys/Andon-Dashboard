@@ -563,8 +563,14 @@ function renderAShop(){
   if(b){ b.textContent=issues?issues+' Below Target':'On Target'; b.className='sec-badge '+(issues?'bad':'ok'); }
   // FTT items
   renderFTTItems('m-ashop-ftt-items', p.ashop_ftt_536, p.ashop_ftt_519);
-  // W&G items
-  renderDPVItems('m-wg-items', [...(p.wg_dpv_536||[]),...(p.wg_dpv_519||[])], 5);
+  // W&G items — show note if KPI>0 but no PPT items available
+  { const wgItems=[...(p.wg_dpv_536||[]),...(p.wg_dpv_519||[])];
+    const wgVal=k.wg_dpv?.val;
+    if(wgItems.length===0 && wgVal>0){
+      const el=document.getElementById('m-wg-items');
+      if(el) el.innerHTML=`<div class="empty-ok" style="color:var(--amber)">&#9888; ${k.wg_dpv?.defects||0} defect(s) — item details not available (no PPT file for this day)</div>`;
+    } else { renderDPVItems('m-wg-items', wgItems, 5); }
+  }
 }
 
 /* ─── RENDER B SHOP ─── */
