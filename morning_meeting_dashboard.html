@@ -1748,7 +1748,7 @@ function renderAllKPIPosts(){
         const bg = ok ? 'var(--amber-d)' : 'var(--red-d)';
         const bc = ok ? 'rgba(210,153,34,.25)' : 'rgba(248,81,73,.25)';
         const cl = ok ? 'var(--amber)' : 'var(--red)';
-        const itemNote = hasItems ? 'top 5 shown' : 'work orders tracked in Weld Masters';
+        const itemNote = hasItems ? 'top 5 shown' : 'items in PBI A-Shop W&G model — will capture on next run (Mon 7:45am)';
         wgSummary.innerHTML = `<div style="background:${bg};border:1px solid ${bc};border-radius:6px;padding:6px 12px;font-size:12px;">
           <div><span style="color:${cl};font-weight:700;">&#9888; W&amp;G DPV = ${wgVal.toFixed(4)}</span><span style="color:var(--muted);margin-left:8px;">${wgKpi.defects||'?'} weld/geometry defects on ${wgKpi.bodies||'?'} bodies — ${itemNote}</span></div>
           ${hasItems ? defectTypePills(wg536, wg519) : ''}
@@ -1774,7 +1774,7 @@ function renderAllKPIPosts(){
       if(el){
         if(!wgVal || wgVal===0){ el.className='callout co-g'; el.innerHTML='&#10003; W&amp;G DPV at target — no weld/geometry defects recorded.'; }
         else { const ok = wgVal <= 1.20; el.className = ok ? 'callout co-g' : 'callout co-a';
-          el.innerHTML = `&#9888; W&amp;G DPV = ${wgVal.toFixed(4)} — ${wgKpi?.defects||0} defect(s) on ${wgKpi?.bodies||0} bodies. Work orders tracked by Weld Masters.<span class="owner">Source: Power BI A-Shop Body Count</span>`; }
+          el.innerHTML = `&#9888; W&amp;G DPV = ${wgVal.toFixed(4)} — ${wgKpi?.defects||0} defect(s) on ${wgKpi?.bodies||0} bodies. Items in PBI A-Shop W&G model — will capture on next automated run (Mon 7:45am).<span class="owner">Source: Power BI A-Shop Body Count</span>`; }
       }
     }
   }

@@ -505,7 +505,7 @@ function renderSafety(){
   // Always overwrite — never show a previous day's content
   if(t) t.textContent = s.title  || ('No safety alert \u2014 ' + wk + ' D' + dy);
   if(d) d.textContent = s.detail || '\u2014';
-  if(m) m.textContent = s.meta   || (wk + ' D' + dy);
+  if(m) m.innerHTML   = s.meta ? s.meta.replace(/\|/g,'<br>') : (wk + ' D' + dy);
   if(b){ b.textContent = s.title ? '1 Alert' : 'Clear';
          b.className   = 'sec-badge ' + (s.title ? 'bad' : 'ok'); }
 
@@ -521,9 +521,9 @@ function renderDowntime(){
   const unEl=document.getElementById('m-dt-unplan');
   const plEl=document.getElementById('m-dt-plan');
   const bdEl=document.getElementById('m-dt-badge');
-  if(totEl) totEl.textContent=dt.total_min||0;
-  if(unEl)  unEl.textContent=dt.unplanned_min||0;
-  if(plEl)  plEl.textContent=dt.planned_min||0;
+  if(totEl) totEl.textContent=(dt&&dt.total_min!=null)?dt.total_min:'—';
+  if(unEl)  unEl.textContent=(dt&&dt.unplanned_min!=null)?dt.unplanned_min:'—';
+  if(plEl)  plEl.textContent=(dt&&dt.planned_min!=null)?dt.planned_min:'—';
   if(avEl){
     const avail=dt.availability;
     avEl.textContent=(avail!=null?avail.toFixed(1)+'%':'—');
@@ -718,9 +718,10 @@ function tick(){
 setInterval(tick,30000); tick();
 
 /* ─── INIT ─── */
-document.addEventListener('DOMContentLoaded',()=>{
+// Runs immediately (script is at bottom of <body>, DOM is already parsed).
+// Eliminates the 'Loading...' / blank KPI flash before DOMContentLoaded.
+(function initMobile(){
   initDayPicker();
-  // Default to most recent day with real KPI data (skip days with all-null KPIs)
   const _hDates = Object.keys(MM_HISTORY).sort().reverse();
   const _best = _hDates.find(d => {
     const k = MM_HISTORY[d]?.kpis;
@@ -733,7 +734,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   } else {
     applyMMData();
   }
-});
+})();
 </script>
 </body>
 </html>
