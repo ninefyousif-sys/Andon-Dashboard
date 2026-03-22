@@ -1809,13 +1809,115 @@ def _parse_kpi_card_words(words):
     return kpis
 
 
+def _parse_wg_item_line(line_text):
+    """Parse a single W&G DPV OCR line into structured fields.
+
+    W&G slide columns: Body # | RFID | Count | Model | Defect Description | Station | Location
+    OCR reads each row as one text blob, e.g.:
+      '6005335 4816565 Ex9O ARC WELD NOK (A-SHOP) OTW8G C Pillar Left Side (Side View)'
+
+    Returns dict: {body, rfid, model, desc, station, location} or None if no body found."""
+    import re as _re
+
+    # Body: 7-digit number starting with 5 or 6 (W&G body sequence, e.g. 6005xxx)
+    _BODY_RE   = _re.compile(r'\b([56]\d{6})\b')
+    # RFID: 7-digit number starting with 48 (physical RFID tag, e.g. 4816xxx)
+    _RFID_RE   = _re.compile(r'\b(4[78]\d{5})\b')
+    # Model: various OCR-mangled EX90 variants → normalise to "EX90"
+    _MODEL_RE  = _re.compile(
+        r'\b(Ex9[OodDqQ]|EXx?9[OodDqQ0]|EX9[Oo0]|EX90|EXx90)\b', _re.IGNORECASE)
+    # Station code: O7W8G / OTW8G / OZW8G → normalise to "07W&G"
+    _STAT_RE   = _re.compile(r'\b(O?[07T]W8G|OTW8G|OZW8G|07W8G)\b', _re.IGNORECASE)
+    # Canonical defect name map: regex pattern → display name
+    _DEFECT_MAP = [
+        (_re.compile(r'HEAVY\s+WELD\s+EXPUL',    _re.IGNORECASE), 'HEAVY WELD EXPULSION/SLAG (A-SHOP)'),
+        (_re.compile(r'ARC\s+WELD\s+NOK',        _re.IGNORECASE), 'ARC WELD NOK (A-SHOP)'),
+        (_re.compile(r'173\s*FLUSH',              _re.IGNORECASE), '173 FLUSH LOW (FIT)'),
+        (_re.compile(r'FLUSH\s+LOW',              _re.IGNORECASE), 'FLUSH LOW (FIT)'),
+        (_re.compile(r'WELD\s+NOK',               _re.IGNORECASE), 'WELD NOK (A-SHOP)'),
+    ]
+    # Location: text that follows the station code
+    _LOC_SUFFIXES = [
+        'Right Rear Door Frame', 'Right Front Door Frame', 'Left Front Door Frame',
+        'Left Rear Door Frame', 'C Pillar Left Side', 'C Pillar Right Side',
+        'C Pillar', 'B Pillar', 'A Pillar', 'Left Plenum', 'Right Plenum',
+        'Right Tailgate', 'Left Tailgate', 'Tailgate', 'Roof', 'Side View',
+        'Top View', 'Front View', 'Rear View',
+    ]
+
+    # Extract body numbers (deduplicate; take first/lowest as primary)
+    bodies = list(dict.fromkeys(_BODY_RE.findall(line_text)))
+    if not bodies:
+        return None
+    body = bodies[0]
+
+    # Extract RFIDs (deduplicate)
+    rfids = list(dict.fromkeys(_RFID_RE.findall(line_text)))
+    rfid  = rfids[0] if rfids else ''
+
+    # Model
+    model_m = _MODEL_RE.search(line_text)
+    model   = 'EX90' if model_m else ''
+
+    # Station
+    stat_m  = _STAT_RE.search(line_text)
+    station = '07W&G' if stat_m else ''
+
+    # Map line text to a canonical defect description using known patterns
+    desc = ''
+    for pat, canonical in _DEFECT_MAP:
+        if pat.search(line_text):
+            desc = canonical
+            break
+    if not desc:
+        # Fallback: strip numbers/tokens and use remaining text
+        clean = line_text
+        clean = _re.sub(r'\b[56]\d{6}\b', ' ', clean)
+        clean = _re.sub(r'\b4[78]\d{5}\b', ' ', clean)
+        clean = _MODEL_RE.sub(' ', clean)
+        clean = _STAT_RE.sub(' ', clean)
+        clean = _re.sub(r'\b(A-SHOP|ASHOP|A SHOP|A- SHOP|SHOP)\b', ' ', clean, flags=_re.IGNORECASE)
+        clean = _re.sub(r'[^\w\s\-/.,#()&%]', ' ', clean)
+        clean = _re.sub(r'\s+', ' ', clean).strip()
+        desc  = clean[:60]
+
+    # Extract location: look for known suffixes in the original line
+    location = ''
+    lt_upper = line_text.upper()
+    for loc in _LOC_SUFFIXES:
+        if loc.upper() in lt_upper:
+            location = loc
+            break
+    # Fallback: text after station code
+    if not location and stat_m:
+        after = line_text[stat_m.end():].strip()
+        after = _re.sub(r'[^\w\s\-/.,#()&%()]', ' ', after)
+        after = _re.sub(r'\s+', ' ', after).strip()
+        location = after[:40] if after else ''
+
+    # Normalise desc
+    desc = _re.sub(r'\s+', ' ', desc).strip()[:60]
+
+    return {
+        'body':     body,
+        'rfid':     rfid,
+        'model':    model or 'EX90',   # W&G 536 slide = EX90 only
+        'desc':     desc,
+        'station':  station,
+        'location': location,
+    }
+
+
 def _parse_item_slide_words(words, kpi_type='ftt'):
     """Parse item rows from an item detail slide's OCR word list.
 
-    Identifies body numbers (pattern: 5XX-NNNN) and extracts description text.
+    Identifies body numbers and extracts structured fields.
+    For W&G DPV slides uses a dedicated parser (_parse_wg_item_line) that
+    properly separates RFID, model, station and location from the OCR text blob.
     Returns list of item dicts matching to_ftt_item / to_dpv_item format."""
     import re as _re
 
+    # FTT/generic body pattern (536xxxx or 519xxxx)
     BODY_PATTERN = _re.compile(
         r'\b(5[13][69][-_]?\d{3,5}|5[13][69]\d{4,6}|\d{7,8})\b', _re.IGNORECASE)
     MODEL_MAP = {'536': 'EX90 (536)', '519': 'PSTR (519)'}
@@ -1836,11 +1938,30 @@ def _parse_item_slide_words(words, kpi_type='ftt'):
     if cur_line:
         lines.append(cur_line)
 
-    items = []
-    seen_bodies = set()
+    items        = []
+    seen_bodies  = set()
 
     for line in lines:
         line_text = ' '.join(t for t, _, _, _ in sorted(line, key=lambda x: x[1]))
+
+        # ── W&G DPV: use dedicated structured parser ──────────────────────────
+        if kpi_type == 'dpv':
+            parsed = _parse_wg_item_line(line_text)
+            if parsed and parsed['body'] not in seen_bodies:
+                seen_bodies.add(parsed['body'])
+                items.append({
+                    'body':     parsed['body'],
+                    'rfid':     parsed['rfid'],
+                    'count':    1,
+                    'desc':     parsed['desc'],
+                    'model':    parsed['model'],
+                    'station':  parsed['station'],
+                    'location': parsed['location'],
+                    'extra':    '',
+                })
+            continue
+
+        # ── FTT / generic slides ───────────────────────────────────────────────
         body_m = BODY_PATTERN.search(line_text)
         if body_m:
             body = body_m.group(0).replace('_', '-')
@@ -1858,19 +1979,12 @@ def _parse_item_slide_words(words, kpi_type='ftt'):
             desc = _re.sub(r'[^\w\s\-/.,#()&%]', ' ', desc)
             desc = _re.sub(r'\s+', ' ', desc).strip()
 
-            if kpi_type == 'dpv':
-                items.append({
-                    'body':     body, 'rfid': '', 'count': 1,
-                    'desc':     desc[:80], 'model': model,
-                    'station':  '', 'location': '', 'extra': '',
-                })
-            else:
-                items.append({
-                    'body':       body, 'rfid': '', 'desc': desc[:80],
-                    'model':      model, 'link_stn':   '', 'link_time':  '',
-                    'close_stn':  '', 'close_time': '', 'location':   '',
-                    'extra':      '',
-                })
+            items.append({
+                'body':       body, 'rfid': '', 'desc': desc[:80],
+                'model':      model, 'link_stn':   '', 'link_time':  '',
+                'close_stn':  '', 'close_time': '', 'location':   '',
+                'extra':      '',
+            })
     return items
 
 
