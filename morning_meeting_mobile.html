@@ -488,8 +488,13 @@ function renderKPIs(){
 
 /* ─── RENDER SAFETY ─── */
 function renderSafety(){
-  const s  = (MM_DATA.ppt && MM_DATA.ppt.safety) || {};
+  let s    = (MM_DATA.ppt && MM_DATA.ppt.safety) || {};
   const wk = MM_DATA.wk || ''; const dy = MM_DATA.day || '';
+  // If current day has no safety title, fall back to most recent day that does
+  if(!s.title){
+    const fb = Object.keys(MM_HISTORY).sort().reverse().find(d => MM_HISTORY[d]?.ppt?.safety?.title);
+    if(fb) s = MM_HISTORY[fb].ppt.safety;
+  }
   const t  = document.getElementById('m-safety-title');
   const d  = document.getElementById('m-safety-detail');
   const m  = document.getElementById('m-safety-meta');
