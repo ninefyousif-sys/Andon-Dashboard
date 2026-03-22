@@ -236,6 +236,27 @@ def find_pbi_port():
     return ports[0] if ports else None
 
 
+def wait_for_pbi(max_wait_min=8):
+    """Wait for Power BI Desktop to start exposing its XMLA port.
+    Retries every 60 seconds for up to max_wait_min minutes.
+    Called at the start of update() so PBI has time to load after auto-launch.
+    Returns list of ports (empty if PBI never started)."""
+    import time
+    ports = find_pbi_ports()
+    if ports:
+        return ports
+    log(f"  PBI not ready — will retry every 60s for up to {max_wait_min} min ...")
+    for attempt in range(1, max_wait_min + 1):
+        time.sleep(60)
+        log(f"  PBI wait: attempt {attempt}/{max_wait_min} ...")
+        ports = find_pbi_ports()
+        if ports:
+            log(f"  PBI found after {attempt} minute(s): ports={ports}")
+            return ports
+    log(f"  WARNING: PBI never started after {max_wait_min} minutes — KPIs will be null this run")
+    return []
+
+
 def run_dax(port, dax):
     """Run a DAX query against Power BI Desktop.
     Primary: PowerShell COM/ADODB (no Python packages needed — uses MSOLAP OLE DB
@@ -1978,6 +1999,9 @@ def update():
     log(f"Report date: {report_date}  ({wk_str} D{day_int})")
     if wk_str is None: log("ERROR: weekend"); return False
 
+    # ── 0. Wait for Power BI Desktop to be ready (auto-launched at 7:20am) ────
+    wait_for_pbi(max_wait_min=8)
+
     # ── 1. Power BI query (FTT/DPV — pre-calculated, no math needed) ──────────
     pbi = query_powerbi(report_date)
     if pbi:
@@ -2038,7 +2062,10 @@ def update():
     patch_html(mm_js, day_dict, report_date, target_file=DASH_MOBILE)
     log("Mobile dashboard also patched.")
 
-    # ── 5. Push both dashboards to GitHub Pages ───────────────────────────────
+    # ── 5. Auto-backfill any missing days from earlier this week ─────────────
+    auto_backfill_missing_days()
+
+    # ── 6. Push both dashboards to GitHub Pages ───────────────────────────────
     if GITHUB_ENABLED:
         try:
             now_str = datetime.datetime.now().strftime('%H:%M')
@@ -2079,6 +2106,66 @@ def update():
 
     log("=== Morning Meeting update complete ===\n")
     return success
+
+
+def auto_backfill_missing_days():
+    """After the daily update, check MM_HISTORY for any missing or all-null days
+    this week (Mon → yesterday) and backfill them automatically.
+    This means if a day's scheduled run failed (PBI not open, crash, etc.),
+    the NEXT morning's run will silently recover it — no manual action needed."""
+    today = datetime.date.today()
+    mon   = today - datetime.timedelta(days=today.weekday())  # Monday of current week
+
+    # Collect all working days Mon..yesterday
+    days_to_check = []
+    d = mon
+    while d < today:
+        if d.weekday() < 5:
+            wk, dy = date_to_wk_day(d)
+            if wk is not None:
+                days_to_check.append(d)
+        d += datetime.timedelta(days=1)
+
+    if not days_to_check:
+        log("  Auto-backfill: no prior days this week to check")
+        return
+
+    # Read existing MM_HISTORY from dashboard HTML
+    try:
+        with open(DASH, 'r', encoding='utf-8') as f:
+            html = f.read()
+        hist_match = re.search(r'const MM_HISTORY\s*=\s*(\{.*?\});', html, re.DOTALL)
+        history = json.loads(hist_match.group(1)) if hist_match else {}
+    except Exception as e:
+        log(f"  Auto-backfill: could not read history ({e})")
+        history = {}
+
+    missing = []
+    for d in days_to_check:
+        key = str(d)
+        if key not in history:
+            missing.append((d, 'not in history'))
+        else:
+            # Also re-backfill days where all KPIs are null (previous failed run)
+            kpis = history[key].get('kpis', {})
+            has_data = any(isinstance(v, dict) and v.get('val') is not None
+                           for v in kpis.values())
+            if not has_data:
+                missing.append((d, 'all KPIs null'))
+
+    if not missing:
+        log(f"  Auto-backfill: all {len(days_to_check)} day(s) present — nothing to fill")
+        return
+
+    log(f"  Auto-backfill: {len(missing)} day(s) need filling:")
+    for d, reason in missing:
+        wk, dy = date_to_wk_day(d)
+        log(f"    {d}  ({wk} D{dy})  — {reason}")
+
+    for d, _ in missing:
+        backfill(d)
+
+    log("  Auto-backfill complete")
 
 
 def patch_history_only(day_dict, report_date, target_file=None):
