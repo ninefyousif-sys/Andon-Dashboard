@@ -771,15 +771,15 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
 
 <!-- ═══ PART QUALITY ═══ -->
 <div id="pq" class="anc">
-  <div class="sh">&#128297; Part Quality Issues &mdash; WK12 D4</div>
+  <div id="pq-title" class="sh">&#128297; Part Quality Issues</div>
   <div class="g4 mb">
-    <div class="kpi cr"><div class="kl">Active Issues</div><div class="kv bad">4</div><div class="kt">Open in VIRA</div></div>
-    <div class="kpi cr"><div class="kl">Repeater Issues</div><div class="kv bad">3</div><div class="kt">Recurring suppliers</div></div>
-    <div class="kpi ca"><div class="kl">Waiting Rework</div><div class="kv warn">22</div><div class="kt">Iroquois &mdash; B-Pillar</div></div>
-    <div class="kpi cr"><div class="kl">Parts Scrapped</div><div class="kv bad">2</div><div class="kt">Both warranty &#10003;</div></div>
+    <div class="kpi cr"><div class="kl">Active Issues</div><div id="pq-n-active" class="kv bad">—</div><div id="pq-kt-active" class="kt">Open issues</div></div>
+    <div class="kpi cr"><div class="kl">Repeater Issues</div><div id="pq-n-rep" class="kv bad">—</div><div class="kt">Recurring suppliers</div></div>
+    <div class="kpi ca"><div class="kl">Waiting Rework</div><div id="pq-n-wait" class="kv warn">—</div><div id="pq-kt-wait" class="kt">—</div></div>
+    <div class="kpi cr"><div class="kl">Parts Scrapped</div><div id="pq-n-scrap" class="kv bad">—</div><div class="kt">Scrapped this day</div></div>
   </div>
   <div class="card mb">
-    <div class="ctit">Part Quality Issues Detail <span class="badge bg-r">4 Open</span></div>
+    <div class="ctit">Part Quality Issues Detail <span id="pq-badge" class="badge bg-r">— Open</span></div>
     <div class="tw">
       <table class="t">
         <thead><tr><th>Prod Area</th><th>Model</th><th>Part Description</th><th>Supplier</th><th>Part #</th><th>Qty</th><th>Status</th><th>Repeater</th><th>Sort</th><th>Problem</th><th>VIRA / Handshake</th></tr></thead>
@@ -797,15 +797,9 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
 <!-- ═══ BODIES OUT OF FLOW ═══ -->
 <div id="bof" class="anc">
   <div class="sh">&#128679; Bodies Out of Flow</div>
-  <div class="g5 mb">
-    <div class="kpi cp"><div class="kl">Total Staged</div><div class="kv bad">5</div><div class="kt">Removed from line</div><div class="kd db">&#9650;+1 since yesterday</div></div>
-    <div class="kpi cp"><div class="kl">536 / EX90</div><div class="kv warn">3</div><div class="kt">Complete bodies</div></div>
-    <div class="kpi cp"><div class="kl">PS3</div><div class="kv warn">1</div><div class="kt">Awaiting CMM</div></div>
-    <div class="kpi cp"><div class="kl">519 / EX90</div><div class="kv warn">1</div><div class="kt">Hood repair</div></div>
-    <div class="kpi ca"><div class="kl">Oldest Staged</div><div class="kv bad">WK10 D5</div><div class="kt">4815860 &mdash; CMM</div></div>
-  </div>
+  <div id="bof-summary" class="g5 mb"><!-- populated by renderBOFTable() --></div>
   <div class="card mb">
-    <div class="ctit">Bodies Out of Flow &mdash; Full Tracker <span class="badge bg-p">5 Active</span></div>
+    <div class="ctit">Bodies Out of Flow &mdash; Full Tracker <span id="bof-badge" class="badge bg-p">— Active</span></div>
     <div class="tw">
       <table class="t">
         <thead><tr><th>Mode</th><th>Body/RFID</th><th>Type</th><th>Body Type</th><th>Location</th><th>Status</th><th>Reason</th><th>Date Removed</th><th>Expected Repair</th><th>Dummy Order</th><th>Champion</th></tr></thead>
@@ -1165,10 +1159,39 @@ function repDot(r){
 }
 
 function renderPQTable(){
-  const rows = MM_DATA.ppt && MM_DATA.ppt.part_quality;
-  if(!rows || !rows.length) return;
+  const rows = (MM_DATA.ppt && MM_DATA.ppt.part_quality) || [];
+  const wk = MM_DATA.wk||''; const dy = MM_DATA.day||'';
+
+  // 1. Update section title with correct day
+  const titleEl = document.getElementById('pq-title');
+  if(titleEl) titleEl.innerHTML = '&#128297; Part Quality Issues &mdash; ' + wk + ' D' + dy;
+
+  // 2. Compute summary counts from actual data
+  const active    = rows.length;
+  const repeaters = rows.filter(r => (r.repeater||'').toLowerCase().startsWith('y')).length;
+  const waitRows  = rows.filter(r => { const s=(r.status||'').toLowerCase(); return s.includes('wait')||s.includes('rework'); });
+  const waitQty   = waitRows.reduce((s,r) => s + (parseInt(r.qty)||0), 0);
+  const waitKt    = waitRows.length ? (waitRows[0].supplier||'') + (waitRows[0].part ? ' \u2014 ' + (waitRows[0].part||'').slice(0,22) : '') : '\u2014';
+  const scrapped  = rows.filter(r => (r.status||'').toLowerCase().includes('scrap')).length;
+
+  // 3. Update summary cards
+  const sv = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  sv('pq-n-active', active);
+  sv('pq-kt-active', active ? 'Open issues' : 'No issues this day');
+  sv('pq-n-rep',    repeaters);
+  sv('pq-n-wait',   waitQty || waitRows.length);
+  sv('pq-kt-wait',  waitKt);
+  sv('pq-n-scrap',  scrapped);
+  const badge = document.getElementById('pq-badge');
+  if(badge) badge.textContent = active + ' Open';
+
+  // 4. Update table rows
   const el = document.getElementById('pq-rows');
   if(!el) return;
+  if(!rows.length){
+    el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px;">No Part Quality data for this day</td></tr>';
+    return;
+  }
   el.innerHTML = rows.map(r=>`<tr>
     <td><strong>${r.area||''}</strong></td>
     <td>${r.model||''}</td>
@@ -1197,11 +1220,55 @@ function bofStatusPill(st){
 }
 
 function renderBOFTable(){
-  const rows = MM_DATA.ppt && MM_DATA.ppt.bodies_oof;
-  if(!rows || !rows.length) return;
+  const rows = (MM_DATA.ppt && MM_DATA.ppt.bodies_oof) || [];
+  const today = (MM_DATA.wk||'') + ' D' + (MM_DATA.day||'');
+
+  // 1. Compute summary from actual data
+  const total = rows.length;
+  const byType = {};
+  rows.forEach(r => { const t=(r.type||'?').toString(); byType[t]=(byType[t]||0)+1; });
+  const sorted  = rows.slice().sort((a,b)=>(a.removed||'').localeCompare(b.removed||''));
+  const oldest  = sorted[0];
+  const oldestWk = oldest ? (oldest.removed||'—') : '—';
+  const oldestKt = oldest ? (oldest.rfid||'') + (oldest.location ? ' \u2014 ' + oldest.location : '') : '—';
+
+  // Delta vs previous day
+  let deltaHtml = '';
+  try {
+    const dates = Object.keys(MM_HISTORY||{}).sort();
+    const curIdx = dates.indexOf(MM_DATA.date||'');
+    if(curIdx > 0){
+      const prev = MM_HISTORY[dates[curIdx-1]];
+      const prevN = (prev?.ppt?.bodies_oof||[]).length;
+      const diff = total - prevN;
+      if(diff > 0)      deltaHtml = '<div class="kd db">&#9650;+'+diff+' since yesterday</div>';
+      else if(diff < 0) deltaHtml = '<div class="kd db" style="color:var(--green)">&#9660;'+diff+' since yesterday</div>';
+      else              deltaHtml = '<div class="kd db">No change since yesterday</div>';
+    }
+  } catch(e){}
+
+  // 2. Rebuild summary cards dynamically
+  const sumEl = document.getElementById('bof-summary');
+  if(sumEl){
+    const topTypes = Object.entries(byType).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const typeCards = topTypes.map(([t,n])=>
+      `<div class="kpi cp"><div class="kl">${t}</div><div class="kv warn">${n}</div><div class="kt">${n===1?'body':'bodies'}</div></div>`
+    ).join('');
+    sumEl.innerHTML =
+      `<div class="kpi cp"><div class="kl">Total Staged</div><div class="kv ${total>0?'bad':'ok'}">${total}</div><div class="kt">Removed from line</div>${deltaHtml}</div>`
+      + typeCards +
+      `<div class="kpi ca"><div class="kl">Oldest Staged</div><div class="kv ${oldest?'bad':'ok'}">${oldestWk}</div><div class="kt">${oldestKt}</div></div>`;
+  }
+  const badge = document.getElementById('bof-badge');
+  if(badge) badge.textContent = total + ' Active';
+
+  // 3. Update table rows
   const el = document.getElementById('bof-rows');
   if(!el) return;
-  const today = MM_DATA.wk + ' D' + MM_DATA.day;
+  if(!rows.length){
+    el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px;">No Bodies Out of Flow for this day</td></tr>';
+    return;
+  }
   el.innerHTML = rows.map(r=>{
     const overdue = r.expected && r.expected !== 'TBD' && r.expected < today;
     const remCls  = r.removed && r.removed < 'WK11' ? 'tc-r' : r.removed && r.removed < today ? 'tc-a' : '';
