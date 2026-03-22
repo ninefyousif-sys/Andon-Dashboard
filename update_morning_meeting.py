@@ -2723,6 +2723,9 @@ def update():
     # ── 5. Auto-backfill any missing days from earlier this week ─────────────
     auto_backfill_missing_days()
 
+    # ── 5b. Monday only: catch-up if previous Friday's PPT is now available ──
+    auto_catchup_prev_friday()
+
     # ── 6. Push both dashboards to GitHub Pages ───────────────────────────────
     if GITHUB_ENABLED:
         try:
@@ -2824,6 +2827,53 @@ def auto_backfill_missing_days():
         backfill(d)
 
     log("  Auto-backfill complete")
+
+
+def auto_catchup_prev_friday():
+    """On Mondays only: check if last Friday's (D5) PPT is now available in OneDrive.
+    If the PPT exists but MM_HISTORY shows empty item details for that Friday, run a
+    backfill automatically.  This handles the common pattern where the Friday PPT is
+    uploaded over the weekend — next Monday morning it gets picked up with no manual step."""
+    today = datetime.date.today()
+    if today.weekday() != 0:   # 0 = Monday
+        return
+
+    # Previous Friday is 3 days before Monday
+    prev_friday = today - datetime.timedelta(days=3)
+    wk_str, day_int = date_to_wk_day(prev_friday)
+    if wk_str is None or day_int != 5:
+        log(f"  Friday catch-up: {prev_friday} is not a working D5 — skip")
+        return
+
+    # Is there a D5 PPT in OneDrive now?
+    ppt_file = find_ppt(wk_str, 5)
+    if not ppt_file:
+        log(f"  Friday catch-up: no D5 PPT found for {prev_friday} ({wk_str} D5) — skip")
+        return
+
+    # Read MM_HISTORY and check whether D5 already has PPT items populated
+    try:
+        with open(DASH, 'r', encoding='utf-8') as f:
+            html = f.read()
+        hist_match = re.search(r'const MM_HISTORY\s*=\s*(\{.*?\});', html, re.DOTALL)
+        history    = json.loads(hist_match.group(1)) if hist_match else {}
+    except Exception as e:
+        log(f"  Friday catch-up: could not read history ({e}) — skip")
+        return
+
+    ppt = history.get(str(prev_friday), {}).get('ppt', {})
+    major_keys = ['ashop_ftt_536', 'ashop_dpv_536', 'wg_dpv_536',
+                  'wd6_ftt_536', 'wd6_dpv_536', 'cal_ftt_536']
+    already_populated = any(
+        isinstance(ppt.get(k), list) and len(ppt[k]) > 0
+        for k in major_keys
+    )
+    if already_populated:
+        log(f"  Friday catch-up: {prev_friday} already has PPT items — skip")
+        return
+
+    log(f"  Friday catch-up: PPT found ({ppt_file}) and D5 items are empty → backfilling!")
+    backfill(prev_friday)
 
 
 def patch_history_only(day_dict, report_date, target_file=None):
