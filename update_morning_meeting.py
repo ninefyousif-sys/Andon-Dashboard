@@ -2830,16 +2830,18 @@ def auto_backfill_missing_days():
 
 
 def auto_catchup_prev_friday():
-    """On Mondays only: check if last Friday's (D5) PPT is now available in OneDrive.
-    If the PPT exists but MM_HISTORY shows empty item details for that Friday, run a
-    backfill automatically.  This handles the common pattern where the Friday PPT is
-    uploaded over the weekend — next Monday morning it gets picked up with no manual step."""
+    """Mon–Wed: check if last week's Friday (D5) PPT is now available in OneDrive.
+    If it exists but MM_HISTORY shows empty item details for that Friday, backfill it.
+    Running Mon–Wed (not just Monday) means a PPT uploaded on Tuesday still gets caught
+    on Wednesday's 7:45am run — no manual action needed."""
     today = datetime.date.today()
-    if today.weekday() != 0:   # 0 = Monday
+    if today.weekday() > 2:   # only Mon(0), Tue(1), Wed(2)
         return
 
-    # Previous Friday is 3 days before Monday
-    prev_friday = today - datetime.timedelta(days=3)
+    # Walk back to find the most recent Friday
+    prev_friday = today - datetime.timedelta(days=1)
+    while prev_friday.weekday() != 4:   # 4 = Friday
+        prev_friday -= datetime.timedelta(days=1)
     wk_str, day_int = date_to_wk_day(prev_friday)
     if wk_str is None or day_int != 5:
         log(f"  Friday catch-up: {prev_friday} is not a working D5 — skip")
