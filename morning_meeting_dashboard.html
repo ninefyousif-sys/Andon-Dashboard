@@ -1652,30 +1652,55 @@ function renderDPVRows(tbodyId, items, cols, lblId, baseLabel){
   const el = document.getElementById(tbodyId);
   if(!el) return;
   const total = (items||[]).length;
+
+  // Auto-detect: show Body#/RFID columns only when at least one item has real values
+  const hasBodyRfid = (items||[]).some(r => (r.body && r.body.trim()) || (r.rfid && r.rfid.trim()));
+  const colCount = hasBodyRfid ? (cols||6) : 4;
+
+  // Update <thead> dynamically to match column visibility
+  const tbl = el.closest('table');
+  if(tbl){
+    const thead = tbl.querySelector('thead tr');
+    if(thead){
+      if(hasBodyRfid){
+        thead.innerHTML = '<th>Body #</th><th>RFID</th><th>Defect</th><th>Model</th><th>Station</th><th>Location</th>';
+      } else {
+        thead.innerHTML = '<th style="width:50%;">Defect</th><th>Model</th><th>Station</th><th>Location</th>';
+      }
+    }
+  }
+
   if(!items || total === 0){
-    el.innerHTML = `<tr><td colspan="${cols||7}" style="color:var(--green);text-align:center;padding:10px;">&#10003; No defects — target met</td></tr>`;
+    el.innerHTML = `<tr><td colspan="${colCount}" style="color:var(--green);text-align:center;padding:10px;">&#10003; No defects — target met</td></tr>`;
     if(lblId) setItemCountLabel(lblId, 0, 0, baseLabel||'');
     return;
   }
   const TOP = 10;
   const visible = items.slice(0, TOP);
   el.innerHTML = visible.map(r=>{
-    // For W&G items the rfid/model/station/location are now structured fields.
-    // Show body and rfid in separate cells; defect description clean; station; location.
     const body     = r.body     || '—';
     const rfid     = r.rfid     || '—';
     const model    = r.model    || '';
     const desc     = r.desc     || '';
     const station  = r.station  || r.link_stn || '';
     const location = r.location || '';
-    return `<tr>
-      <td class="mono" style="white-space:nowrap;">${body}</td>
-      <td class="mono" style="white-space:nowrap;">${rfid}</td>
-      <td style="font-size:11px;font-weight:600;color:var(--text);">${desc}</td>
-      <td style="color:var(--muted);font-size:11px;">${model}</td>
-      <td style="color:var(--muted);font-size:11px;">${station}</td>
-      <td style="color:var(--muted);font-size:11px;">${location}</td>
-    </tr>`;
+    if(hasBodyRfid){
+      return `<tr>
+        <td class="mono" style="white-space:nowrap;">${body}</td>
+        <td class="mono" style="white-space:nowrap;">${rfid}</td>
+        <td style="font-size:11px;font-weight:600;color:var(--text);">${desc}</td>
+        <td style="color:var(--muted);font-size:11px;">${model}</td>
+        <td style="color:var(--muted);font-size:11px;">${station}</td>
+        <td style="color:var(--muted);font-size:11px;">${location}</td>
+      </tr>`;
+    } else {
+      return `<tr>
+        <td style="font-size:11px;font-weight:600;color:var(--text);">${desc}</td>
+        <td style="color:var(--muted);font-size:11px;">${model}</td>
+        <td style="color:var(--muted);font-size:11px;">${station}</td>
+        <td style="color:var(--muted);font-size:11px;">${location}</td>
+      </tr>`;
+    }
   }).join('');
   if(lblId) setItemCountLabel(lblId, Math.min(total,TOP), total, baseLabel||'');
 }
