@@ -196,6 +196,7 @@ def find_pbi_ports():
              'Get-WmiObject Win32_Process | Where-Object {$_.Name -eq "msmdsrv.exe"} | Select-Object -ExpandProperty ProcessId'],
             text=True, timeout=10)
         pids = set(re.findall(r'\d{4,6}', ps_out))
+        log(f"  msmdsrv.exe PIDs found: {pids if pids else 'NONE — is Power BI Desktop open?'}")
         if pids:
             net_out = subprocess.check_output(['netstat', '-ano'], text=True, timeout=10)
             for line in net_out.splitlines():
@@ -569,6 +570,60 @@ def query_opr(ports, report_date):
             except Exception as e:
                 log(f"  OPR query error on port {port}: {e}")
 
+    # Last resort: auto-discover OPR measures via fast DMV metadata query
+    # (MDSCHEMA_MEASURES is instant — unlike INFO.MEASURES() which scans all data)
+    log("  OPR: known config failed on all ports — running fast DMV discovery")
+    for port in ports:
+        try:
+            all_meas = run_dax(port,
+                "SELECT [MEASURE_NAME],[MEASUREGROUP_NAME] FROM $SYSTEM.MDSCHEMA_MEASURES")
+            if not all_meas:
+                log(f"  OPR DMV port {port}: no measures returned")
+                continue
+            log(f"  OPR DMV port {port}: {len(all_meas)} total measures found")
+            # Log first 25 measures to help identify OPR-related tables
+            for m in all_meas[:25]:
+                log(f"    MEASURE: [{m.get('MEASURE_NAME','')}]  in '{m.get('MEASUREGROUP_NAME','')}'")
+            # Filter for OPR/BOK/BOL/AVAIL keywords
+            opr_meas = [m for m in all_meas
+                        if any(k in str(m.get('MEASURE_NAME','')).upper()
+                               for k in ['OPR','BOK','BOL','AVAIL'])]
+            if opr_meas:
+                log(f"  OPR-related measures on port {port}:")
+                for m in opr_meas:
+                    log(f"    FOUND: [{m.get('MEASURE_NAME','')}] in '{m.get('MEASUREGROUP_NAME','')}'")
+                # Try auto-discovered BOK + BOL measure pair
+                bok_m = next((m for m in opr_meas if 'BOK' in str(m.get('MEASURE_NAME','')).upper()), None)
+                bol_m = next((m for m in opr_meas if 'BOL' in str(m.get('MEASURE_NAME','')).upper()), None)
+                if bok_m and bol_m:
+                    tbl      = bok_m.get('MEASUREGROUP_NAME','')
+                    bok_name = bok_m.get('MEASURE_NAME','')
+                    bol_name = bol_m.get('MEASURE_NAME','')
+                    log(f"  OPR: auto-attempting '{tbl}'[{bok_name}] / [{bol_name}]")
+                    dax_try = (f"EVALUATE ROW(\"bok_opr\", '{tbl}'[{bok_name}], "
+                               f"\"bol_opr\", '{tbl}'[{bol_name}])")
+                    try:
+                        rows = run_dax(port, dax_try)
+                        if rows:
+                            bok = to_pct(rows[0].get('bok_opr') or rows[0].get('[bok_opr]'))
+                            bol = to_pct(rows[0].get('bol_opr') or rows[0].get('[bol_opr]'))
+                            if bok is not None or bol is not None:
+                                log(f"  OPR auto-discovered: BOK={bok}%  BOL={bol}%")
+                                log(f"  >>> Set OPR_TABLE='{tbl}' OPR_BOK_MEASURE='{bok_name}' OPR_BOL_MEASURE='{bol_name}'")
+                                return {'bok_opr': bok, 'bol_opr': bol}
+                    except Exception as e2:
+                        log(f"  OPR auto-attempt failed: {e2}")
+            else:
+                log(f"  No OPR/BOK/BOL/AVAIL measures found on port {port}")
+                # Log ALL table names on this port to help identify the right one
+                try:
+                    tbl_rows = run_dax(port,
+                        "SELECT [NAME] FROM $SYSTEM.TMSCHEMA_TABLES WHERE [ISSHOWN] = TRUE()")
+                    log(f"  All tables on port {port}: {[r.get('NAME','') for r in tbl_rows]}")
+                except Exception:
+                    pass
+        except Exception as e:
+            log(f"  OPR DMV port {port} failed: {e}")
     return None
 
 
@@ -745,37 +800,36 @@ def query_powerbi(report_date):
         r['close_time'] = fmt_dt(r.get('close_time'))
 
     # ── B Shop (WD6) summary ──────────────────────────────────────────────────
-    # Date column in B Shop is a String — filter by string match
     date_str = report_date.strftime('%Y-%m-%d')
+    # B Shop [Date] column is M/D/YYYY string (confirmed from sample: '9/22/2025')
+    date_mdy = f"{mo}/{dy}/{yr}"           # e.g. "3/20/2026"
+    date_mdy_z = f"{mo:02d}/{dy:02d}/{yr}" # e.g. "03/20/2026" (zero-padded variant)
     bshop_rows = []
-    # Try multiple date filter approaches — B Shop [Date] column format is unknown
     bshop_attempts = [
-        # Attempt 1: Date is a proper DATE type
+        # Attempt 1: M/D/YYYY exact string match (confirmed format)
+        f"""EVALUATE SELECTCOLUMNS(
+              FILTER('B Shop Body Count-FTT/DPV',
+                     'B Shop Body Count-FTT/DPV'[Date] = "{date_mdy}"),
+              "Model","B Shop Body Count-FTT/DPV"[Model],
+              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
+              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
+              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
+              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
+              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
+        # Attempt 2: MM/DD/YYYY zero-padded variant
+        f"""EVALUATE SELECTCOLUMNS(
+              FILTER('B Shop Body Count-FTT/DPV',
+                     'B Shop Body Count-FTT/DPV'[Date] = "{date_mdy_z}"),
+              "Model","B Shop Body Count-FTT/DPV"[Model],
+              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
+              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
+              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
+              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
+              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
+        # Attempt 3: proper DATE type fallback
         f"""EVALUATE SELECTCOLUMNS(
               FILTER('B Shop Body Count-FTT/DPV',
                      'B Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
-              "Model","B Shop Body Count-FTT/DPV"[Model],
-              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
-              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
-              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
-              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
-              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
-        # Attempt 2: String LEFT filter
-        f"""EVALUATE SELECTCOLUMNS(
-              FILTER('B Shop Body Count-FTT/DPV',
-                     LEFT(FORMAT('B Shop Body Count-FTT/DPV'[Date],"YYYY-MM-DD"),10) = "{date_str}"),
-              "Model","B Shop Body Count-FTT/DPV"[Model],
-              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
-              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
-              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
-              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
-              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
-        # Attempt 3: Year/Month/Day extract
-        f"""EVALUATE SELECTCOLUMNS(
-              FILTER('B Shop Body Count-FTT/DPV',
-                     YEAR('B Shop Body Count-FTT/DPV'[Date])={yr} &&
-                     MONTH('B Shop Body Count-FTT/DPV'[Date])={mo} &&
-                     DAY('B Shop Body Count-FTT/DPV'[Date])={dy}),
               "Model","B Shop Body Count-FTT/DPV"[Model],
               "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
               "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
@@ -795,7 +849,17 @@ def query_powerbi(report_date):
         except Exception as e:
             log(f"  B Shop attempt {i} error: {e}")
     if not bshop_rows:
-        log("  B Shop summary: 0 rows — all attempts failed, check --discover-tables for B Shop")
+        log("  B Shop summary: 0 rows — all attempts failed")
+        # Auto-discovery: sample 1 row from B Shop table to see what columns/dates exist
+        try:
+            sample = run_dax(port, "EVALUATE TOPN(1, 'B Shop Body Count-FTT/DPV')")
+            if sample:
+                log(f"  B Shop table exists, sample row keys: {list(sample[0].keys())}")
+                log(f"  B Shop sample row: {sample[0]}")
+            else:
+                log("  B Shop table 'B Shop Body Count-FTT/DPV' exists but has no rows at all")
+        except Exception as e:
+            log(f"  B Shop table not found or unreadable: {e}")
 
     # ── WD6 FTT items ─────────────────────────────────────────────────────────
     wd6_ftt_rows = run_dax(port, f"""
@@ -836,11 +900,13 @@ def query_powerbi(report_date):
     log(f"  WD6 DPV items: {len(wd6_dpv_rows)}")
 
     # ── A Shop W&G DPV items (Weld/Geometry defects) ──────────────────────────
-    # Table name may vary — try known candidates, fail gracefully if not found
+    # Table name may vary — try known candidates.
+    # IMPORTANT: only break when we actually get rows; 0 rows ≠ wrong table (may be date format issue).
     wg_dpv_rows = []
-    for wg_tbl in ['A Shop W&G Defects', 'A Shop WG Defects', 'WG Defects Linked', 'A Shop W&G Items']:
+    for wg_tbl in ['A Shop W&G Defects', 'A Shop WG Defects', 'WG Defects Linked',
+                   'A Shop W&G Items', 'W&G Defects', 'WG Defects']:
         try:
-            wg_dpv_rows = run_dax(port, f"""
+            rows_by_date = run_dax(port, f"""
                 EVALUATE SELECTCOLUMNS(
                   FILTER('{wg_tbl}',
                          '{wg_tbl}'[Date] = DATE({yr},{mo},{dy})),
@@ -852,8 +918,47 @@ def query_powerbi(report_date):
                   "location",  '{wg_tbl}'[Location]
                 )
             """)
-            log(f"  A Shop W&G DPV items ({wg_tbl}): {len(wg_dpv_rows)}")
-            break  # found the right table
+            if rows_by_date:
+                wg_dpv_rows = rows_by_date
+                log(f"  A Shop W&G DPV items ({wg_tbl}): {len(wg_dpv_rows)}")
+                break  # found the right table with data
+            else:
+                log(f"  W&G table '{wg_tbl}': exists but 0 rows for DATE({yr},{mo},{dy}) — sampling to check date format")
+                # Sample one row to see actual date format and column names
+                try:
+                    sample = run_dax(port, f"EVALUATE TOPN(1, '{wg_tbl}')")
+                    if sample:
+                        log(f"  W&G '{wg_tbl}' sample keys: {list(sample[0].keys())}")
+                        log(f"  W&G '{wg_tbl}' sample row:  {sample[0]}")
+                    else:
+                        log(f"  W&G '{wg_tbl}': table exists but is completely empty")
+                        continue
+                except Exception:
+                    pass
+                # Also try filtering by Link Time date (in case Date = close date and items are open)
+                try:
+                    rows_lt = run_dax(port, f"""
+                        EVALUATE SELECTCOLUMNS(
+                          FILTER('{wg_tbl}',
+                                 YEAR('{wg_tbl}'[Link Time])  = {yr} &&
+                                 MONTH('{wg_tbl}'[Link Time]) = {mo} &&
+                                 DAY('{wg_tbl}'[Link Time])   = {dy}),
+                          "body",      '{wg_tbl}'[Body Number],
+                          "rfid",      '{wg_tbl}'[RFID],
+                          "desc",      '{wg_tbl}'[Item Description],
+                          "model",     '{wg_tbl}'[Model],
+                          "station",   '{wg_tbl}'[Station],
+                          "location",  '{wg_tbl}'[Location]
+                        )
+                    """)
+                    if rows_lt:
+                        wg_dpv_rows = rows_lt
+                        log(f"  A Shop W&G DPV items ({wg_tbl}) via link-time: {len(wg_dpv_rows)}")
+                        break
+                    else:
+                        log(f"  W&G '{wg_tbl}': also 0 rows via link-time filter — trying next table")
+                except Exception:
+                    pass
         except Exception as e:
             log(f"  W&G table '{wg_tbl}' not found: {e}")
 
@@ -889,6 +994,13 @@ def query_powerbi(report_date):
 
     if not wg_dpv_rows:
         log("  W&G DPV items: 0 (no matching PBI table — defect count from summary only)")
+        # Diagnostic: find tables with W&G/WG in the name to discover the real table
+        try:
+            all_tbls = run_dax(port, "EVALUATE SELECTCOLUMNS(INFO.TABLES(), \"name\", [Name])")
+            wg_tbls = [r.get('name','') for r in all_tbls if 'W' in str(r.get('name','')).upper() and 'G' in str(r.get('name','')).upper()]
+            log(f"  Tables containing W+G in name: {wg_tbls}")
+        except Exception as e:
+            log(f"  Table discovery failed: {e}")
 
     # ── C Shop summary ─────────────────────────────────────────────────────────
     cshop_rows = run_dax(port, f"""
@@ -1073,8 +1185,10 @@ def build_ppt_items_from_pbi(pbi):
     fn_stns = sorted(set(str(r.get('link_stn','')).upper() for r in fn_defects))
     log(f"  C Shop Final station names: {fn_stns}")
     # Split fn_defects into Final 1 vs Final 2 by linking station
-    FN1_MARKERS = ['FN1','FINAL1','FINAL 1','F1-','F1 ']
-    FN2_MARKERS = ['FN2','FINAL2','FINAL 2','F2-','F2 ','EOL','EO-']
+    # Confirmed station names from PBI C Shop Defects Linked (logged above):
+    # TRIM1=Trim Line 1 (Final 1), FL2.0=Final Line 2 (Final 2), FRP/AUDBY=Final 2 area
+    FN1_MARKERS = ['TRIM1','TRIM 1','FN1','FINAL1','FINAL 1','F1-','F1 ']
+    FN2_MARKERS = ['FL2','AUDBY','FRP','FN2','FINAL2','FINAL 2','F2-','F2 ','EOL','EO-']
     fn1_defects = [r for r in fn_defects
                    if any(m in str(r.get('link_stn','')).upper() for m in FN1_MARKERS)]
     fn2_defects = [r for r in fn_defects
