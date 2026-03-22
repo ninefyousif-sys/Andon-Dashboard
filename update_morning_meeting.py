@@ -800,104 +800,183 @@ def query_powerbi(report_date):
         r['close_time'] = fmt_dt(r.get('close_time'))
 
     # ── B Shop (WD6) summary ──────────────────────────────────────────────────
-    date_str = report_date.strftime('%Y-%m-%d')
-    # B Shop [Date] column is M/D/YYYY string (confirmed from sample: '9/22/2025')
-    date_mdy = f"{mo}/{dy}/{yr}"           # e.g. "3/20/2026"
-    date_mdy_z = f"{mo:02d}/{dy:02d}/{yr}" # e.g. "03/20/2026" (zero-padded variant)
-    bshop_rows = []
-    bshop_attempts = [
-        # Attempt 1: M/D/YYYY exact string match (confirmed format)
-        f"""EVALUATE SELECTCOLUMNS(
-              FILTER('B Shop Body Count-FTT/DPV',
-                     'B Shop Body Count-FTT/DPV'[Date] = "{date_mdy}"),
-              "Model","B Shop Body Count-FTT/DPV"[Model],
-              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
-              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
-              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
-              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
-              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
-        # Attempt 2: MM/DD/YYYY zero-padded variant
-        f"""EVALUATE SELECTCOLUMNS(
-              FILTER('B Shop Body Count-FTT/DPV',
-                     'B Shop Body Count-FTT/DPV'[Date] = "{date_mdy_z}"),
-              "Model","B Shop Body Count-FTT/DPV"[Model],
-              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
-              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
-              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
-              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
-              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
-        # Attempt 3: proper DATE type fallback
-        f"""EVALUATE SELECTCOLUMNS(
-              FILTER('B Shop Body Count-FTT/DPV',
-                     'B Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
-              "Model","B Shop Body Count-FTT/DPV"[Model],
-              "BodyOK","B Shop Body Count-FTT/DPV"[Body OK],
-              "BIWOut","B Shop Body Count-FTT/DPV"[WD6 BIW Out],
-              "WD6_FTT","B Shop Body Count-FTT/DPV"[WD6 FTT],
-              "Defects","B Shop Body Count-FTT/DPV"[Defect Count],
-              "WD6_DPV","B Shop Body Count-FTT/DPV"[WD6 DPV])""",
-    ]
-    for i, dax in enumerate(bshop_attempts, 1):
-        try:
-            rows = run_dax(port, dax)
-            if rows:
-                bshop_rows = rows
-                log(f"  B Shop summary: {len(bshop_rows)} model rows (attempt {i})")
-                break
-            else:
-                log(f"  B Shop attempt {i}: 0 rows")
-        except Exception as e:
-            log(f"  B Shop attempt {i} error: {e}")
-    if not bshop_rows:
-        log("  B Shop summary: 0 rows — all attempts failed")
-        # Auto-discovery: sample 1 row from B Shop table to see what columns/dates exist
-        try:
-            sample = run_dax(port, "EVALUATE TOPN(1, 'B Shop Body Count-FTT/DPV')")
-            if sample:
-                log(f"  B Shop table exists, sample row keys: {list(sample[0].keys())}")
-                log(f"  B Shop sample row: {sample[0]}")
-            else:
-                log("  B Shop table 'B Shop Body Count-FTT/DPV' exists but has no rows at all")
-        except Exception as e:
-            log(f"  B Shop table not found or unreadable: {e}")
+    # The B Shop PBI (BIW SQD Axxos) filters by Year / WK / Day — NOT by date column.
+    # Data lives on the Axxos port (59110), NOT the A Shop port (58016).
+    # Confirmed from screenshots: PBI dropdowns are Year=2026, Week=12, Day=5.
+    wk_str_b, day_int_b = date_to_wk_day(report_date)
+    wk_num_b = int(wk_str_b.replace('WK','')) if wk_str_b else None
 
-    # ── WD6 FTT items ─────────────────────────────────────────────────────────
-    wd6_ftt_rows = run_dax(port, f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('WD6 FTT Items',
-                 'WD6 FTT Items'[Date] = DATE({yr},{mo},{dy})),
-          "body",       'WD6 FTT Items'[Body Number],
-          "rfid",       'WD6 FTT Items'[RFID],
-          "desc",       'WD6 FTT Items'[Item Description],
-          "model",      'WD6 FTT Items'[Model],
-          "link_stn",   'WD6 FTT Items'[Linking Station],
-          "link_time",  'WD6 FTT Items'[Link Time],
-          "close_stn",  'WD6 FTT Items'[Closing Station],
-          "close_time", 'WD6 FTT Items'[Close Time],
-          "location",   'WD6 FTT Items'[Location],
-          "extra",      'WD6 FTT Items'[Extra Info]
-        )
-    """)
-    log(f"  WD6 FTT items: {len(wd6_ftt_rows)}")
+    date_mdy   = f"{mo}/{dy}/{yr}"
+    date_mdy_z = f"{mo:02d}/{dy:02d}/{yr}"
+
+    bshop_rows = []
+
+    for try_port in ports:
+        if bshop_rows: break
+        for tbl in ['B Shop Body Count-FTT/DPV']:
+            if bshop_rows: break
+            attempts = []
+
+            # ── WK/Day-based filters (Axxos format, confirmed from PBI screenshots) ──
+            if wk_str_b and day_int_b and wk_num_b:
+                attempts += [
+                    # Year int + "WK12" string + Day int
+                    (f'EVALUATE SELECTCOLUMNS(FILTER(\'{tbl}\','
+                     f'\'{tbl}\'[Year]={yr}&&\'{tbl}\'[WK]="{wk_str_b}"&&\'{tbl}\'[Day]={day_int_b}),'
+                     f'"Model",\'{tbl}\'[Model],"BodyOK",\'{tbl}\'[Body OK],'
+                     f'"BIWOut",\'{tbl}\'[WD6 BIW Out],"WD6_FTT",\'{tbl}\'[WD6 FTT],'
+                     f'"Defects",\'{tbl}\'[Defect Count],"WD6_DPV",\'{tbl}\'[WD6 DPV])', 'YR+WKstr+Day'),
+                    # Year int + WK int (12) + Day int
+                    (f'EVALUATE SELECTCOLUMNS(FILTER(\'{tbl}\','
+                     f'\'{tbl}\'[Year]={yr}&&\'{tbl}\'[WK]={wk_num_b}&&\'{tbl}\'[Day]={day_int_b}),'
+                     f'"Model",\'{tbl}\'[Model],"BodyOK",\'{tbl}\'[Body OK],'
+                     f'"BIWOut",\'{tbl}\'[WD6 BIW Out],"WD6_FTT",\'{tbl}\'[WD6 FTT],'
+                     f'"Defects",\'{tbl}\'[Defect Count],"WD6_DPV",\'{tbl}\'[WD6 DPV])', 'YR+WKnum+Day'),
+                    # Week column might be named "Week" not "WK"
+                    (f'EVALUATE SELECTCOLUMNS(FILTER(\'{tbl}\','
+                     f'\'{tbl}\'[Year]={yr}&&\'{tbl}\'[Week]={wk_num_b}&&\'{tbl}\'[Day]={day_int_b}),'
+                     f'"Model",\'{tbl}\'[Model],"BodyOK",\'{tbl}\'[Body OK],'
+                     f'"BIWOut",\'{tbl}\'[WD6 BIW Out],"WD6_FTT",\'{tbl}\'[WD6 FTT],'
+                     f'"Defects",\'{tbl}\'[Defect Count],"WD6_DPV",\'{tbl}\'[WD6 DPV])', 'YR+Weeknum+Day'),
+                ]
+
+            # ── Date-based fallbacks ──────────────────────────────────────────────
+            attempts += [
+                (f'EVALUATE SELECTCOLUMNS(FILTER(\'{tbl}\',\'{tbl}\'[Date]="{date_mdy}"),'
+                 f'"Model",\'{tbl}\'[Model],"BodyOK",\'{tbl}\'[Body OK],'
+                 f'"BIWOut",\'{tbl}\'[WD6 BIW Out],"WD6_FTT",\'{tbl}\'[WD6 FTT],'
+                 f'"Defects",\'{tbl}\'[Defect Count],"WD6_DPV",\'{tbl}\'[WD6 DPV])', 'M/D/YYYY'),
+                (f'EVALUATE SELECTCOLUMNS(FILTER(\'{tbl}\',\'{tbl}\'[Date]="{date_mdy_z}"),'
+                 f'"Model",\'{tbl}\'[Model],"BodyOK",\'{tbl}\'[Body OK],'
+                 f'"BIWOut",\'{tbl}\'[WD6 BIW Out],"WD6_FTT",\'{tbl}\'[WD6 FTT],'
+                 f'"Defects",\'{tbl}\'[Defect Count],"WD6_DPV",\'{tbl}\'[WD6 DPV])', 'MM/DD/YYYY'),
+                (f'EVALUATE SELECTCOLUMNS(FILTER(\'{tbl}\',\'{tbl}\'[Date]=DATE({yr},{mo},{dy})),'
+                 f'"Model",\'{tbl}\'[Model],"BodyOK",\'{tbl}\'[Body OK],'
+                 f'"BIWOut",\'{tbl}\'[WD6 BIW Out],"WD6_FTT",\'{tbl}\'[WD6 FTT],'
+                 f'"Defects",\'{tbl}\'[Defect Count],"WD6_DPV",\'{tbl}\'[WD6 DPV])', 'DATE()'),
+            ]
+
+            for dax, fmt in attempts:
+                try:
+                    rows = run_dax(try_port, dax)
+                    if rows:
+                        bshop_rows = rows
+                        log(f"  B Shop summary: {len(bshop_rows)} rows  port={try_port}  filter={fmt}")
+                        break
+                    else:
+                        log(f"  B Shop port={try_port} filter={fmt}: 0 rows")
+                except Exception as e:
+                    err = str(e)
+                    if any(k in err for k in ('cannot be found','does not exist','not found')):
+                        log(f"  B Shop port={try_port}: table '{tbl}' not found")
+                        break  # wrong port for this table, try next
+                    log(f"  B Shop port={try_port} filter={fmt} error: {e}")
+
+    if not bshop_rows:
+        log("  B Shop summary: 0 rows — all ports/filters failed")
+        # Diagnostic: sample table on each port + scan for WD6 tables
+        for try_port in ports:
+            try:
+                sample = run_dax(try_port, "EVALUATE TOPN(1, 'B Shop Body Count-FTT/DPV')")
+                if sample:
+                    log(f"  B Shop port {try_port} sample keys: {list(sample[0].keys())}")
+                    log(f"  B Shop port {try_port} sample row:  {sample[0]}")
+            except Exception:
+                pass
+            try:
+                all_tbls = run_dax(try_port,
+                    "SELECT [NAME] FROM $SYSTEM.TMSCHEMA_TABLES WHERE [ISSHOWN] = TRUE()")
+                wd6_tbls = [r.get('NAME','') for r in all_tbls
+                            if any(k in str(r.get('NAME','')).upper()
+                                   for k in ['WD6','WD 6','BSHOP','B SHOP','B-SHOP','PAINT'])]
+                if wd6_tbls:
+                    log(f"  WD6/BShop related tables on port {try_port}: {wd6_tbls}")
+                else:
+                    log(f"  No WD6/BShop tables found on port {try_port}")
+            except Exception as e:
+                log(f"  B Shop DMV scan port {try_port}: {e}")
+
+    # ── WD6 FTT items — try all ports (data likely on Axxos port 59110) ─────────
+    wd6_ftt_rows = []
+    for try_port in ports:
+        if wd6_ftt_rows: break
+        try:
+            rows = run_dax(try_port, f"""
+                EVALUATE SELECTCOLUMNS(
+                  FILTER('WD6 FTT Items',
+                         'WD6 FTT Items'[Date] = DATE({yr},{mo},{dy})),
+                  "body",       'WD6 FTT Items'[Body Number],
+                  "rfid",       'WD6 FTT Items'[RFID],
+                  "desc",       'WD6 FTT Items'[Item Description],
+                  "model",      'WD6 FTT Items'[Model],
+                  "link_stn",   'WD6 FTT Items'[Linking Station],
+                  "link_time",  'WD6 FTT Items'[Link Time],
+                  "close_stn",  'WD6 FTT Items'[Closing Station],
+                  "close_time", 'WD6 FTT Items'[Close Time],
+                  "location",   'WD6 FTT Items'[Location],
+                  "extra",      'WD6 FTT Items'[Extra Info]
+                )
+            """)
+            if rows:
+                wd6_ftt_rows = rows
+                log(f"  WD6 FTT items: {len(wd6_ftt_rows)} (port {try_port})")
+            else:
+                # Try WK/Day filter for Axxos
+                if wk_str_b and day_int_b:
+                    rows2 = run_dax(try_port, f"""
+                        EVALUATE SELECTCOLUMNS(
+                          FILTER('WD6 FTT Items',
+                                 'WD6 FTT Items'[Year]={yr} &&
+                                 'WD6 FTT Items'[WK]="{wk_str_b}" &&
+                                 'WD6 FTT Items'[Day]={day_int_b}),
+                          "body","WD6 FTT Items"[Body Number],
+                          "rfid","WD6 FTT Items"[RFID],
+                          "desc","WD6 FTT Items"[Item Description],
+                          "model","WD6 FTT Items"[Model],
+                          "link_stn","WD6 FTT Items"[Linking Station],
+                          "link_time","WD6 FTT Items"[Link Time],
+                          "close_stn","WD6 FTT Items"[Closing Station],
+                          "close_time","WD6 FTT Items"[Close Time],
+                          "location","WD6 FTT Items"[Location],
+                          "extra","WD6 FTT Items"[Extra Info]
+                        )
+                    """)
+                    if rows2:
+                        wd6_ftt_rows = rows2
+                        log(f"  WD6 FTT items: {len(wd6_ftt_rows)} (port {try_port} WK/Day filter)")
+        except Exception as e:
+            log(f"  WD6 FTT items port {try_port}: {e}")
+    if not wd6_ftt_rows:
+        log("  WD6 FTT items: 0 (not found on any port)")
     for r in wd6_ftt_rows:
         r['link_time']  = fmt_dt(r.get('link_time'))
         r['close_time'] = fmt_dt(r.get('close_time'))
 
-    # ── WD6 DPV items ─────────────────────────────────────────────────────────
-    wd6_dpv_rows = run_dax(port, f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('WD6 DPV Items',
-                 'WD6 DPV Items'[Date] = DATE({yr},{mo},{dy})),
-          "body",      'WD6 DPV Items'[Body Number],
-          "rfid",      'WD6 DPV Items'[RFID],
-          "desc",      'WD6 DPV Items'[Item Description],
-          "model",     'WD6 DPV Items'[Model],
-          "station",   'WD6 DPV Items'[Linking Station],
-          "location",  'WD6 DPV Items'[Location],
-          "extra",     'WD6 DPV Items'[Extra Info]
-        )
-    """)
-    log(f"  WD6 DPV items: {len(wd6_dpv_rows)}")
+    # ── WD6 DPV items — try all ports ─────────────────────────────────────────
+    wd6_dpv_rows = []
+    for try_port in ports:
+        if wd6_dpv_rows: break
+        try:
+            rows = run_dax(try_port, f"""
+                EVALUATE SELECTCOLUMNS(
+                  FILTER('WD6 DPV Items',
+                         'WD6 DPV Items'[Date] = DATE({yr},{mo},{dy})),
+                  "body",      'WD6 DPV Items'[Body Number],
+                  "rfid",      'WD6 DPV Items'[RFID],
+                  "desc",      'WD6 DPV Items'[Item Description],
+                  "model",     'WD6 DPV Items'[Model],
+                  "station",   'WD6 DPV Items'[Linking Station],
+                  "location",  'WD6 DPV Items'[Location],
+                  "extra",     'WD6 DPV Items'[Extra Info]
+                )
+            """)
+            if rows:
+                wd6_dpv_rows = rows
+                log(f"  WD6 DPV items: {len(wd6_dpv_rows)} (port {try_port})")
+        except Exception as e:
+            log(f"  WD6 DPV items port {try_port}: {e}")
+    if not wd6_dpv_rows:
+        log("  WD6 DPV items: 0 (not found on any port)")
 
     # ── A Shop W&G DPV items (Weld/Geometry defects) ──────────────────────────
     # Table name may vary — try known candidates.
