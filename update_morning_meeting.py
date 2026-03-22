@@ -53,11 +53,11 @@ WK12_MON = datetime.date(2026, 3, 16)
 #   OPR_BOK_MEASURE    = 'BOK OPR'   # column name
 #   OPR_BOL_MEASURE    = 'BOL OPR'   # column name
 #
-OPR_TABLE             = 'SQD'               # confirmed via DMV scan 2026-03-21
+OPR_TABLE             = 'report_Measures'   # confirmed via DMV scan 2026-03-21
 OPR_IS_MEASURES_TABLE = True                # measures-only table (no data rows)
-OPR_BOK_MEASURE       = 'OPR BOK Measure'   # actual BOK OPR value (not Target)
-OPR_BOL_MEASURE       = 'OPR BOL Measure'   # actual BOL OPR value (not Target)
-OPR_DATE_TABLE        = 'Date Table'        # confirmed present
+OPR_BOK_MEASURE       = 'BOK Current Value' # actual BOK OPR % — self-dates to latest day
+OPR_BOL_MEASURE       = 'BOL Current Value' # actual BOL OPR % — self-dates to latest day
+OPR_DATE_TABLE        = 'SKIP'              # these measures compute their own date context
 OPR_COL_DATE          = 'Date'              # (used only when OPR_IS_MEASURES_TABLE=False)
 # Legacy aliases kept for backwards compat
 OPR_COL_BOK = OPR_BOK_MEASURE
@@ -495,7 +495,9 @@ def query_opr(ports, report_date):
             # CALCULATETABLE sets a date filter context so measures evaluate
             # against the correct day.  Try several common date table names.
             date_tables = []
-            if OPR_DATE_TABLE:
+            if OPR_DATE_TABLE and OPR_DATE_TABLE.upper() == 'SKIP':
+                date_tables = []  # measures self-date — skip filter loop entirely
+            elif OPR_DATE_TABLE:
                 date_tables = [OPR_DATE_TABLE]
             else:
                 date_tables = ['Date', 'Date Table', 'Calendar',
@@ -537,8 +539,8 @@ def query_opr(ports, report_date):
                     bok = to_pct(r.get('bok_opr') or r.get('[bok_opr]'))
                     bol = to_pct(r.get('bol_opr') or r.get('[bol_opr]'))
                     if bok is not None or bol is not None:
-                        log(f"  OPR (measures, no date filter — overall value): BOK={bok}%  BOL={bol}%")
-                        log(f"  WARNING: date filter failed — set OPR_DATE_TABLE to the correct date table name")
+                        skip_note = " (self-dated measure)" if OPR_DATE_TABLE and OPR_DATE_TABLE.upper() == 'SKIP' else " (no date filter)"
+                        log(f"  OPR: BOK={bok}%  BOL={bol}%{skip_note}")
                         return {'bok_opr': bok, 'bol_opr': bol}
                     else:
                         log(f"  OPR port {port}: measures returned BLANK — trying next port")
