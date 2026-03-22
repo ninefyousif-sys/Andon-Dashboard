@@ -380,6 +380,7 @@ const TARGETS = {
   final2_ftt: { tgt:100.0, dir:'ge', unit:'%'  },
   bok_opr:    { tgt:98.7,  dir:'ge', unit:'%'  },
   bol_opr:    { tgt:95.0,  dir:'ge', unit:'%'  },
+  scrap_car:  { tgt:2.90,  dir:'le', unit:'$'  },
 };
 
 function kpiOk(key, val){
@@ -563,7 +564,7 @@ function renderAShop(){
   // FTT items
   renderFTTItems('m-ashop-ftt-items', p.ashop_ftt_536, p.ashop_ftt_519);
   // W&G items
-  renderDPVItems('m-wg-items', [...(p.wg_items_536||[]),...(p.wg_items_519||[])], 5);
+  renderDPVItems('m-wg-items', [...(p.wg_dpv_536||[]),...(p.wg_dpv_519||[])], 5);
 }
 
 /* ─── RENDER B SHOP ─── */
@@ -640,15 +641,24 @@ function renderBOF(){
 
 /* ─── RENDER SCRAP ─── */
 function renderScrap(){
-  const p=MM_DATA.ppt;
-  const val=p?.scrap||'—';
-  const note=p?.scrap_note||'';
+  // Use kpis.scrap_car.val (Axxos) — ppt.scrap was always '$0' from backfill
+  const kv  = MM_DATA.kpis?.scrap_car?.val;
+  const noData = (kv === null || kv === undefined);
+  const disp   = noData ? '—' : '$' + kv.toFixed(2);
+  const isZero = !noData && kv === 0;
+  const tgt    = TARGETS.scrap_car?.tgt ?? 2.90;
+  const ok     = noData || kv <= tgt;
+  const col    = noData ? 'var(--muted)' : (ok ? 'var(--green-l)' : 'var(--red-l)');
+  const tgtStr = '\u2264$' + tgt.toFixed(2);
+  const note   = noData
+    ? 'No data yet \u2014 will update Monday'
+    : (ok ? '\u2713 On target (' + tgtStr + ' per car)' : '\u26A0 Above target (' + tgtStr + ' per car)');
   const vEl=document.getElementById('m-scrap-val');
   const nEl=document.getElementById('m-scrap-note');
   const bEl=document.getElementById('m-scrap-badge');
-  if(vEl){ vEl.textContent=val; vEl.style.color=val==='$0'?'var(--green-l)':'var(--red-l)'; }
+  if(vEl){ vEl.textContent=disp; vEl.style.color=col; }
   if(nEl) nEl.textContent=note;
-  if(bEl){ bEl.textContent=val; bEl.className='sec-badge '+(val==='$0'?'ok':'bad'); }
+  if(bEl){ bEl.textContent=disp; bEl.className='sec-badge '+(ok?'ok':'bad'); }
 }
 
 /* ─── HEADER LABEL ─── */
