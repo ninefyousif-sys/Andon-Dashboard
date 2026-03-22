@@ -1552,9 +1552,12 @@ function setItemCountLabel(lblId, shown, total, baseLabel){
 // ── Compact defect-type highlight pills ──────────────────────────────────────
 // Returns a flex row of colored pills showing every defect type + count.
 // Shows up to MAX_TYPES pills then "+N more types". Used above every Quality KPI.
-function defectTypePills(items536, items519){
+function defectTypePills(items536, items519, hasDefects){
   const all = [...(items536||[]), ...(items519||[])];
-  if(!all.length) return `<div style="color:var(--green);font-size:11px;font-weight:700;padding:4px 0;">&#10003; No defect items — target met</div>`;
+  if(!all.length){
+    if(hasDefects) return `<div style="color:var(--amber);font-size:11px;font-weight:700;padding:4px 0;">&#8505; Defects recorded — item details not available for this day</div>`;
+    return `<div style="color:var(--green);font-size:11px;font-weight:700;padding:4px 0;">&#10003; No defect items — target met</div>`;
+  }
   const counts = {};
   all.forEach(r=>{ const k=r.desc||'?'; counts[k]=(counts[k]||0)+1; });
   const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
@@ -1681,8 +1684,11 @@ function renderAllKPIPosts(){
     const dpvBod   = dpvKpi?.bodies;
     const dpvSummary = document.getElementById('ashop-dpv-summary');
     if(dpvSummary){
-      if(!dpvVal || dpvItems.length === 0){
+      if(!dpvVal){
         dpvSummary.innerHTML = `<div style="background:var(--green-d);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:700;">&#10003; DPV = 0.00 — No defects recorded at A-Shop checkpoint</div>`;
+      } else if(dpvItems.length === 0){
+                const ok0=dpvVal<=0.10; const bg0=ok0?'var(--amber-d)':'var(--red-d)'; const bc0=ok0?'rgba(210,153,34,.25)':'rgba(248,81,73,.25)'; const cl0=ok0?'var(--amber)':'var(--red)';
+        dpvSummary.innerHTML = `<div style="background:${bg0};border:1px solid ${bc0};border-radius:6px;padding:8px 12px;font-size:12px;"><span style="color:${cl0};font-weight:700;">&#9888; A-Shop DPV = ${dpvVal.toFixed(4)}</span><span style="color:var(--muted);margin-left:8px;">${dpvDef} defect(s) on ${dpvBod||'?'} bodies — item details not available for this day</span></div>`;
       } else {
         const ok = dpvVal <= 0.10;
         const bg = ok ? 'var(--amber-d)' : 'var(--red-d)';
@@ -1718,7 +1724,8 @@ function renderAllKPIPosts(){
     }
     { const el = document.getElementById('callout-ashop-dpv');
       if(el){
-        if(!dpvVal || dpvItems.length === 0){ el.className='callout co-g'; el.innerHTML='&#10003; A-Shop DPV = 0.00 — zero defects at A-Shop quality checkpoint. Target ≤0.10 met.'; }
+        if(!dpvVal){ el.className='callout co-g'; el.innerHTML='&#10003; A-Shop DPV = 0.00 — zero defects at A-Shop quality checkpoint. Target ≤0.10 met.'; }
+        else if(dpvItems.length===0){ const ok0=dpvVal<=0.10; el.className=ok0?'callout co-g':'callout co-a'; el.innerHTML=`&#9888; A-Shop DPV = ${dpvVal.toFixed(4)} — ${dpvDef} defect(s) on ${dpvBod||'?'} bodies. Item details not available for this day.<span class="owner">Source: Power BI A-Shop Body Count</span>`; }
         else { const ok = dpvVal <= 0.10; el.className = ok ? 'callout co-g' : 'callout co-a';
           el.innerHTML = `&#9888; A-Shop DPV = ${dpvVal.toFixed(4)} — ${dpvDef} defect(s) on ${dpvBod||'?'} bodies. Target ≤0.10.<span class="owner">Source: Power BI A-Shop Body Count / A Shop Defects</span>`; }
       }
@@ -1803,7 +1810,7 @@ function renderAllKPIPosts(){
   const fn1Sum = document.getElementById('final1-ftt-summary');
   const fn1Kpi = MM_DATA.kpis.final1_ftt;
   const fn1Val = fn1Kpi?.val;
-  if(fn1Sum) fn1Sum.innerHTML = defectTypePills(p.final1_ftt_536, p.final1_ftt_519);
+  if(fn1Sum) fn1Sum.innerHTML = defectTypePills(p.final1_ftt_536, p.final1_ftt_519, fn1Val != null && fn1Val < 100);
   renderFTTRows('final1-ftt-536-rows', p.final1_ftt_536, 'lbl-final1-ftt-536', '536 FTT Items (EX90)');
   renderFTTRows('final1-ftt-519-rows', p.final1_ftt_519, 'lbl-final1-ftt-519', '519 FTT Items (PSTR)');
   { const el = document.getElementById('callout-final1-ftt');
