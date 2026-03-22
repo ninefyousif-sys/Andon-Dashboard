@@ -1764,7 +1764,7 @@ function renderAllKPIPosts(){
       const el519 = document.getElementById('wg-dpv-519-rows');
       const msg = !wgVal || wgVal===0
         ? `<tr><td colspan="6" style="color:var(--green);text-align:center;padding:10px;">&#10003; No W&amp;G defects — target met</td></tr>`
-        : `<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:10px;">&#8505; ${wgKpi?.defects||0} total defects — work orders tracked in Weld Masters (W&amp;G items table not in PBI model)</td></tr>`;
+        : `<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:10px;">&#8505; ${wgKpi?.defects||0} total defects — item details not captured for this day — will populate on next scheduled run</td></tr>`;
       if(el536) el536.innerHTML = msg;
       if(el519) el519.innerHTML = msg;
       const lbl536 = document.getElementById('lbl-wg-dpv-536'); if(lbl536) lbl536.innerHTML = '536 W&amp;G Items (EX90)';

@@ -705,12 +705,6 @@ function mSwitchDay(date){
   MM_DATA.date=d.date; MM_DATA.wk=d.wk; MM_DATA.day=d.day;
   MM_DATA.kpis=d.kpis; MM_DATA.downtime=d.downtime; MM_DATA.ppt=d.ppt;
   applyMMData();
-} return;
-  }
-  const d=MM_HISTORY[date]; if(!d) return;
-  MM_DATA.date=d.date; MM_DATA.wk=d.wk; MM_DATA.day=d.day;
-  MM_DATA.kpis=d.kpis; MM_DATA.downtime=d.downtime; MM_DATA.ppt=d.ppt;
-  applyMMData();
 }
 
 /* ─── CLOCK ─── */
