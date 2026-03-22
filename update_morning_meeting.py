@@ -2242,6 +2242,20 @@ def patch_history_only(day_dict, report_date, target_file=None):
         if (existing.get('downtime',{}).get('total_min',0) > 0 and
                 day_dict.get('downtime',{}).get('total_min',0) == 0):
             day_dict['downtime'] = existing['downtime']
+        # Preserve manually-patched safety data if existing has a real title
+        # (PPT image-only slides return empty safety from parser)
+        existing_safety = (existing.get('ppt') or {}).get('safety') or {}
+        new_safety      = (day_dict.get('ppt') or {}).get('safety') or {}
+        if existing_safety.get('title') and not new_safety.get('title'):
+            log(f"  Keeping existing safety title for {report_date} (PPT parse returned empty)")
+            if 'ppt' not in day_dict: day_dict['ppt'] = {}
+            day_dict['ppt']['safety'] = existing_safety
+        # Also preserve per-day risk_obs / green_cross if new parse lost them
+        for fld in ('risk_obs', 'green_cross'):
+            if existing_safety.get(fld) is not None and new_safety.get(fld) is None:
+                if 'ppt' not in day_dict: day_dict['ppt'] = {}
+                if 'safety' not in day_dict['ppt']: day_dict['ppt']['safety'] = {}
+                day_dict['ppt']['safety'][fld] = existing_safety[fld]
     history[str(report_date)] = day_dict
     sorted_dates = sorted(history.keys())
     if len(sorted_dates) > HISTORY_MAX:
