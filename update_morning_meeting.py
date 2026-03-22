@@ -95,8 +95,9 @@ PLANNED_KW = {'pm','planned','planned maintenance','preventive','scheduled','mai
 def log(msg):
     ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     line = f"[{ts}] {msg}"
-    print(line)
     with open(LOG, 'a', encoding='utf-8') as f: f.write(line+'\n')
+    try: print(line, flush=True)
+    except Exception: pass
 
 def time_to_min(t):
     if t is None: return 0
