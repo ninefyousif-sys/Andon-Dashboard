@@ -715,7 +715,22 @@ function tick(){
 setInterval(tick,30000); tick();
 
 /* ─── INIT ─── */
-document.addEventListener('DOMContentLoaded',()=>{ applyMMData(); initDayPicker(); });
+document.addEventListener('DOMContentLoaded',()=>{
+  initDayPicker();
+  // Default to most recent day with real KPI data (skip days with all-null KPIs)
+  const _hDates = Object.keys(MM_HISTORY).sort().reverse();
+  const _best = _hDates.find(d => {
+    const k = MM_HISTORY[d]?.kpis;
+    return k && ((k.ashop_ftt?.val != null)||(k.bok_opr?.val != null));
+  }) || _hDates[0] || null;
+  if(_best){
+    const sel = document.getElementById('m-day-picker');
+    if(sel) sel.value = _best;
+    mSwitchDay(_best);
+  } else {
+    applyMMData();
+  }
+});
 </script>
 </body>
 </html>
