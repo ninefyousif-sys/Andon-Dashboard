@@ -57,7 +57,7 @@ OPR_TABLE             = 'report_Measures'   # confirmed via DMV scan 2026-03-21
 OPR_IS_MEASURES_TABLE = True                # measures-only table (no data rows)
 OPR_BOK_MEASURE       = 'BOK Current Value' # actual BOK OPR % — self-dates to latest day
 OPR_BOL_MEASURE       = 'BOL Current Value' # actual BOL OPR % — self-dates to latest day
-OPR_DATE_TABLE        = 'SKIP'              # these measures compute their own date context
+OPR_DATE_TABLE        = None                 # try standard date table names to enable per-day OPR
 OPR_COL_DATE          = 'Date'              # (used only when OPR_IS_MEASURES_TABLE=False)
 # Legacy aliases kept for backwards compat
 OPR_COL_BOK = OPR_BOK_MEASURE
@@ -756,10 +756,12 @@ def query_powerbi(report_date):
     # Probe each port: use the first one that returns A Shop rows for this date
     port = None
     probe_dax = f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('A Shop Body Count-FTT/DPV',
-                 'A Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
-          "Model", 'A Shop Body Count-FTT/DPV'[Model])"""
+        EVALUATE CALCULATETABLE(
+          SELECTCOLUMNS(
+            FILTER('A Shop Body Count-FTT/DPV',
+                   'A Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
+            "Model", 'A Shop Body Count-FTT/DPV'[Model]),
+          REMOVEFILTERS())"""
     for p in ports:
         probe = run_dax(p, probe_dax)
         if probe:
@@ -778,9 +780,10 @@ def query_powerbi(report_date):
 
     # ── A Shop summary ────────────────────────────────────────────────────────
     ashop_rows = run_dax(port, f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('A Shop Body Count-FTT/DPV',
-                 'A Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
+        EVALUATE CALCULATETABLE(
+          SELECTCOLUMNS(
+            FILTER('A Shop Body Count-FTT/DPV',
+                   'A Shop Body Count-FTT/DPV'[Date] = DATE({yr},{mo},{dy})),
           "Model",        'A Shop Body Count-FTT/DPV'[Model],
           "SentToPaint",  'A Shop Body Count-FTT/DPV'[Sent to Paint],
           "SentToRepair", 'A Shop Body Count-FTT/DPV'[Sent to Repair],
@@ -790,16 +793,18 @@ def query_powerbi(report_date):
           "WG_DPV",       'A Shop Body Count-FTT/DPV'[W&G DPV],
           "WG_Defects",   'A Shop Body Count-FTT/DPV'[W&G Defect Count],
           "HOP_DPV",      'A Shop Body Count-FTT/DPV'[HOP DPV],
-          "HOP_Defects",  'A Shop Body Count-FTT/DPV'[HOP Defect Count]
-        )
+            "HOP_Defects",  'A Shop Body Count-FTT/DPV'[HOP Defect Count]
+          ),
+          REMOVEFILTERS())
     """)
     log(f"  A Shop summary: {len(ashop_rows)} model rows")
 
     # ── A Shop FTT defect items ────────────────────────────────────────────────
     ashop_ftt_rows = run_dax(port, f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('A Shop Defects',
-                 'A Shop Defects'[Date] = DATE({yr},{mo},{dy})),
+        EVALUATE CALCULATETABLE(
+          SELECTCOLUMNS(
+            FILTER('A Shop Defects',
+                   'A Shop Defects'[Date] = DATE({yr},{mo},{dy})),
           "body",       'A Shop Defects'[Body Number],
           "rfid",       'A Shop Defects'[RFID],
           "desc",       'A Shop Defects'[Item Description],
@@ -809,8 +814,9 @@ def query_powerbi(report_date):
           "close_stn",  'A Shop Defects'[Closing Station],
           "close_time", 'A Shop Defects'[Close Time],
           "location",   'A Shop Defects'[Location],
-          "extra",      'A Shop Defects'[Extra Info]
-        )
+            "extra",      'A Shop Defects'[Extra Info]
+          ),
+          REMOVEFILTERS())
     """)
     log(f"  A Shop FTT items: {len(ashop_ftt_rows)}")
 
@@ -922,9 +928,10 @@ def query_powerbi(report_date):
         if wd6_ftt_rows: break
         try:
             rows = run_dax(try_port, f"""
-                EVALUATE SELECTCOLUMNS(
-                  FILTER('WD6 FTT Items',
-                         'WD6 FTT Items'[Date] = DATE({yr},{mo},{dy})),
+                EVALUATE CALCULATETABLE(
+                  SELECTCOLUMNS(
+                    FILTER('WD6 FTT Items',
+                           'WD6 FTT Items'[Date] = DATE({yr},{mo},{dy})),
                   "body",       'WD6 FTT Items'[Body Number],
                   "rfid",       'WD6 FTT Items'[RFID],
                   "desc",       'WD6 FTT Items'[Item Description],
@@ -934,8 +941,9 @@ def query_powerbi(report_date):
                   "close_stn",  'WD6 FTT Items'[Closing Station],
                   "close_time", 'WD6 FTT Items'[Close Time],
                   "location",   'WD6 FTT Items'[Location],
-                  "extra",      'WD6 FTT Items'[Extra Info]
-                )
+                    "extra",      'WD6 FTT Items'[Extra Info]
+                  ),
+                  REMOVEFILTERS())
             """)
             if rows:
                 wd6_ftt_rows = rows
@@ -978,17 +986,19 @@ def query_powerbi(report_date):
         if wd6_dpv_rows: break
         try:
             rows = run_dax(try_port, f"""
-                EVALUATE SELECTCOLUMNS(
-                  FILTER('WD6 DPV Items',
-                         'WD6 DPV Items'[Date] = DATE({yr},{mo},{dy})),
+                EVALUATE CALCULATETABLE(
+                  SELECTCOLUMNS(
+                    FILTER('WD6 DPV Items',
+                           'WD6 DPV Items'[Date] = DATE({yr},{mo},{dy})),
                   "body",      'WD6 DPV Items'[Body Number],
                   "rfid",      'WD6 DPV Items'[RFID],
                   "desc",      'WD6 DPV Items'[Item Description],
                   "model",     'WD6 DPV Items'[Model],
                   "station",   'WD6 DPV Items'[Linking Station],
                   "location",  'WD6 DPV Items'[Location],
-                  "extra",     'WD6 DPV Items'[Extra Info]
-                )
+                    "extra",     'WD6 DPV Items'[Extra Info]
+                  ),
+                  REMOVEFILTERS())
             """)
             if rows:
                 wd6_dpv_rows = rows
@@ -1006,16 +1016,18 @@ def query_powerbi(report_date):
                    'A Shop W&G Items', 'W&G Defects', 'WG Defects']:
         try:
             rows_by_date = run_dax(port, f"""
-                EVALUATE SELECTCOLUMNS(
-                  FILTER('{wg_tbl}',
-                         '{wg_tbl}'[Date] = DATE({yr},{mo},{dy})),
+                EVALUATE CALCULATETABLE(
+                  SELECTCOLUMNS(
+                    FILTER('{wg_tbl}',
+                           '{wg_tbl}'[Date] = DATE({yr},{mo},{dy})),
                   "body",      '{wg_tbl}'[Body Number],
                   "rfid",      '{wg_tbl}'[RFID],
                   "desc",      '{wg_tbl}'[Item Description],
                   "model",     '{wg_tbl}'[Model],
                   "station",   '{wg_tbl}'[Station],
-                  "location",  '{wg_tbl}'[Location]
-                )
+                    "location",  '{wg_tbl}'[Location]
+                  ),
+                  REMOVEFILTERS())
             """)
             if rows_by_date:
                 wg_dpv_rows = rows_by_date
@@ -1068,10 +1080,11 @@ def query_powerbi(report_date):
     if not wg_dpv_rows:
         try:
             wg_dpv_rows = run_dax(port, f"""
-                EVALUATE SELECTCOLUMNS(
-                  FILTER('A Shop Defects',
-                         (CONTAINSSTRING('A Shop Defects'[Linking Station], "W&G") ||
-                          CONTAINSSTRING('A Shop Defects'[Linking Station], "WG")) &&
+                EVALUATE CALCULATETABLE(
+                  SELECTCOLUMNS(
+                    FILTER('A Shop Defects',
+                           (CONTAINSSTRING('A Shop Defects'[Linking Station], "W&G") ||
+                            CONTAINSSTRING('A Shop Defects'[Linking Station], "WG")) &&
                          YEAR('A Shop Defects'[Link Time])  = {yr} &&
                          MONTH('A Shop Defects'[Link Time]) = {mo} &&
                          DAY('A Shop Defects'[Link Time])   = {dy}),
@@ -1084,8 +1097,9 @@ def query_powerbi(report_date):
                   "close_stn",  'A Shop Defects'[Closing Station],
                   "close_time", 'A Shop Defects'[Close Time],
                   "location",   'A Shop Defects'[Location],
-                  "extra",      'A Shop Defects'[Extra Info]
-                )
+                    "extra",      'A Shop Defects'[Extra Info]
+                  ),
+                  REMOVEFILTERS())
             """)
             log(f"  W&G items via link-time filter: {len(wg_dpv_rows)}")
         except Exception as e:
@@ -1103,9 +1117,10 @@ def query_powerbi(report_date):
 
     # ── C Shop summary ─────────────────────────────────────────────────────────
     cshop_rows = run_dax(port, f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('C Shop Body Count-FTT',
-                 'C Shop Body Count-FTT'[Date] = DATE({yr},{mo},{dy})),
+        EVALUATE CALCULATETABLE(
+          SELECTCOLUMNS(
+            FILTER('C Shop Body Count-FTT',
+                   'C Shop Body Count-FTT'[Date] = DATE({yr},{mo},{dy})),
           "Model",       'C Shop Body Count-FTT'[Model],
           "CAL_OK",      'C Shop Body Count-FTT'[CAL Body OK],
           "FN1_OK",      'C Shop Body Count-FTT'[Final 1 Body OK],
@@ -1118,15 +1133,17 @@ def query_powerbi(report_date):
           "FTT_EOL",     'C Shop Body Count-FTT'[FTT EOL],
           "CAL_DPV",     'C Shop Body Count-FTT'[CAL DPV],
           "FN1_DPV",     'C Shop Body Count-FTT'[FN1 DPV],
-          "FN2_DPV",     'C Shop Body Count-FTT'[FN2 DPV]
-        )
+            "FN2_DPV",     'C Shop Body Count-FTT'[FN2 DPV]
+          ),
+          REMOVEFILTERS())
     """)
     log(f"  C Shop summary: {len(cshop_rows)} model rows")
 
     # ── C Shop defect items (CAL + Final line items) ───────────────────────────
     cshop_defect_rows = run_dax(port, f"""
-        EVALUATE SELECTCOLUMNS(
-          FILTER('C Shop Defects Linked',
+        EVALUATE CALCULATETABLE(
+          SELECTCOLUMNS(
+            FILTER('C Shop Defects Linked',
                  YEAR('C Shop Defects Linked'[Link Time]) = {yr} &&
                  MONTH('C Shop Defects Linked'[Link Time]) = {mo} &&
                  DAY('C Shop Defects Linked'[Link Time]) = {dy}),
@@ -1139,8 +1156,9 @@ def query_powerbi(report_date):
           "close_stn",  'C Shop Defects Linked'[Closing Station],
           "close_time", 'C Shop Defects Linked'[Close Time],
           "location",   'C Shop Defects Linked'[Location],
-          "extra",      'C Shop Defects Linked'[Extra Info Link]
-        )
+            "extra",      'C Shop Defects Linked'[Extra Info Link]
+          ),
+          REMOVEFILTERS())
     """)
     log(f"  C Shop defect items: {len(cshop_defect_rows)}")
     for r in cshop_defect_rows:
