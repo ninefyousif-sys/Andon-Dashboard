@@ -61,21 +61,22 @@ WIN_SCAN_RANGES = [
 ]
 
 def get_production(date_str):
+    # America/New_York handles EST/EDT DST automatically (no hardcoded hour offset)
     sql = f"""
         SELECT "registrationPoint",
                CASE
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '06:00:00' AND '06:59:59' THEN 1
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '07:00:00' AND '07:59:59' THEN 2
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '08:10:00' AND '09:09:59' THEN 3
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '09:10:00' AND '09:59:59' THEN 4
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '10:40:00' AND '11:39:59' THEN 5
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '11:40:00' AND '12:29:59' THEN 6
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '12:40:00' AND '13:39:59' THEN 7
-                 WHEN TO_TIME(DATEADD('hour',-5,CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint"))) BETWEEN '13:40:00' AND '14:39:59' THEN 8
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '05:50:00' AND '06:59:59' THEN 1
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '07:00:00' AND '08:09:59' THEN 2
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '08:10:00' AND '09:09:59' THEN 3
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '09:10:00' AND '10:09:59' THEN 4
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '10:40:00' AND '11:39:59' THEN 5
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '11:40:00' AND '12:29:59' THEN 6
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '12:40:00' AND '13:39:59' THEN 7
+                 WHEN TO_TIME(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) BETWEEN '13:40:00' AND '14:49:59' THEN 8
                END AS win,
                COUNT(*) AS cars
         FROM   VCCH.PRODUCTION_TRACKING.BODY_TRACKING
-        WHERE  DATE(CONVERT_TIMEZONE('Europe/Brussels',"timestampRegistrationPoint")) = '{date_str}'
+        WHERE  DATE(CONVERT_TIMEZONE('America/New_York',"timestampRegistrationPoint")) = '{date_str}'
           AND  "registrationPoint" IN ('13000','19900')
         GROUP BY 1,2
         HAVING win IS NOT NULL

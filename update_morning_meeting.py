@@ -1959,14 +1959,25 @@ def parse_ppt_kpi_images(ppt_path):
          ['GEMBA'],
          'wg_dpv_536', 'wg_dpv_519', 'dpv'),
 
-        (['WD6', 'B - DPV', 'B-DPV', 'B SHOP DPV', 'WD6 FTT'],
-         ['SECTION', 'OVERVIEW', 'GEMBA'],
+        # WD6 FTT (B-Shop FTT items) — must exclude "DPV" slides
+        # Note: PPT slide title may be "WD6 - FTT" (with spaces around dash)
+        (['WD6-FTT', 'WD6 FTT', 'WD6FTT', 'WD6 - FTT', 'B SHOP FTT', 'B-SHOP FTT', 'B - FTT'],
+         ['SECTION', 'OVERVIEW', 'GEMBA', 'DPV'],
+         'wd6_ftt_536', 'wd6_ftt_519', 'ftt'),
+
+        # B-DPV (WD6 DPV / Paint DPV items) — must exclude "FTT" slides
+        (['B - DPV', 'B-DPV', 'B SHOP DPV', 'B DPV', 'WD6 DPV'],
+         ['SECTION', 'OVERVIEW', 'GEMBA', 'FTT'],
          'wd6_dpv_536', 'wd6_dpv_519', 'dpv'),
 
         (['C - FTT', 'C-SHOP FTT', 'C SHOP FTT', 'CAL FTT', 'C-SHOP FTT REPORT'],
          [],
          'cal_ftt_536', 'cal_ftt_519', 'ftt'),
     ]
+
+    # Track which slide indices are processed by SLIDE_CONFIG so positional
+    # scans (WD6 FTT, Final1 FTT) can skip them and avoid double-counting.
+    _processed_slide_idx: set = set()
 
     for search_kws, excl_kws, key_536, key_519, kpi_type in SLIDE_CONFIG:
         found_slides = _find_slides_by_keyword(prs, search_kws, excl_kws)
@@ -1975,6 +1986,7 @@ def parse_ppt_kpi_images(ppt_path):
             continue
 
         for slide_idx, slide in found_slides:
+            _processed_slide_idx.add(slide_idx)
             img_bytes = _slide_main_image(slide)
             if not img_bytes:
                 log(f"  PPT items [{search_kws[0]}]: slide {slide_idx+1} has no image")
@@ -1995,6 +2007,99 @@ def parse_ppt_kpi_images(ppt_path):
             ppt_items[key_519].extend(items_519)
             log(f"  PPT items [{search_kws[0]}]: {len(items_536)} EX90 + {len(items_519)} PSTR items")
 
+    # ── WD6 FTT: positional detection fallback ───────────────────────────────
+    # WD6-FTT slides are sometimes image-only with no XML text (keyword search
+    # fails).  Only run this scan if the keyword-based SLIDE_CONFIG pass above
+    # left wd6_ftt completely empty.
+    if not ppt_items['wd6_ftt_536'] and not ppt_items['wd6_ftt_519']:
+        _wg_found  = _find_slides_by_keyword(prs, ['W&G DPV', 'WG DPV', 'WAG DPV', 'W&G'],
+                                              ['GEMBA'])
+        _bdpv2_found = _find_slides_by_keyword(
+            prs, ['B - DPV', 'B-DPV', 'B SHOP DPV', 'B DPV', 'WD6 DPV'],
+            ['SECTION', 'OVERVIEW', 'GEMBA', 'FTT'])
+        if _wg_found and _bdpv2_found:
+            _wg_idx   = _wg_found[-1][0]    # last W&G slide (0-based)
+            _bdpv2_idx = _bdpv2_found[0][0]  # first B-DPV slide (0-based)
+            log(f"  PPT items [WD6 FTT pos]: scanning slides "
+                f"{_wg_idx+2}–{_bdpv2_idx} between W&G@{_wg_idx+1} and B-DPV@{_bdpv2_idx+1}")
+            for _wi in range(_wg_idx + 1, _bdpv2_idx):
+                _wslide = prs.slides[_wi]
+                _wtxt = ' '.join(
+                    s.text.strip() for s in _wslide.shapes
+                    if hasattr(s, 'text') and s.text.strip()
+                ).strip()
+                _wimg = _slide_main_image(_wslide)
+                if _wimg and len(_wtxt) < 20 and _wi not in _processed_slide_idx:
+                    log(f"  PPT items [WD6 FTT pos]: OCR candidate slide {_wi+1} "
+                        f"({len(_wimg)//1024} KB, text='{_wtxt[:30]}')...")
+                    _wwords = _ocr_image_to_words(_wimg)
+                    _wocr = ' '.join(w[0].upper() for w in _wwords)
+                    if any(kw in _wocr for kw in ('WD6', 'WD 6', 'B-SHOP', 'B SHOP', 'FTT',
+                                                    'BSHOP', 'PAINT')):
+                        _witems = _parse_item_slide_words(_wwords, 'ftt')
+                        _wi536 = [r for r in _witems
+                                  if '536' in str(r.get('model','')) or 'EX90' in str(r.get('model',''))]
+                        _wi519 = [r for r in _witems
+                                  if '519' in str(r.get('model','')) or 'PSTR' in str(r.get('model',''))]
+                        if not _wi536 and not _wi519:
+                            _wi536 = _witems
+                        ppt_items['wd6_ftt_536'].extend(_wi536)
+                        ppt_items['wd6_ftt_519'].extend(_wi519)
+                        log(f"  PPT items [WD6 FTT pos]: slide {_wi+1} → "
+                            f"{len(_wi536)} EX90 + {len(_wi519)} PSTR")
+                    else:
+                        log(f"  PPT items [WD6 FTT pos]: slide {_wi+1} "
+                            f"no WD6/FTT keywords — skipped")
+        else:
+            log(f"  PPT items [WD6 FTT pos]: W&G found={bool(_wg_found)}, "
+                f"B-DPV found={bool(_bdpv2_found)} → cannot locate WD6-FTT by position")
+
+    # ── Final1 FTT: positional detection ─────────────────────────────────────
+    # Final1 FTT slides are pure-image slides with NO XML title text so they
+    # cannot be found by _find_slides_by_keyword.  Strategy: scan the 5 slides
+    # after the last B-DPV slide for any image-only slides whose OCR confirms
+    # FINAL/FTT content.  Using a fixed window (rather than up-to-C-FTT) handles
+    # both D2/D3 (Final1 before C-FTT) and D4 (Final1 after first C-FTT).
+    _bdpv_found = _find_slides_by_keyword(
+        prs, ['B - DPV', 'B-DPV', 'B SHOP DPV', 'B DPV', 'WD6 DPV'],
+        ['SECTION', 'OVERVIEW', 'GEMBA', 'FTT'])
+    if _bdpv_found:
+        _bdpv_idx  = _bdpv_found[-1][0]          # last B-DPV slide index (0-based)
+        _scan_end  = min(_bdpv_idx + 6, len(prs.slides))   # scan up to 5 slides after B-DPV
+        log(f"  PPT items [Final1 FTT]: scanning slides "
+            f"{_bdpv_idx+2}–{_scan_end} (5-slide window after B-DPV@{_bdpv_idx+1})")
+        for _ci in range(_bdpv_idx + 1, _scan_end):
+            # Skip slides already captured as B-DPV results
+            _cslide = prs.slides[_ci]
+            _txt = ' '.join(
+                s.text.strip() for s in _cslide.shapes
+                if hasattr(s, 'text') and s.text.strip()
+            ).strip()
+            _img = _slide_main_image(_cslide)
+            # Only scan truly image-only slides (< 20 chars text, not already processed)
+            if _img and len(_txt) < 20 and _ci not in _processed_slide_idx:
+                log(f"  PPT items [Final1 FTT]: OCR candidate slide {_ci+1} "
+                    f"({len(_img)//1024} KB, text='{_txt[:30]}')...")
+                _words = _ocr_image_to_words(_img)
+                _ocr_txt = ' '.join(w[0].upper() for w in _words)
+                if any(kw in _ocr_txt for kw in ('FINAL', 'FTT', 'FN1', 'F.T.T')):
+                    _sitems = _parse_item_slide_words(_words, 'ftt')
+                    _i536 = [r for r in _sitems
+                             if '536' in str(r.get('model','')) or 'EX90' in str(r.get('model',''))]
+                    _i519 = [r for r in _sitems
+                             if '519' in str(r.get('model','')) or 'PSTR' in str(r.get('model',''))]
+                    if not _i536 and not _i519:
+                        _i536 = _sitems
+                    ppt_items['final1_ftt_536'].extend(_i536)
+                    ppt_items['final1_ftt_519'].extend(_i519)
+                    log(f"  PPT items [Final1 FTT]: slide {_ci+1} → "
+                        f"{len(_i536)} EX90 + {len(_i519)} PSTR")
+                else:
+                    log(f"  PPT items [Final1 FTT]: slide {_ci+1} image has no "
+                        f"FINAL/FTT keywords in OCR — skipped")
+    else:
+        log(f"  PPT items [Final1 FTT]: B-DPV not found → cannot locate Final1 by position")
+
     try:
         os.remove(tmp_path)
     except Exception:
@@ -2007,6 +2112,33 @@ def build_kpis_from_ppt(ppt_kpis):
     """Build the kpis dict for MM_DATA from PPT image OCR results.
     Returns dict with same structure as build_kpis_from_pbi()."""
     kpis = {k: {'val': None} for k in TARGETS}
+
+    # Sanity-check bounds: discard clearly-wrong OCR values
+    # OPR (Operation Rate): must be 0–100; bad reads like 11585 get dropped → null
+    for opr_key in ('bok_opr', 'bol_opr'):
+        v = ppt_kpis.get(opr_key)
+        if v is not None:
+            if not (0.0 <= v <= 100.0):
+                log(f"  KPI sanity-drop: {opr_key}={v} out of [0,100] range → null")
+                ppt_kpis[opr_key] = None
+    # FTT: must be 0–100
+    for ftt_key in ('ashop_ftt', 'wd6_ftt', 'cal_ftt', 'final1_ftt', 'final2_ftt'):
+        v = ppt_kpis.get(ftt_key)
+        if v is not None and not (0.0 <= v <= 100.0):
+            log(f"  KPI sanity-drop: {ftt_key}={v} out of [0,100] range → null")
+            ppt_kpis[ftt_key] = None
+    # DPV: reasonable upper bound 10 defects/vehicle
+    for dpv_key in ('ashop_dpv', 'wg_dpv', 'wd6_dpv'):
+        v = ppt_kpis.get(dpv_key)
+        if v is not None and v > 10.0:
+            log(f"  KPI sanity-drop: {dpv_key}={v} exceeds DPV max(10) → null")
+            ppt_kpis[dpv_key] = None
+    # Scrap $/car: reasonable upper bound $200
+    v = ppt_kpis.get('scrap_car')
+    if v is not None and v > 200.0:
+        log(f"  KPI sanity-drop: scrap_car={v} exceeds $200 → null")
+        ppt_kpis['scrap_car'] = None
+
     for kpi_key in ('bok_opr', 'bol_opr', 'scrap_car',
                     'ashop_ftt', 'ashop_dpv', 'wg_dpv',
                     'wd6_ftt', 'wd6_dpv',

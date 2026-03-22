@@ -48,7 +48,8 @@ def log(msg):
     line = f"[{ts}] {msg}"
     # Only print to stdout — RUN_UPDATE.bat redirects stdout >> update_log.txt
     # Writing directly to the file AND via bat redirect causes PermissionError on Windows
-    print(line, flush=True)
+    # encode/replace to survive Windows charmap codec (e.g. arrow chars in git output)
+    print(line.encode(sys.stdout.encoding or 'utf-8', errors='replace').decode(sys.stdout.encoding or 'utf-8'), flush=True)
 
 # ── DATE / WEEK HELPERS ────────────────────────────────────────────────────────
 def date_to_wk_day(d):
@@ -205,7 +206,7 @@ def read_day(hop_ws, dt_ws, wk_str, day_int):
 _CREDS_FILE = os.path.join(WORK, 'snowflake_credentials.json')
 def _load_snowflake_cfg():
     try:
-        with open(_CREDS_FILE, encoding='utf-8') as f:
+        with open(_CREDS_FILE, encoding='utf-8-sig') as f:  # utf-8-sig handles BOM automatically
             c = json.load(f)
         cfg = {
             'account':   c['account'],
@@ -270,22 +271,26 @@ def get_production_from_snowflake(date_str):
     try:
         conn = snowflake.connector.connect(**SNOWFLAKE_CFG)
         cursor = conn.cursor()
-        # Production time = scan time - 5h → group by production window boundaries
+        # Use America/New_York directly — handles EST/EDT DST automatically (no hardcoded offset)
+        # This is correct all year: EST winter (UTC-5) and EDT summer (UTC-4) both handled
         sql = f"""
             SELECT "registrationPoint",
                    CASE
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'06:00:00\' AND \'06:59:59\' THEN 1
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'07:00:00\' AND \'07:59:59\' THEN 2
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'08:10:00\' AND \'09:09:59\' THEN 3
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'09:10:00\' AND \'09:59:59\' THEN 4
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'10:40:00\' AND \'11:39:59\' THEN 5
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'11:40:00\' AND \'12:29:59\' THEN 6
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'12:40:00\' AND \'13:39:59\' THEN 7
-                     WHEN TO_TIME(DATEADD(\'hour\',-5,CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint"))) BETWEEN \'13:40:00\' AND \'14:39:59\' THEN 8
+                     -- W1: 06:00-07:00 extended back to 05:50 to capture early-start cars
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'05:50:00\' AND \'06:59:59\' THEN 1
+                     -- W2: 07:00-08:00 extended through break to 08:09 to capture break-edge cars
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'07:00:00\' AND \'08:09:59\' THEN 2
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'08:10:00\' AND \'09:09:59\' THEN 3
+                     -- W4: 09:10-10:00 extended through break to 10:09 to capture break-edge cars
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'09:10:00\' AND \'10:09:59\' THEN 4
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'10:40:00\' AND \'11:39:59\' THEN 5
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'11:40:00\' AND \'12:29:59\' THEN 6
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'12:40:00\' AND \'13:39:59\' THEN 7
+                     WHEN TO_TIME(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) BETWEEN \'13:40:00\' AND \'14:49:59\' THEN 8
                    END AS win,
                    COUNT(*) AS cars
             FROM   VCCH.PRODUCTION_TRACKING.BODY_TRACKING
-            WHERE  DATE(CONVERT_TIMEZONE(\'Europe/Brussels\',"timestampRegistrationPoint")) = \'{date_str}\'
+            WHERE  DATE(CONVERT_TIMEZONE(\'America/New_York\',"timestampRegistrationPoint")) = \'{date_str}\'
               AND  "registrationPoint" IN (\'13000\',\'19900\')
             GROUP BY 1,2
             HAVING win IS NOT NULL
@@ -329,7 +334,7 @@ STATIC_PROD = {
     '2026-03-17': {'bol_h':[7,12,6,12,11,10,11,7], 'empty_h':[12,12,11,11,13,10,10,7],'bol_tot':80,'empty_tot':89},
     '2026-03-18': {'bol_h':[8,13,12,11,10,7,13,12], 'empty_h':[10,10,12,11,11,6,13,13],'bol_tot':86,'empty_tot':86},
     '2026-03-19': {'bol_h':[9,8,10,10,8,10,8,7],   'empty_h':[10,11,13,9,11,13,12,2],'bol_tot':70,'empty_tot':81},
-    '2026-03-20': {'bol_h':[11,11,9,8,9,10,11,1],   'empty_h':[11,12,8,10,13,7,12,3],'bol_tot':70,'empty_tot':76},
+    '2026-03-20': {'bol_h':[12,12,9,9,9,10,11,9],   'empty_h':[11,12,8,10,13,7,12,7],'bol_tot':81,'empty_tot':80},
 }
 
 def pbi_to_js(pbi):
@@ -441,18 +446,47 @@ def update():
     if GITHUB_ENABLED:
         try:
             repo = GITHUB_REPO
-            cmds = [
-                ['git', '-C', repo, 'add', 'body_shop_intelligence.html'],
-                ['git', '-C', repo, 'commit', '-m', f'Auto-update {today} 17:00'],
-                ['git', '-C', repo, 'pull', '--rebase', 'origin', 'main'],
-                ['git', '-C', repo, 'push', 'origin', 'main'],
-            ]
-            for cmd in cmds:
+            now_str = datetime.datetime.now().strftime('%H:%M')
+
+            # Clear any stale git lock files before starting (can be left by crashed processes)
+            for lock_name in ['index.lock', 'HEAD.lock', 'config.lock', 'packed-refs.lock']:
+                lock_path = os.path.join(repo, '.git', lock_name)
+                if os.path.exists(lock_path):
+                    try:
+                        os.remove(lock_path)
+                        log(f"Removed stale git lock: {lock_name}")
+                    except Exception as le:
+                        log(f"Could not remove lock {lock_name}: {le}")
+
+            def run_git(args, allow_fail=False):
+                cmd = ['git', '-C', repo] + args
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                out = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    log(f"Git: {' '.join(cmd[2:])} OK")
+                    log(f"Git OK: {' '.join(args)}")
                 else:
-                    log(f"Git WARNING: {result.stderr.strip()}")
+                    log(f"Git {'WARN' if allow_fail else 'FAIL'}: {' '.join(args)} -> {out[:200]}")
+                return result.returncode == 0
+
+            # WATERPROOF push strategy:
+            # 1. Fetch remote (know latest state without changing working tree)
+            run_git(['fetch', 'origin', 'main'])
+            # 2. Reset index to match remote HEAD — working tree unchanged, so our HTML stays
+            run_git(['reset', '--mixed', 'origin/main'])
+            # 3. Stage only the dashboard HTML (contains all downtime + OPR data)
+            run_git(['add', 'body_shop_intelligence.html'])
+            # 4. Commit (if nothing changed, commit returns non-zero — that's fine)
+            run_git(['commit', '-m', f'Auto-update {today} {now_str}'], allow_fail=True)
+            # 5. Push — guaranteed fast-forward because we reset to origin/main first
+            ok = run_git(['push', 'origin', 'main'])
+            if not ok:
+                log("Git FAIL: push failed — will retry once with force-with-lease")
+                run_git(['fetch', 'origin', 'main'])
+                run_git(['reset', '--mixed', 'origin/main'])
+                run_git(['add', 'body_shop_intelligence.html'])
+                run_git(['commit', '-m', f'Auto-update {today} {now_str} (retry)'], allow_fail=True)
+                run_git(['push', '--force-with-lease', 'origin', 'main'])
+
         except Exception as e:
             log(f"Git ERROR: {e}")
     else:
