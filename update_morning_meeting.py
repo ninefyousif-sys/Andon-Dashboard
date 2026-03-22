@@ -1688,7 +1688,7 @@ def parse_ppt_tables(md_text):
     NEVER relies on hardcoded slide numbers — slides change position every day.
     Detects each section by table headers and text keywords."""
     data = {
-        'safety':       {'title': '', 'detail': '', 'meta': ''},
+        'safety':       {'title': '', 'detail': '', 'meta': '', 'days_safe': None},
         'part_quality': [],
         'bodies_oof':   [],
         'scrap':        '$0',
@@ -1828,10 +1828,26 @@ def parse_ppt_tables(md_text):
                     if len(detail_lines) >= 3:
                         break
                 if title_line:
+                    # Try to extract days-safe counter (e.g. "47\nDays Safe" or "47 Days Safe")
+                    days_safe = None
+                    ds_match = re.search(r'(\d{1,3})\s*(?:\n\s*)?[Dd]ays?\s*[Ss]afe', content)
+                    if not ds_match:
+                        ds_match = re.search(r'[Dd]ays?\s+[Ss]afe[^\d]*(\d{1,3})', content)
+                    if not ds_match:
+                        ds_match = re.search(r'[Dd]ays?\s+[Ww]ithout\s+[Ii]ncident[^\d]*(\d{1,3})', content)
+                        if not ds_match:
+                            ds_match = re.search(r'(\d{1,3})\s*[Dd]ays?\s+[Ww]ithout', content)
+                    if ds_match:
+                        try:
+                            days_safe = int(ds_match.group(1))
+                            log(f"  PPT: Days safe = {days_safe}")
+                        except Exception:
+                            days_safe = None
                     data['safety'] = {
-                        'title':  title_line,
-                        'detail': ' | '.join(detail_lines),
-                        'meta':   f'Slide {slide_num}',
+                        'title':     title_line,
+                        'detail':    ' | '.join(detail_lines),
+                        'meta':      f'Slide {slide_num}',
+                        'days_safe': days_safe,
                     }
                     log(f"  PPT: Safety found on slide {slide_num}: {title_line[:60]}")
 
@@ -2051,7 +2067,7 @@ def update():
         md_text    = read_ppt_markdown(ppt_path)
         ppt_tables = parse_ppt_tables(md_text)
     else:
-        ppt_tables = {'safety':{'title':'','detail':'','meta':''},
+        ppt_tables = {'safety':{'title':'','detail':'','meta':'','days_safe':None},
                       'part_quality':[], 'bodies_oof':[], 'scrap':'$0',
                       'scrap_note':'PPT not found — update manually'}
 
@@ -2282,7 +2298,7 @@ def backfill(target_date):
         log(f"  Found PPT: {ppt_path}")
         ppt_tables = parse_ppt_tables(read_ppt_markdown(ppt_path))
     else:
-        ppt_tables = {'safety': {'title': '', 'detail': '', 'meta': ''},
+        ppt_tables = {'safety': {'title': '', 'detail': '', 'meta': '', 'days_safe': None},
                       'part_quality': [], 'bodies_oof': [],
                       'scrap': '$0', 'scrap_note': 'PPT not found for this day'}
 

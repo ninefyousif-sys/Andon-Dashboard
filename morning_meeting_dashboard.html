@@ -407,14 +407,14 @@ table.t tr:hover td{background:rgba(255,255,255,.03);}
     <!-- Green Safety Cross -->
     <div style="background:linear-gradient(135deg,#1a4a1e 0%,#0d2e10 100%);border:2px solid rgba(63,185,80,.4);border-radius:12px;width:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 12px;text-align:center;">
       <div style="font-size:40px;line-height:1;color:var(--green);font-weight:900;">&#10010;</div>
-      <div style="font-size:28px;font-weight:900;color:var(--green);margin-top:4px;">47</div>
+      <div id="safety-days" style="font-size:28px;font-weight:900;color:var(--green);margin-top:4px;">47</div>
       <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Days Safe</div>
     </div>
     <!-- Safety KPIs row -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
-      <div class="kpi cr"><div class="kl">Open Safety Alerts</div><div class="kv bad">1</div><div class="kt">Hand cut/puncture</div><div class="kd db">&#9650; Action Required</div></div>
-      <div class="kpi cb"><div class="kl">Near Misses (WTD)</div><div class="kv neut">0</div><div class="kt">Week to date</div><div class="kd dg">&#10003; Clear</div></div>
-      <div class="kpi cg"><div class="kl">Safety Actions Closed</div><div class="kv good">3/3</div><div class="kt">All WK12 complete</div><div class="kd dg">&#10003; 100%</div></div>
+      <div class="kpi cr"><div class="kl">Open Safety Alerts</div><div id="safety-kv-alerts" class="kv bad">1</div><div id="safety-kt-alerts" class="kt">Hand cut/puncture</div><div class="kd db">&#9650; Action Required</div></div>
+      <div class="kpi cb"><div class="kl">Near Misses (WTD)</div><div id="safety-kv-nearmiss" class="kv neut">0</div><div class="kt">Week to date</div><div class="kd dg">&#10003; Clear</div></div>
+      <div class="kpi cg"><div class="kl">Safety Actions Closed</div><div id="safety-kv-actions" class="kv good">3/3</div><div id="safety-kt-actions" class="kt">All WK12 complete</div><div class="kd dg">&#10003; 100%</div></div>
     </div>
   </div>
 </div>
@@ -1135,14 +1135,32 @@ function renderCallouts(){
 /* ═══ PPT DATA RENDERERS ═══ */
 
 function renderSafety(){
-  const s = MM_DATA.ppt && MM_DATA.ppt.safety;
-  if(!s) return;
-  const t = document.getElementById('safety-title');
-  const d = document.getElementById('safety-detail');
-  const m = document.getElementById('safety-meta');
-  if(t && s.title)  t.textContent = s.title;
-  if(d && s.detail) d.innerHTML   = s.detail.replace(/\bTM must follow eyes with hands\b/, '<strong>TM must follow eyes with hands</strong>');
-  if(m && s.meta)   m.innerHTML   = s.meta.replace(/\|/g,'<br>');
+  const s  = (MM_DATA.ppt && MM_DATA.ppt.safety) || {};
+  const wk = MM_DATA.wk || ''; const dy = MM_DATA.day || '';
+  const t  = document.getElementById('safety-title');
+  const d  = document.getElementById('safety-detail');
+  const m  = document.getElementById('safety-meta');
+  const daysEl = document.getElementById('safety-days');
+
+  // Always overwrite — never leave a previous day's text visible
+  if(t) t.textContent = s.title  ? s.title
+                                  : ('No safety alert recorded \u2014 ' + wk + ' D' + dy);
+  if(d) d.innerHTML   = s.detail ? s.detail.replace(/\bTM must follow eyes with hands\b/,
+                                    '<strong>TM must follow eyes with hands</strong>')
+                                  : '\u2014';
+  if(m) m.innerHTML   = s.meta   ? s.meta.replace(/\|/g,'<br>')
+                                  : (wk + ' D' + dy);
+
+  // Days-safe counter — updated from PPT data when available
+  if(daysEl) daysEl.textContent = (s.days_safe != null) ? s.days_safe : '\u2014';
+
+  // KPI mini-cards — show real data when available, else dash
+  const sv = (id,v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  sv('safety-kv-alerts',   s.open_alerts    != null ? s.open_alerts    : '\u2014');
+  sv('safety-kt-alerts',   s.open_alerts    != null ? (s.open_alerts === 0 ? 'No open alerts' : 'Open this day') : '\u2014');
+  sv('safety-kv-nearmiss', s.near_miss      != null ? s.near_miss      : '\u2014');
+  sv('safety-kv-actions',  s.actions_closed != null ? s.actions_closed : '\u2014');
+  sv('safety-kt-actions',  s.actions_closed != null ? (wk + ' actions') : '\u2014');
 }
 
 function statusPill(st){

@@ -488,16 +488,23 @@ function renderKPIs(){
 
 /* ─── RENDER SAFETY ─── */
 function renderSafety(){
-  const s=MM_DATA.ppt?.safety;
-  if(!s) return;
-  const t=document.getElementById('m-safety-title');
-  const d=document.getElementById('m-safety-detail');
-  const m=document.getElementById('m-safety-meta');
-  const b=document.getElementById('m-safety-badge');
-  if(t) t.textContent=s.title||'No alert';
-  if(d) d.textContent=s.detail||'—';
-  if(m) m.textContent=s.meta||'—';
-  if(b){ b.textContent=s.title?'1 Alert':'Clear'; b.className='sec-badge '+(s.title?'bad':'ok'); }
+  const s  = (MM_DATA.ppt && MM_DATA.ppt.safety) || {};
+  const wk = MM_DATA.wk || ''; const dy = MM_DATA.day || '';
+  const t  = document.getElementById('m-safety-title');
+  const d  = document.getElementById('m-safety-detail');
+  const m  = document.getElementById('m-safety-meta');
+  const b  = document.getElementById('m-safety-badge');
+  const daysEl = document.getElementById('m-days-safe');
+
+  // Always overwrite — never show a previous day's content
+  if(t) t.textContent = s.title  || ('No safety alert \u2014 ' + wk + ' D' + dy);
+  if(d) d.textContent = s.detail || '\u2014';
+  if(m) m.textContent = s.meta   || (wk + ' D' + dy);
+  if(b){ b.textContent = s.title ? '1 Alert' : 'Clear';
+         b.className   = 'sec-badge ' + (s.title ? 'bad' : 'ok'); }
+
+  // Days-safe counter
+  if(daysEl) daysEl.textContent = (s.days_safe != null) ? s.days_safe : '\u2014';
 }
 
 /* ─── RENDER DOWNTIME ─── */
