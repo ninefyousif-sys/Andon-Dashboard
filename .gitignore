@@ -40,20 +40,12 @@ snowflake_credentials.json
 snowflake_rsa_key.p8
 snowflake_rsa_key.pub
 
-# Temp diagnostic / patch / fix scripts — local only
-_check_*.py
-_diag_*.py
-_fix_*.py
-_patch_*.py
-_verify_*.py
-_get_*.py
-_find_*.py
-_read_ppt*.py
-_push_*.bat
-_commit_*.bat
-_run_*.bat
-_install_*.bat
-_do_push.bat
-_mm_dt.xlsm
-_mm_hop.xlsm
-_run_update.bat
+# All underscore-prefixed temp/debug scripts, images and data files — local only
+_*.py
+_*.png
+_*.jpeg
+_*.jpg
+_*.json
+_*.bat
+_*.xlsm
+_audit_full.py

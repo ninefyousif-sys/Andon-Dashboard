@@ -17,7 +17,7 @@ BASE_ONEDRIVE = r"C:\Users\NYOUSIF\OneDrive - Volvo Cars\A Shop Production SI an
 
 HOP_SRC = os.path.join(BASE_ONEDRIVE, r"Hop Line Downtime\HOP New Downtime Breakdown.xlsm")
 DT_SRC  = os.path.join(BASE_ONEDRIVE, r"Downtime Tracker Logv6a.xlsm")
-PPT_DIR = os.path.join(BASE_ONEDRIVE, r"2026 RTM")
+PPT_DIR = os.path.join(BASE_ONEDRIVE, f"{datetime.date.today().year} RTM")
 
 DASH        = r"C:\Users\NYOUSIF\Desktop\AShop_Dashboard\morning_meeting_dashboard.html"
 DASH_MOBILE = r"C:\Users\NYOUSIF\Desktop\AShop_Dashboard\morning_meeting_mobile.html"
@@ -27,7 +27,14 @@ LOG         = os.path.join(WORK, "mm_update_log.txt")
 GITHUB_REPO    = WORK  # same folder — git repo is here
 GITHUB_ENABLED = True  # pushes morning_meeting_mobile.html to GitHub Pages
 
-WK12_MON = datetime.date(2026, 3, 16)
+# Anchor Monday for week-number calculation.
+# WK01 of the current year = ISO week 1. We use Jan 4 (always in ISO WK01) to find it.
+def _wk1_monday(year=None):
+    y = year or datetime.date.today().year
+    jan4 = datetime.date(y, 1, 4)
+    return jan4 - datetime.timedelta(days=jan4.weekday())
+
+WK12_MON = _wk1_monday() + datetime.timedelta(weeks=11)  # WK01 Mon + 11 weeks = WK12 Mon
 
 # ── BOK / BOL OPR TABLE CONFIG ─────────────────────────────────────────────────
 # Run:  python update_morning_meeting.py --discover-tables
@@ -150,8 +157,8 @@ def dt_code(area):
 
 def date_to_wk_day(d):
     if d.weekday() > 4: return None, None
-    delta = (d - WK12_MON).days
-    return f"WK{12 + delta//7}", d.weekday()+1
+    iso_wk = d.isocalendar()[1]          # Python ISO week number — correct every year
+    return f"WK{iso_wk}", d.weekday()+1
 
 def prev_working_day(ref=None):
     d = (ref or datetime.date.today()) - datetime.timedelta(days=1)
@@ -1387,7 +1394,7 @@ def read_area_dt(hop_ws, dt_ws, wk_str, day_int):
             vals = [c.value for c in row]
             try:    yr = int(float(str(vals[0])))
             except: continue
-            if yr != 2026: continue
+            if yr != datetime.date.today().year: continue
             if str(vals[1]).strip() != wk_str: continue
             try:    d = int(float(str(vals[2])))
             except: continue
@@ -1441,7 +1448,7 @@ def build_hop_stops(hop_ws, dt_ws, wk_str, day_int):
             vals = [c.value for c in row]
             try:    yr2 = int(float(str(vals[0])))
             except: continue
-            if yr2 != 2026: continue
+            if yr2 != datetime.date.today().year: continue
             if str(vals[1]).strip() != wk_str: continue
             try:    d = int(float(str(vals[2])))
             except: continue
@@ -1485,11 +1492,12 @@ def build_hop_stops(hop_ws, dt_ws, wk_str, day_int):
 
 def find_ppt(wk_str, day_int):
     if not os.path.isdir(PPT_DIR): return None
-    wk_num = wk_str.replace('WK','')
-    fname  = f"A Shop 26W{wk_num}D{day_int}.pptx"
+    wk_num  = wk_str.replace('WK','')
+    yr2     = str(datetime.date.today().year)[2:]          # "26" for 2026, "27" for 2027 etc.
+    fname   = f"A Shop {yr2}W{wk_num}D{day_int}.pptx"
 
     # Candidate folders: root, then week subfolders (e.g. 26WK12, WK12, 26W12)
-    wk_subfolder_names = [f"26{wk_str}", wk_str, f"26W{wk_num}"]
+    wk_subfolder_names = [f"{yr2}{wk_str}", wk_str, f"{yr2}W{wk_num}"]
     search_dirs = [PPT_DIR] + [
         os.path.join(PPT_DIR, sub) for sub in wk_subfolder_names
         if os.path.isdir(os.path.join(PPT_DIR, sub))
