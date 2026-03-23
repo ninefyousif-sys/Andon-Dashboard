@@ -1,60 +1,53 @@
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
 #  SETUP_SCHEDULE.ps1
-#  Sets up TWO scheduled tasks for the morning meeting automation:
+#  Sets up the scheduled task for the morning meeting automation:
 #
-#  Task 1 — AShop_LaunchPBI       : 7:20am  → opens both PBI files
-#  Task 2 — AShop_MorningMeeting  : 7:45am  → runs update script
+#  AShop_MorningMeeting_Update : 7:45am Mon-Fri
+#    → runs update script, reads PPT + Downtime Excel, pushes to GitHub
+#    → StartWhenAvailable = True (runs on first login if missed)
+#
+#  Power BI does NOT need to be open. All KPI data comes from PPT.
 #
 #  Run this ONCE from PowerShell (as yourself, no admin needed).
 #  Right-click → "Run with PowerShell"
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
 
 $dashFolder = "C:\Users\NYOUSIF\Desktop\AShop_Dashboard"
 $user       = $env:USERNAME
 
-# ── Task 1: Launch PBI at 7:20am ─────────────────────────────────────────────
-$action1  = New-ScheduledTaskAction `
-              -Execute "$dashFolder\LAUNCH_PBI.bat"
-$trigger1 = New-ScheduledTaskTrigger `
-              -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "7:20AM"
-$settings1 = New-ScheduledTaskSettingsSet `
-              -ExecutionTimeLimit (New-TimeSpan -Minutes 2) `
+# ── Remove old PBI launch task if it exists (no longer needed) ───────────────
+$oldTask = Get-ScheduledTask -TaskName "AShop_LaunchPBI" -ErrorAction SilentlyContinue
+if ($oldTask) {
+    Unregister-ScheduledTask -TaskName "AShop_LaunchPBI" -Confirm:$false
+    Write-Host "Removed old task: AShop_LaunchPBI (Power BI no longer needed)"
+}
+
+# ── Task: Run morning meeting update at 7:45am ────────────────────────────────
+$action   = New-ScheduledTaskAction `
+              -Execute "$dashFolder\RUN_MORNING_MEETING.bat"
+$trigger  = New-ScheduledTaskTrigger `
+              -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "7:45AM"
+$settings = New-ScheduledTaskSettingsSet `
+              -ExecutionTimeLimit (New-TimeSpan -Minutes 15) `
               -StartWhenAvailable
 $principal = New-ScheduledTaskPrincipal `
               -UserId $user -LogonType Interactive -RunLevel Limited
 
 Register-ScheduledTask `
-    -TaskName  "AShop_LaunchPBI" `
-    -Action    $action1 `
-    -Trigger   $trigger1 `
-    -Settings  $settings1 `
-    -Principal $principal `
-    -Force
-
-Write-Host "Task 1 registered: AShop_LaunchPBI  (7:20am Mon-Fri)"
-
-# ── Task 2: Run update at 7:45am ──────────────────────────────────────────────
-$action2  = New-ScheduledTaskAction `
-              -Execute "$dashFolder\RUN_MORNING_MEETING.bat"
-$trigger2 = New-ScheduledTaskTrigger `
-              -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "7:45AM"
-$settings2 = New-ScheduledTaskSettingsSet `
-              -ExecutionTimeLimit (New-TimeSpan -Minutes 15) `
-              -StartWhenAvailable
-
-Register-ScheduledTask `
     -TaskName  "AShop_MorningMeeting_Update" `
-    -Action    $action2 `
-    -Trigger   $trigger2 `
-    -Settings  $settings2 `
+    -Action    $action `
+    -Trigger   $trigger `
+    -Settings  $settings `
     -Principal $principal `
     -Force
 
-Write-Host "Task 2 registered: AShop_MorningMeeting_Update  (7:45am Mon-Fri)"
-
-# ── Confirm both tasks ────────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "Scheduled tasks:"
+Write-Host "Task registered: AShop_MorningMeeting_Update  (7:45am Mon-Fri)"
+Write-Host "  StartWhenAvailable = True"
+Write-Host "  If computer is off at 7:45, the task runs on next login automatically."
+Write-Host ""
+
+# ── Confirm ───────────────────────────────────────────────────────────────────
 Get-ScheduledTask | Where-Object { $_.TaskName -like "AShop_*" } |
     Select-Object TaskName, State |
     Format-Table -AutoSize

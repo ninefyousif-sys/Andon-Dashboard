@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
 A-Shop Morning Meeting Dashboard — Daily Update Script
-Run each morning at 05:50 Mon-Fri via Windows Task Scheduler.
+Run each morning at 7:45 Mon-Fri via Windows Task Scheduler.
+(Task Scheduler has StartWhenAvailable=True — runs on first login if missed.)
 
 Sources:
-  Power BI Desktop  → FTT, DPV, W&G DPV, item details (DAX queries)
-  Downtime Excel    → HOP + DT area downtime (same as Andon Dashboard)
-  PPT 2026 RTM      → Safety, Part Quality, Bodies OOF, Scrap (tables only)
+  PPT 2026 RTM      → ALL KPIs: BOK/BOL OPR, FTT, DPV, W&G DPV, Scrap $/car
+                       Safety, Part Quality, Bodies OOF, item details (OCR)
+  Downtime Excel    → HOP + DT area downtime (OneDrive Excel files only)
+
+  Power BI Desktop  → NOT required. PBI fallback is disabled.
+                       All KPI data comes from the morning meeting PPT.
 """
 
 import openpyxl, warnings, datetime, json, re, shutil, os, sys, subprocess
@@ -2762,31 +2766,13 @@ def update():
         ppt_items      = {}
         kpis           = {k: {'val': None} for k in TARGETS}
 
-    # ── 1. Power BI optional fallback (for any KPIs not found in PPT) ─────────
-    pbi_used = False
-    if any(kpis[k].get('val') is None for k in kpis):
-        ports = find_pbi_ports()
-        if ports:
-            log("  Some KPIs null — trying PBI as fallback...")
-            pbi = query_powerbi(report_date)
-            if pbi:
-                pbi_kpis  = build_kpis_from_pbi(pbi)
-                pbi_items = build_ppt_items_from_pbi(pbi)
-                pbi_used  = True
-                for k in kpis:
-                    if kpis[k].get('val') is None and pbi_kpis.get(k, {}).get('val') is not None:
-                        kpis[k] = pbi_kpis[k]
-                        log(f"    PBI fallback: {k} = {pbi_kpis[k]['val']}")
-                # Use PBI items only where PPT items are empty
-                for ikey in ppt_items:
-                    if not ppt_items[ikey] and pbi_items.get(ikey):
-                        ppt_items[ikey] = pbi_items[ikey]
-            else:
-                log("  PBI not available — KPIs from PPT only")
-        else:
-            log("  PBI not open — KPIs from PPT only")
-
-    log(f"  Power BI data loaded" if pbi_used else "  Running on PPT data only (no PBI)")
+    # ── 1. PPT is the sole KPI source — Power BI is not used ─────────────────
+    # All KPIs (BOK/BOL OPR, FTT, DPV, Scrap) come from the PPT KPI card image.
+    # Power BI Desktop does not need to be open.
+    null_kpis = [k for k in kpis if kpis[k].get('val') is None]
+    if null_kpis:
+        log(f"  KPIs with no PPT value (will show — on dashboard): {', '.join(null_kpis)}")
+    log("  Running on PPT data only (Power BI not used)")
 
     # ── 2. Downtime from OneDrive Excel ───────────────────────────────────────
     tmp_hop = os.path.join(WORK, '_mm_hop.xlsm')
